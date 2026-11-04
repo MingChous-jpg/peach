@@ -338,6 +338,27 @@ class PikPakClient:
     def has_child(self, parent_id: str, name: str) -> bool:
         return any(item.get("name") == name for item in self._children(parent_id))
 
+    def create_folder(self, parent_id: str, name: str) -> dict:
+        """建目录。协议照 PikPakAPI 0.1.11 的 `create_folder`；回包 `file.id` 是新目录。"""
+        payload = self._api("POST", "/drive/v1/files", body={
+            "kind": "drive#folder", "name": name, "parent_id": parent_id})
+        file = payload.get("file")
+        if not isinstance(file, dict) or not file.get("id"):
+            raise _changed("建目录回包里没有 file")
+        return file
+
+    def rename_file(self, file_id: str, name: str) -> dict:
+        """同父改名。协议照 PikPakAPI 0.1.11 的 `file_rename`；回包是文件详情，不代表已生效。"""
+        return self._api("PATCH", f"/drive/v1/files/{file_id}", body={"name": name})
+
+    def batch_move(self, ids: list[str], to_parent_id: str) -> dict:
+        """跨目录移动。协议照 PikPakAPI 0.1.11 的 `file_batch_move`，`to` 空字典表示移到根目录。
+
+        那份实现没有 collision 参数；重名冲突由调用方在移动前检查目标不存在规避。
+        """
+        return self._api("POST", "/drive/v1/files:batchMove", body={
+            "ids": list(ids), "to": {"parent_id": to_parent_id} if to_parent_id else {}})
+
     def add_offline(self, uri: str, parent_id: str) -> dict:
         captcha = self._drive_captcha("POST:/drive/v1/files")
         payload = self._api("POST", "/drive/v1/files", captcha=captcha, body={

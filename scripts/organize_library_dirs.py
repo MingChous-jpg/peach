@@ -1050,15 +1050,26 @@ def run_rollback(stage, batch=None, backup=None, location=None, apply=False):
             db.close()
         lock.release()
 
+def pikpak_logged_in():
+    """设置页登录过 PikPak（凭据里有 refresh token）就直连其 API，不经 CloudDrive2。"""
+    from peach.config import SECRETS_DIR
+    from peach.downloads import PIKPAK_CREDENTIAL
+    from peach.follow_secrets import CredentialStore
+    credential = CredentialStore(SECRETS_DIR).load(PIKPAK_CREDENTIAL)
+    return bool(credential and credential.values.get('refresh_token'))
+
 def pikpak_channel(stage, batch):
-    """PikPak 批次的官方核验改名通道。"""
-    from peach.organize_clouddrive import pikpak_renames
+    """PikPak 批次的官方核验改名通道。已登录 PikPak 时直连其 API，否则走 CloudDrive2。"""
     payload = json.loads((OUT/f'{stage}-{batch}-manifest.json').read_text(encoding='utf-8'))
     roots = payload['roots'].get('pikpak', ())
     rows = [row for op in payload['operations'] for row in op['rows']
             if any(beneath(row['path'], root) for root in roots)]
     if not rows:
         raise ValueError('冻结批次没有已声明的 PikPak 资源')
+    if pikpak_logged_in():
+        from peach.organize_pikpak import pikpak_renames
+    else:
+        from peach.organize_clouddrive import pikpak_renames
     return pikpak_renames(rows[0]['path'], payload['roots'])
 
 def self_check():

@@ -4,6 +4,9 @@
 `MoveFile`；目录证据只取 `GetSubFiles(forceRefresh=True)` 的完整成员。HTTPS WebDAV 只用来
 `MKCOL` 建父目录。官方接口的回答不能代替目录证据：`RenameFile` 改文件时回 `success=true`，
 目录列表却没变。
+
+本模块的传输依赖 CloudDrive2（含 `GetDownloadUrlPath` 换 WebDAV 认证）；凭 PikPak 登录、
+不经 CloudDrive2 的直连传输见 `organize_pikpak`，两边共用这里移动与核验的语义。
 """
 from __future__ import annotations
 
@@ -11,6 +14,7 @@ from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from pathlib import PurePosixPath, PureWindowsPath
 import time
+from typing import Callable
 from urllib.parse import quote, unquote, urlsplit
 
 import httpx
@@ -161,12 +165,15 @@ class PikPakDav:
     跨目录移动，回 `ACCEPTED`、`REJECTED` 或 `None`。
     """
 
-    def __init__(self, http: httpx.Client, mapping: PikPakPaths, refresh, *, listing, rename, move_remote, confirm_attempts=1):
+    def __init__(self, http: httpx.Client | None, mapping: PikPakPaths, refresh, *, listing, rename, move_remote,
+                 confirm_attempts=1, mkdir: Callable[[str], None] | None = None):
         self.mapping = mapping
         self.http, self.root, self.refresh = http, PureWindowsPath(mapping.root), refresh
         self.rename = rename
         self.listing = listing
         self.move_remote = move_remote
+        #: 建父目录的传输注入；None 时走 WebDAV `MKCOL`（`http` 只为此服务）。
+        self.mkdir = mkdir
         if not 1 <= confirm_attempts <= 4:
             raise ValueError('移动确认次数越出预算')
         self.confirm_attempts = confirm_attempts
@@ -222,9 +229,12 @@ class PikPakDav:
             if not matches[0]['directory']:
                 raise ValueError('目标父路径不是目录')
             return
-        status, _ = self.request('MKCOL', str(parent))
-        if status != 201:
-            raise OSError('WebDAV 创建父目录失败：HTTP ' + str(status))
+        if self.mkdir is not None:
+            self.mkdir(str(parent))
+        else:
+            status, _ = self.request('MKCOL', str(parent))
+            if status != 201:
+                raise OSError('WebDAV 创建父目录失败：HTTP ' + str(status))
         self.refresh(grandparent)
 
     def submit_move(self, source, target):
