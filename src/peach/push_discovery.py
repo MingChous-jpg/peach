@@ -43,6 +43,8 @@ from pathlib import Path, PureWindowsPath
 from typing import Callable
 
 from .fsutil import atomic_write_text
+from .repository import in_background
+from .discovery_rules import system_directory, system_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -91,9 +93,11 @@ class CloudPathError(ValueError):
     """云端路径映射不出账本路径。消息可以直接给人看。"""
 
 
-def ignored(name: str) -> bool:
-    """这个文件名要不要直接丢掉。"""
-    lowered = name.casefold()
+def ignored(path: str) -> bool:
+    """系统目录、系统文件与半成品不进入登记队列。"""
+    if system_path(path):
+        return True
+    lowered = PureWindowsPath(path).name.casefold()
     if lowered in IGNORED_NAMES or lowered.startswith("."):
         return True
     return os.path.splitext(lowered)[1] in IGNORED_SUFFIXES
@@ -402,7 +406,7 @@ class DiscoveryQueue:
             return
         self._stopping = False
         self._thread = threading.Thread(
-            target=self._loop, name="PeachPushDiscovery", daemon=True)
+            target=in_background(self._loop), name="PeachPushDiscovery", daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
@@ -642,7 +646,7 @@ class PushDiscoveryService:
         except (OSError, ValueError):
             return None
 
-    def _ingest(self, location: str, path: str, move_from=None) -> bool:
+    def _ingest(self, location: str, path: str, move_from=None, *, notify: bool = True) -> bool:
         from .record_rehome import reattach_in
         from .scan import ingest_path
         result = ingest_path(self.db_path, location, path,
@@ -652,9 +656,36 @@ class PushDiscoveryService:
             self._measure(location, path)
             # 登记时已按番号接回过一轮；探到时长之后，要靠时长分辨的那几条再判一次。
             reattach_in(self.db_path, [result.asset_id] if result.new else [])
+            if notify and result.new and not move_from and result.asset_id:
+                self._notify(result.asset_id)
         if result.found and self.after_ingest:
             self.after_ingest()
         return result.found
+
+    def _notify(self, asset_id: int) -> None:
+        """新登记的是一部影片时记一条入库通知，页面据此弹 toast（`ingest_notices`）。
+
+        同番号有未失败的云下载任务时不记：网盘通知可能比云下载对账先到，那部作品整理完成时
+        云下载那一侧会记一条，同一部不弹两次。
+        """
+        from contextlib import closing
+
+        from .catalog_rules import normalise_code_key, release_code_from_filename
+        from .ingest_notices import NOTICES
+        with closing(sqlite3.connect(self.db_path)) as connection:
+            row = connection.execute("SELECT code,path FROM asset WHERE id=? AND medium='video'",
+                                     (asset_id,)).fetchone()
+            if row is None:
+                return
+            # 刚登记时番号还没采集，按文件名认。
+            name = PureWindowsPath(row[1]).name
+            code = row[0] or release_code_from_filename(name) or ""
+            downloading = bool(code) and any(
+                normalise_code_key(task_code) == normalise_code_key(code) for (task_code,) in connection.execute(
+                    "SELECT code FROM download_task WHERE code IS NOT NULL AND code<>''"
+                    " AND state NOT IN ('failed','cancelled')"))
+        if not downloading:
+            NOTICES.add("discovered", int(asset_id), code or PureWindowsPath(name).stem)
 
     def _measure(self, location: str, path: str) -> None:
         """登记完顺手探时长与分辨率。探不成不影响这一条已经入库，全量扫描还会再补。"""
@@ -666,11 +697,13 @@ class PushDiscoveryService:
             LOGGER.exception("推送发现探测时长失败：%s", path)
 
     def submit(self, location: str, path: str) -> bool:
-        if ignored(PureWindowsPath(path).name):
+        if ignored(path):
             return False
         return self.queue.submit(location, path, time.monotonic())
 
     def submit_move(self, location, old, new, *, directory=False):
+        if ignored(new) or (directory and system_directory(PureWindowsPath(new).name)):
+            return
         if directory:
             from .media_folders import path_predicate
             from contextlib import closing
@@ -681,8 +714,6 @@ class PushDiscoveryService:
                 tail = PureWindowsPath(path).relative_to(PureWindowsPath(old))
                 self.submit_move(location, path, str(PureWindowsPath(new) / tail))
             return
-        if ignored(PureWindowsPath(new).name):
-            return
         self.queue.submit(location, new, time.monotonic(), move_from=old)
 
     def ingest_now(self, location: str, path: str) -> bool:
@@ -691,9 +722,10 @@ class PushDiscoveryService:
         云下载对账时用：远端已经完成、文件就在挂载目录里，推送发现那一侧却没送来通知
         （没开、没配会员，或通知丢了）。文件不在返回假。
         """
-        if ignored(PureWindowsPath(path).name):
+        if ignored(path):
             return False
-        return self._ingest(location, path)
+        # 云下载整理完成时另有一条通知，这里落地登记不再弹。
+        return self._ingest(location, path, notify=False)
 
     def submit_cloud(self, cloud_path: str) -> str:
         """webhook 收到一条云端路径：映射成账本路径再进队列，返回那条账本路径。"""

@@ -1,6 +1,7 @@
 """统一处理任务的启动、只读状态查询与失败项重试。"""
 import json
 import hashlib
+import logging
 
 from . import settings_file
 from .library_processing import (ALL_STAGES, COLLECT_STAGE, SCAN_STAGE, STAGES,
@@ -9,6 +10,7 @@ from .library_processing import (ALL_STAGES, COLLECT_STAGE, SCAN_STAGE, STAGES,
 from .processing_control import control_for, initial_estimate, valid_mode, mode_ratio
 
 ACTIVE = ('running', 'pausing', 'paused', 'stopping')
+LOGGER = logging.getLogger(__name__)
 
 #: 回给页面的状态字段：`frontend/src/react/library-processing/library-processing.ts` 的
 #: `LibraryProcessingData`，加上对应任务中心那一行的 `run_id` 与发起方式 `trigger`。状态文件里另有续跑用的 `local_metadata`（带完整媒体路径）、
@@ -64,6 +66,35 @@ def _active_run(contract, state):
     return runs[0] if runs else None
 
 
+def _speed_fields(previous, mode):
+    """切换档位时同步公开速度和估算范围。"""
+    fields = dict(speed_mode=mode, eta_initial=True)
+    if previous.get('speed_mode') != mode:
+        ratio = mode_ratio(mode, previous.get('speed_mode') or 'standard')
+        for key in ('eta_seconds_min', 'eta_seconds_max'):
+            if isinstance(previous.get(key), (int, float)):
+                fields[key] = max(0, int(previous[key] * ratio))
+    return fields
+
+
+def _project_speed(contract, state, run, control):
+    """读取本轮档位及旧状态，空闲时展示下一轮待选值。"""
+    previous_mode = state.get('speed_mode')
+    if run is not None:
+        from .task_control import speed_mode
+        mode = speed_mode(contract.db_path, run.id, (run.parent_run_id, run.root_run_id),
+                          default=previous_mode or control.mode)
+    elif state.get('status') in ACTIVE:
+        mode = control.mode
+    else:
+        from .processing_control import default_mode
+        from .repository import LedgerDatabase
+        mode = control.next_mode or default_mode(LedgerDatabase(contract.db_path))
+    if state.get('status') in ACTIVE and previous_mode and previous_mode != mode:
+        state.update(_speed_fields(state, mode))
+    state['speed_mode'] = mode
+
+
 def q_library_processing(contract, _args):
     if _args.get('estimate') == '1':
         config = settings_file.active()
@@ -92,7 +123,7 @@ def q_library_processing(contract, _args):
     state = decorate(state)
     control = control_for(settings_file.active())
     control.refresh(force=True)
-    state['speed_mode'] = control.mode
+    _project_speed(contract, state, run, control)
     state['skip_requested'] = (state.get('status') == 'running' and state.get('current_asset_id') is not None
                                and control.skip_asset_id == state.get('current_asset_id'))
     from .media_processing_policy import metadata_only
@@ -162,15 +193,16 @@ def _cancel_processing(contract, config, control, previous, job_id):
 
 def _set_processing_speed(contract, control, previous, body):
     mode = valid_mode(body.get('speed_mode'))
+    run = _active_run(contract, previous) if previous.get('status') in ACTIVE else None
+    if run is not None:
+        from .task_control import request
+        request(contract.task_runs, run.id, 'set_speed', mode=mode)
+    elif previous.get('status') not in ACTIVE:
+        control.select_next_mode(mode)
+        return q_library_processing(contract, {})
     control.request('set_speed', mode=mode)
     if previous.get('status') in ACTIVE:
-        ratio = mode_ratio(mode, previous.get('speed_mode') or 'standard')
-        fields = dict(speed_mode=mode, eta_initial=True)
-        if previous.get('speed_mode') != mode:
-            for key in ('eta_seconds_min', 'eta_seconds_max'):
-                if isinstance(previous.get(key), (int, float)):
-                    fields[key] = max(0, int(previous[key] * ratio))
-        contract.library_processing_job.update(previous['job_id'], **fields)
+        contract.library_processing_job.update(previous['job_id'], **_speed_fields(previous, mode))
     return q_library_processing(contract, {})
 
 
@@ -356,6 +388,45 @@ def _processing_request(contract, config, previous, body):
     return retry_ids, asset_ids, stage
 
 
+def retry_after_network_recovery(contract, sync=None):
+    """外网判回联网时，上一趟因断网跳过的外部资料自动补一次，等于替人点「立即重试」。
+
+    只认最近一趟以失败收尾、记过断网跳过（`offline_skipped`）且还有可重试项的；只是别的原因
+    失败的不碰。任务还在跑时回 `False`，探测器据此把这次恢复留到下一次判回联网再通知：断网
+    那一趟可能正在收尾。只读端（`sync.read_only`）不发起，路由层会拒的写入从探测线程绕进来也不该做。
+    由 `NetworkReachability.on_recovered` 在探测线程里调，这里的任何异常都只记日志。
+    """
+    if sync is not None and sync.read_only:
+        return None
+    try:
+        previous = _current(contract)
+        if previous.get('status') in ACTIVE:
+            return False
+        if (previous.get('status') != 'failed' or not previous.get('offline_skipped')
+                or not previous.get('retryable_asset_ids')):
+            return None
+        return w_library_processing(contract, {'job_id': previous.get('job_id'), 'retry': []})
+    except Exception:
+        LOGGER.warning('联网恢复后自动重试未完成项失败', exc_info=True)
+        return None
+
+
+def _initial_speed(contract, control, previous, body, *, resume):
+    """恢复沿用任务及旧记录的档位，新任务消费显式选择、待选值或默认值。"""
+    from .processing_control import default_mode
+    from .repository import LedgerDatabase
+    control.refresh(force=True)
+    if resume:
+        run = _active_run(contract, previous)
+        if run is not None:
+            from .task_control import speed_mode
+            return speed_mode(contract.db_path, run.id, (run.parent_run_id, run.root_run_id),
+                              default=previous.get('speed_mode') or (body or {}).get('speed_mode') or control.mode)
+        return valid_mode(control.mode)
+    return valid_mode((body or {}).get('speed_mode') or control.next_mode
+                      or default_mode(LedgerDatabase(contract.db_path)))
+
+
 def w_library_processing(contract, body, *, resume=False):
     config = settings_file.active()
     if (body or {}).get('action'):
@@ -372,9 +443,9 @@ def w_library_processing(contract, body, *, resume=False):
         remember(contract.db_path, asset_ids)
     if retry_ids is not None and not retry_ids:
         return public_state(previous)
-    mode = valid_mode(control_for(config).mode if resume else
-                      (body or {}).get('speed_mode') or control_for(config).mode)
-    control_for(config).request('set_speed', mode=mode)
+    control = control_for(config)
+    mode = _initial_speed(contract, control, previous, body, resume=resume)
+    control.request('set_speed', mode=mode)
     def work(job_id):
         try:
             result = process_library(config, contract.db_path, contract.candidate_root, contract.cover_root,
@@ -384,7 +455,8 @@ def w_library_processing(contract, body, *, resume=False):
                 database=contract.database,
                 resume_state=previous if resume else None,
                 speed_mode=control_for(config).mode,
-                active=lambda: (contract.library_processing_job.snapshot() or {}).get('job_id') == job_id,
+                network=getattr(contract, 'network_reachability', None),
+                active=lambda:(contract.library_processing_job.snapshot() or {}).get('job_id') == job_id,
                 report=lambda state: contract.library_processing_job.update(job_id, **{
                     key: value for key, value in state.items() if key != 'job_id'}))
             contract.library_processing_job.update(job_id, **{key: value for key, value in result.items() if key != 'job_id'})
@@ -398,9 +470,12 @@ def w_library_processing(contract, body, *, resume=False):
     if incremental:
         from .library_new_assets import pending
         estimate_ids = pending(contract.db_path)
-    return public_state(contract.library_processing_job.start(
+    result = contract.library_processing_job.start(
         work, restart=True, initial={'stage': labels[stage], 'requested_stage': stage,
                                     **initial_estimate(config, contract.db_path, stage, estimate_ids, mode)},
         recovery={'stage': stage, 'speed_mode': mode, 'incremental': incremental,
                   **({'asset_ids': asset_ids or retry_ids}
-                                    if asset_ids is not None or retry_ids is not None else {})}))
+                                    if asset_ids is not None or retry_ids is not None else {})})
+    if not resume:
+        control.select_next_mode(None)
+    return public_state(result)

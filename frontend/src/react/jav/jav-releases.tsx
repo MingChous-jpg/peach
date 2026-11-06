@@ -15,9 +15,10 @@ import { errorMessage } from '../../api';
 import { entityDisplayName } from '../../core/entity-names';
 import type { DownloadPrefill } from '../activity/cloud-download-dialog';
 import { Note } from '../components/note';
+import { CoverQueue } from '../components/cover-queue';
 import { TaskProgress } from '../components/task-progress';
 import { EmptyState } from '../components/empty-state';
-import { Pagination } from '../components/table-pagination';
+import { DataTableFooter } from '../components/table-controls';
 import { FilterGlassRows, FilterPill, GlassPill } from '../components/filter-glass';
 import { Segments, Shuffle, SortKeys } from '../entity-filter/entity-filter-page';
 import { Chip } from '@/components/base/badges/chip';
@@ -26,8 +27,8 @@ import { addWant, invalidateWants } from '../wants/wants';
 import { useAction } from '../settings/use-action';
 import { useEntityNames } from '../use-entity-names';
 import { DiscoveryCard, resourcePrefill } from './discovery-card';
-import { fetchReleases, releaseFilters, releaseKey, RELEASE_PAGE_SIZE, type Discovery, type ReleaseFacetPerformer, type ReleaseFacetStudio,
-  type ReleaseFilters, writeJavQuery } from './jav';
+import { coverArrived, fetchCoverNow, fetchReleases, releaseFilters, releaseKey, RELEASE_PAGE_SIZE, RELEASE_PAGE_SIZES,
+  type Discovery, type ReleaseFacetPerformer, type ReleaseFacetStudio, type ReleaseFilters, writeJavQuery } from './jav';
 import { ReleaseTable } from './jav-release-table';
 import { CatalogViewToggle } from '../catalog-grid/catalog-view-toggle';
 import { useCatalogView } from '../catalog-grid/catalog-view';
@@ -55,6 +56,12 @@ function StudioMark({ studio }: { studio: ReleaseFacetStudio }) {
   </span>;
 }
 
+/** 本页一键插队当场取一部：取到就补进已取回的数据（`coverArrived`），卡片换成本机那张。 */
+const fetchReleaseCover = (code: string) => fetchCoverNow(code).then(result => {
+  if (result.has_cover) coverArrived(code, result);
+  return result.has_cover;
+});
+
 export function Releases({ readOnly, receipt, resource, query, navigate, clearText }: {
   readOnly: boolean; receipt(message: string): void; resource(work: DownloadPrefill): void; query: string;
   navigate(path: string): void; clearText(): void;
@@ -73,9 +80,10 @@ export function Releases({ readOnly, receipt, resource, query, navigate, clearTe
     writeJavQuery({ [facet]: next, page: '' });
   };
   const section = useRef<HTMLElement>(null);
-  const goPage = (page: number) => {
-    setFilters(current => ({ ...current, page }));
-    writeJavQuery({ page: page > 1 ? String(page) : '' });
+  const changePage = ({ pageIndex, pageSize }: { pageIndex: number; pageSize: number }) => {
+    const page = pageIndex + 1;
+    setFilters(current => ({ ...current, page, size: pageSize }));
+    writeJavQuery({ page: page > 1 ? String(page) : '', size: pageSize === RELEASE_PAGE_SIZE ? '' : String(pageSize) });
     section.current?.scrollIntoView({ block: 'start' });
   };
   const clear = () => {
@@ -129,7 +137,12 @@ export function Releases({ readOnly, receipt, resource, query, navigate, clearTe
   const data = releases.data;
   const waiting = releases.isPending;
   const filtered = !!(filters.performer || filters.studio || filters.tag || filters.q);
-  const pages = Math.max(1, Math.ceil((data?.total || 0) / RELEASE_PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil((data?.total || 0) / filters.size));
+  useEffect(() => {
+    if (!data || releases.isPlaceholderData || filters.page <= pages) return;
+    setFilters(current => ({ ...current, page: pages }));
+    writeJavQuery({ page: pages > 1 ? String(pages) : '' });
+  }, [data, releases.isPlaceholderData, filters.page, pages]);
   return <section ref={section} aria-label="订阅新作" aria-busy={waiting || releases.isFetching} className="flex min-w-0 scroll-mt-24 flex-col gap-4">
     {waiting ? <div data-catalog-tiers="" aria-busy="true" dangerouslySetInnerHTML={{ __html: TIER_PLACEHOLDERS }} /> : null}
     {data && (data.facets.performers.length || data.facets.studios.length) ? <div data-catalog-tiers="" data-release-tiers="">
@@ -171,6 +184,12 @@ export function Releases({ readOnly, receipt, resource, query, navigate, clearTe
     {releases.error ? <Note tone="error" title="新作未取得">{errorMessage(releases.error)}</Note> : null}
     {reading && metadata ? <div data-jav-metadata="" className="min-w-0"><TaskProgress
       label={`正在读取作品资料 · ${metadata.completed} / ${metadata.total} 部`} value={metadata.completed} total={metadata.total} /></div> : null}
+    {readOnly ? null : <CoverQueue scope="本页" fetchOne={fetchReleaseCover}
+      codes={(data?.items || []).filter(item => item.cover_state === 'queued' && !item.cover_url).map(item => item.code)}
+      settled={(got, total) => {
+        receipt(got === total ? `已取到 ${total} 部封面` : `已取到 ${got} / ${total} 部封面，没取到的在卡上写了原因`);
+        void releases.refetch();
+      }} />}
     {!waiting && !releases.error && !data?.items.length ? <EmptyState icon={RiRssLine} title={filtered ? '没有符合条件的新作' : '暂无未入库的新作'}
       actions={filtered ? <Button size="small" onClick={clear}>清除筛选</Button>
         : <ButtonLink size="small" href="/subscriptions?tab=add">添加订阅</ButtonLink>}>
@@ -187,6 +206,8 @@ export function Releases({ readOnly, receipt, resource, query, navigate, clearTe
         wanting={action.busy === String(item.id)} onWant={() => want(item)}
         onResource={() => resource(resourcePrefill(item))} badge={filters.sort === 'taste' ? <TasteChip value={item.taste_score} /> : undefined} />)}
     </div>}
-    <div className="flex justify-center"><Pagination page={filters.page} pages={pages} onPage={goPage} label="新作分页" /></div>
+    {data ? <DataTableFooter label="新作" total={data.total}
+      pagination={{ pageIndex: filters.page - 1, pageSize: filters.size }} onChange={changePage}
+      unit="部作品" pageUnit="部" pageSizes={RELEASE_PAGE_SIZES} /> : null}
   </section>;
 }

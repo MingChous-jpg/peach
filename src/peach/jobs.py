@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .media_sources import SOURCE_COSTS, cost_for, cost_sql
+from .repository import in_background
 
 DEFAULT_METERED_LOCATIONS = frozenset(location for location, cost in SOURCE_COSTS.items()
                                     if cost == 'metered') | {'online'}
@@ -197,6 +198,33 @@ def process_alive(pid: int) -> bool:
         # 超界的 PID 一定不是本机活进程，按「已死」清理，而不是让整轮任务崩掉。
         return False
     return True
+
+
+def process_creation_time(pid: int) -> float | None:
+    """返回 PID 当前指向进程的 Unix 创建时间；权限不足时保守返回未知。"""
+    import psutil
+    try:
+        return psutil.Process(pid).create_time()
+    except psutil.NoSuchProcess:
+        return None
+    except (psutil.AccessDenied, psutil.ZombieProcess):
+        return None
+
+
+def process_matches(pid: int, started_at: str | None, *, alive=process_alive) -> bool:
+    """核对活 PID 是否就是任务启动时的进程，避免 PID 复用永久占锁。"""
+    if not alive(pid):
+        return False
+    if not started_at:
+        return True
+    from datetime import datetime
+    try:
+        task_started = datetime.fromisoformat(started_at.replace('Z', '+00:00')).timestamp()
+    except (TypeError, ValueError, OverflowError):
+        return True
+    created = process_creation_time(pid)
+    # 无权读取创建时间时不误回收真实任务；允许时间戳及 Win32 精度的小幅偏差。
+    return created is None or created <= task_started + 2.0
 
 
 def _process_alive_windows(pid: int) -> bool:
@@ -501,7 +529,7 @@ class BackgroundJob:
                          "started_at": time.time(), "error": "", **(initial or {})}
                 state.update(self._resuming_fields(job_id, initial))
                 self.state = state
-                thread = threading.Thread(target=self._run, args=(fn, job_id),
+                thread = threading.Thread(target=in_background(self._run), args=(fn, job_id),
                                           daemon=True, name=self.name)
                 self.thread = thread
             snapshot = copy.deepcopy(state)
@@ -573,6 +601,15 @@ class BackgroundJob:
         if run is None:
             return
         self._run_ids[job_id] = run.id
+        if state.get('speed_mode') is not None:
+            from .job_recovery import current_run
+            from .task_control import request, speed_mode
+            stored_mode = speed_mode(self.runs.database.db_path, run.id,
+                                     (run.parent_run_id, run.root_run_id), default=None)
+            if current_run.get() != run.id or stored_mode is None:
+                request(self.runs, run.id, 'set_speed', mode=state['speed_mode'])
+                stored_mode = state['speed_mode']
+            self.update(job_id, speed_mode=stored_mode)
         self.update(job_id, run_id=run.id)
 
     def _close_run(self, job_id: str, status: str, *, error: str = "",

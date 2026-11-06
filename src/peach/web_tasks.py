@@ -6,16 +6,16 @@
 普通的筛选列表，留给排查用。
 
 「最近完成」按结束时刻从新到旧排，一页数的是顶层那几轮，后继随父任务一起下发；
-`finished_has_more` 说它后面还有没有更早的。往前翻
-带上当前最旧那一行的 `before_finished_at` 与 `before_id`，只回 `finished` 与
-`finished_has_more` 这一页：在跑那段和被挡下那段由轮询那一份负责，翻页时再下发一遍
-只会让两份快照互相打架。
+活动页通过 `page` 与 `limit` 读取当前页和总数，轮询刷新同一页。
+原游标调用通过 `before_finished_at` 与 `before_id` 读取更早的终态任务，
+响应仅包含该页及后继计数。
 """
 from __future__ import annotations
 
 import sqlite3
 from datetime import datetime
 
+from .ingest_notices import NOTICES
 from .task_runs import ACTIVE_STATUSES, TERMINAL_STATUSES
 from .task_results import RESULT_FIELDS, result_counts
 from .web_result_versions import result_versions
@@ -26,6 +26,20 @@ RECENT_LIMIT = 20
 #: 账本还没跑到 0028 时页面上显示这一句。迁移是单独一步，升级后第一次打开活动页
 #: 撞上没有这张表是正常路径，不该是一个 500。
 NO_TABLE = "数据库缺少任务记录表，请按运行文档检查备份后执行 peach migrate upgrade --yes"
+
+
+def q_result_updates(contract, _args):
+    """每个页面常驻的轻量轮询：结果版本、入库通知与有没有任务在排或在跑，不组装任务列表。
+
+    全局组件只用这三样，却曾每两秒取一次完整的 `/api/tasks`；任务一多，那份组装就把服务进程
+    占满，所有页面一起变慢。完整列表只留给任务中心页。
+    """
+    try:
+        busy = any(contract.task_runs.query(status=status, limit=1) for status in ACTIVE_STATUSES)
+    except sqlite3.OperationalError:
+        busy = False
+    return {"ok": True, "result_versions": result_versions(contract),
+            "ingest_notices": NOTICES.snapshot(), "busy": busy}
 
 
 def q_tasks(contract, args):
@@ -52,7 +66,12 @@ def _tasks(contract, args):
         rows = contract.task_runs.query(status=status, task_key=task_key, limit=limit)
         return {"ok": True, "filtered": True, "available": True,
                 "runs": [payload(row) for row in rows]}
-    finished, has_more = contract.task_runs.finished_page(before=before, limit=limit)
+    page = int((args or {}).get('page') or 1)
+    if page < 1 or (before is not None and page != 1):
+        raise ValueError('任务页码无效')
+    total = contract.task_runs.finished_count()
+    page = min(page, max(1, (total + limit - 1) // limit))
+    finished, has_more = contract.task_runs.finished_page(before=before, limit=limit, offset=(page - 1) * limit)
     if before is not None:
         return {"ok": True, "filtered": False, "available": True,
                 "finished": [payload(row) for row in finished],
@@ -71,6 +90,8 @@ def _tasks(contract, args):
         "filtered": False,
         "available": True,
         "result_versions": result_versions(contract),
+        # 逐部到来的入库通知，页面常驻的任务轮询拿去弹 toast（`ingest_notices`）。
+        "ingest_notices": NOTICES.snapshot(),
         "running": [payload(row) for row in running],
         # 被挡掉的那些也在 `finished` 里（它们是 `cancelled`），这里单独再挑一份：
         # 「为什么没跑」是用户来这一页的主要问题，不该让他在完成列表里自己找。
@@ -78,6 +99,8 @@ def _tasks(contract, args):
                     if row.status == "cancelled" and "blocked_by" in row.result_summary],
         "finished": [payload(row) for row in finished],
         "finished_has_more": has_more,
+        "finished_total": total,
+        "finished_page": page,
         "working_parents": [payload(row) for row in working],
         "followup_counts": _parent_counts(contract, (*running, *finished, *working)),
         "statuses": {"active": list(ACTIVE_STATUSES), "finished": list(TERMINAL_STATUSES)},
@@ -125,9 +148,13 @@ def _payload_reader(contract):
         with contract.cache_lock:
             if not hasattr(contract, 'task_resource_monitor'):
                 contract.task_resource_monitor = Monitor(contract.task_runs)
+    # 控制状态与资源占用只对自己或后代还在排在跑的那几条有内容；其余的不逐条再问。
+    live = contract.task_runs.live_ids()
 
     def payload(row):
         result = row.payload()
+        if row.id not in live:
+            return _with_checkpoint(row, result)
         from .task_control import projection
         control = projection(contract.task_runs, row)
         if control is not None:
@@ -135,6 +162,9 @@ def _payload_reader(contract):
         resources = contract.task_resource_monitor.for_run(row)
         if resources is not None:
             result['resources'] = resources
+        return _with_checkpoint(row, result)
+
+    def _with_checkpoint(row, result):
         if row.task_key not in RESULT_FIELDS or row.status not in ('succeeded', 'failed'):
             return result
         if all(field in row.result_summary for field in RESULT_FIELDS[row.task_key]):

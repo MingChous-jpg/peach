@@ -349,6 +349,54 @@ class TasksEndpointTests(unittest.TestCase):
         (self.contract.candidate_root / 'sample.csv').write_text('item_key\nasset:1:title\n', encoding='utf-8')
         self.assertNotEqual(web_tasks.q_tasks(self.contract, {})['result_versions']['review'], committed['review'])
 
+    def test_the_page_wide_poll_carries_versions_and_notices_without_the_task_list(self):
+        """每个页面常驻的那份轮询只带结果版本、入库通知和忙不忙，和任务中心那份版本一致。"""
+        from pathlib import Path
+        self.contract.candidate_root = Path(self.tmp.name) / 'candidates'
+        self.contract.candidate_root.mkdir()
+        idle = web_tasks.q_result_updates(self.contract, {})
+        self.assertEqual(set(idle), {'ok', 'result_versions', 'ingest_notices', 'busy'})
+        self.assertFalse(idle['busy'])
+        self.assertEqual(idle['result_versions'], web_tasks.q_tasks(self.contract, {})['result_versions'])
+        run = self.store.start('library-processing', trigger='manual')
+        self.assertTrue(web_tasks.q_result_updates(self.contract, {})['busy'])
+        self.store.finish(run.id, 'succeeded')
+        self.assertFalse(web_tasks.q_result_updates(self.contract, {})['busy'])
+
+    def test_finished_runs_are_listed_without_a_query_per_row(self):
+        """最近完成那一页两百来条大多早已结束：控制状态与资源占用只问还有活动的那几条，连接数不随页长增长。"""
+        from unittest import mock
+        for _ in range(30):
+            self.store.finish(self.store.start('library-processing', trigger='manual').id, 'succeeded')
+        parent = self.store.start('parent', trigger='manual')
+        self.store.enqueue_followups(parent.id, [('leaf:1', 'leaf', '还在排的后继')])
+        self.store.finish(parent.id, 'succeeded')
+        original = self.store.database.read_connection
+        opened = []
+
+        def counted():
+            opened.append(1)
+            return original()
+
+        with mock.patch.object(self.store.database, 'read_connection', side_effect=counted):
+            payload = web_tasks.q_tasks(self.contract, {'limit': '100'})
+        controlled = [row['id'] for row in (*payload['finished'], *payload['working_parents']) if 'control' in row]
+        self.assertEqual(controlled, [parent.id])
+        self.assertLess(len(opened), 20, f'连接数：{len(opened)}')
+
+    def test_ingest_notices_ride_along_with_the_task_list(self):
+        from unittest import mock
+
+        from peach.ingest_notices import IngestNotices
+        notices = IngestNotices()
+        notices.add('download', 7, 'SSIS-057')
+        notices.add('discovered', 0, '无效编号不记')
+        with mock.patch.object(web_tasks, 'NOTICES', notices):
+            payload = web_tasks.q_tasks(self.contract, {})['ingest_notices']
+        self.assertEqual(payload['epoch'], notices.epoch)
+        self.assertEqual([(item['id'], item['kind'], item['asset_id'], item['label']) for item in payload['items']],
+                         [(1, 'download', 7, 'SSIS-057')])
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -413,6 +461,19 @@ class TasksEndpointTests(unittest.TestCase):
             self.assertNotIn("running", page, "往前翻的那一页不该再带一份在跑的快照")
             seen += [row["id"] for row in page["finished"]]
         self.assertEqual(seen, [slow.id, late, *reversed(early)])
+
+    def test_recent_page_numbers_support_totals_and_clamp_to_the_last_page(self):
+        ids = [self._settled(f"2026-09-11T10:0{minute}:00.000Z") for minute in range(5)]
+        page = web_tasks.q_tasks(self.contract, {"limit": "2", "page": "2"})
+        self.assertEqual([row['id'] for row in page['finished']], [ids[2], ids[1]])
+        self.assertEqual(page['finished_total'], 5)
+        self.assertEqual(page['finished_page'], 2)
+        last = web_tasks.q_tasks(self.contract, {"limit": "2", "page": "99"})
+        self.assertEqual([row['id'] for row in last['finished']], [ids[0]])
+        self.assertEqual(last['finished_page'], 3)
+        for value in ('0', '-1', 'invalid'):
+            with self.assertRaises(ValueError):
+                web_tasks.q_tasks(self.contract, {'page': value})
 
     def test_a_page_counts_top_level_runs_and_brings_their_followups_along(self):
         """一轮派出二十条后继时，按行数翻页会让后继把派出它们的那一轮挤出第一页。"""
@@ -569,11 +630,25 @@ class ConflictStatusTests(unittest.TestCase):
         self.contract.task_runs.finish(parent.id, 'succeeded')
         with unittest.mock.patch.object(self.contract.followups, 'wake') as wake:
             paused = task_run_control(self.request, child, {'action': 'pause'}, {})
-            self.assertEqual(paused['run']['control'], {'state': 'paused', 'actions': ['resume', 'cancel']})
+            self.assertEqual(paused['run']['control'], {'state': 'paused',
+                             'actions': ['resume', 'cancel', 'set_speed'], 'speed_mode': 'standard'})
             continued = task_run_control(self.request, child, {'action': 'resume'}, {})
             self.assertEqual(continued['run']['id'], child)
             self.assertEqual(continued['run']['control']['state'], 'running')
             self.assertEqual(wake.call_count, 2)
+
+    def test_task_speed_endpoint_changes_only_the_selected_run(self):
+        from peach.web_settings import q_settings
+        run = self.contract.task_runs.start('scan', trigger='manual')
+        other = self.contract.task_runs.start('probe', trigger='manual')
+        with unittest.mock.patch.object(self.contract.followups, 'wake'):
+            response = task_run_control(self.request, run.id,
+                                        {'action': 'set_speed', 'speed_mode': 'low'}, {})
+        self.assertEqual(response['run']['control']['speed_mode'], 'low')
+        self.assertEqual(task_run_detail(self.request, other.id, {})['run']['control']['speed_mode'], 'standard')
+        self.assertEqual(q_settings(self.contract)['taskSpeedMode'], 'standard')
+        invalid = task_run_control(self.request, run.id, {'action': 'set_speed', 'speed_mode': 'fast'}, {})
+        self.assertEqual(invalid.status_code, 409)
 
     def test_control_endpoint_rejects_unknown_finished_foreign_and_read_only_runs(self):
         run = self.contract.task_runs.start('control-test', trigger='manual')
