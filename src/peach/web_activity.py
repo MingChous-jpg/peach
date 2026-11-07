@@ -45,10 +45,13 @@ def w_play(contract: ActivityContract, body):
     contract.cache_bust()
     aid = int(body["id"])
     with contract.write_transaction() as connection:
-        connection.execute(
+        changed = connection.execute(
             "UPDATE asset SET play_count=COALESCE(play_count,0)+1, last_played=? WHERE id=?",
             (time.time(), aid),
-        )
+        ).rowcount
+    from .capacity_history import record_playback
+    if changed:
+        record_playback(contract)
     return {"ok": True}
 
 
@@ -103,6 +106,8 @@ def w_watch_later(contract: ActivityContract, body):
     contract.cache_bust()
     aid = int(body["id"])
     with contract.write_transaction() as connection:
+        if not connection.execute("SELECT 1 FROM asset WHERE id=?", (aid,)).fetchone():
+            raise ValueError("asset not found")
         exists = connection.execute(
             "SELECT 1 FROM watch_queue WHERE profile_id=? AND asset_id=?",
             (DEFAULT_PROFILE_ID, aid),

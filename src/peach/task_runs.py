@@ -689,21 +689,27 @@ class TaskRunStore:
                 recovered.append(run.id)
         return recovered
 
-    def prune(self, task_key: str, keep: int = DEFAULT_KEEP) -> int:
+    def prune(self, task_key: str, keep: int = DEFAULT_KEEP, *, keep_errors: bool = False) -> int:
         """每个 task_key 只留最近 `keep` 条终态记录，返回删掉多少条。
 
         活跃任务保留，指向已清退历史的父任务和根任务关联由删除触发器置空。
+        后继使用 `keep_errors` 保留仍可重试的失败项；下载状态保留并清空已清退运行的链接。
         阈值用 `LIMIT 1 OFFSET keep` 取「第 keep+1 新的那条 id」。
         """
         if not self.enabled or keep < 0:
             return 0
-        marks = ",".join(f"'{name}'" for name in TERMINAL_STATUSES)
+        states = ('succeeded', 'cancelled') if keep_errors else TERMINAL_STATUSES
+        marks = ",".join(f"'{name}'" for name in states)
         removed = 0
         with self.database.write_transaction(notify=False) as connection:
             threshold = connection.execute(
                 f"SELECT id FROM task_run WHERE task_key=? AND status IN ({marks}) "
                 "ORDER BY id DESC LIMIT 1 OFFSET ?", (task_key, keep)).fetchone()
             if threshold is not None:
+                connection.execute(
+                    "UPDATE download_task SET postprocess_run_id=NULL WHERE postprocess_run_id IN ("
+                    f"SELECT id FROM task_run WHERE task_key=? AND status IN ({marks}) AND id<=?)",
+                    (task_key, threshold["id"]))
                 cursor = connection.execute(
                     f"DELETE FROM task_run WHERE task_key=? AND status IN ({marks}) "
                     "AND id<=?", (task_key, threshold["id"]))
@@ -737,6 +743,22 @@ class TaskRunStore:
         with self.database.read_connection() as connection:
             rows = connection.execute(sql, params).fetchall()
         return [_row(row) for row in rows]
+
+    def active_families(self) -> dict[int, list[tuple[int, str]]]:
+        """每条自己或后代还在排在跑的任务 → 这一族里在排在跑的 `(id, status)`（含自己），按 id 排。
+
+        键与 `live_ids` 相同。任务中心一页里每条在跑的任务都要问「族里谁还活着」：逐条递归查询、
+        逐条开连接，几千条排队后继时一次轮询要好几秒；这里一条查询沿父链往上一次取齐。
+        """
+        families: dict[int, list[tuple[int, str]]] = {}
+        with self.database.read_connection() as connection:
+            for ancestor, run_id, status in connection.execute(
+                    "WITH RECURSIVE up(ancestor, id, status) AS ("
+                    "SELECT id, id, status FROM task_run WHERE status IN ('pending','running') "
+                    "UNION SELECT t.parent_run_id, u.id, u.status FROM task_run t JOIN up u ON t.id=u.ancestor "
+                    "WHERE t.parent_run_id IS NOT NULL) SELECT ancestor, id, status FROM up ORDER BY ancestor, id"):
+                families.setdefault(int(ancestor), []).append((int(run_id), status))
+        return families
 
     def live_ids(self) -> set[int]:
         """自己或某个后代还在排或在跑的任务：在排在跑的那些，连同它们沿父链往上的每一层。

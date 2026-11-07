@@ -200,10 +200,27 @@ class IgnoreAndSourceTests(unittest.TestCase):
         for path in (r'R:\media\@eaDir\video.mp4@SynoEAStream',
                      '/media/@snapshot/nested/video.mp4', r'R:\media\#RECYCLE\video.mp4',
                      'R:\\media\\@eaDir\\broken\udcff.mp4@SynoEAStream',
-                     r'R:\media\video.mp4@SynoEAStream'):
+                     r'R:\media\video.mp4@SynoEAStream',
+                     '/vol1/1000/Movies/.@#local/trash/movie.mp4',
+                     '/vol1/@team/Movies/.@#local/trash/movie.mp4'):
             with self.subTest(path=ascii(path)):
                 self.assertTrue(push.ignored(path))
         self.assertFalse(push.ignored(r'R:\media\scene@home\video.mp4'))
+
+    def test_metadata_patterns_do_not_hide_unrelated_media_names(self):
+        from peach.discovery_rules import system_directory
+        for name in ('._movie.mp4', '.SYNOPPSDB123', '.wfm_upload123', 'Icon\r'):
+            with self.subTest(name=repr(name)):
+                self.assertTrue(push.ignored(str(PureWindowsPath(r'R:\media', name))))
+        for name in ('@creator', 'normal', '@eaDir-old', '#recycle-old', '.snapshot-old',
+                     'Snapshots', 'Recycle Bin', 'Temporary Items', '.Trash-', '.Trash-1000-old',
+                     '.Trash-user', '.Trash-١٠٠٠', '.snapshots-old', '.TemporaryItems-old',
+                     '.@#local-old', '@appshare'):
+            with self.subTest(directory=name):
+                self.assertFalse(system_directory(name))
+                self.assertFalse(push.ignored(str(PureWindowsPath(r'R:\media', name, 'movie.mp4'))))
+        for name in ('.hidden.mp4', '@movie.mp4', 'movie_qtmp_scene.mp4', 'Icon.mp4', 'Thumbs.db.mp4'):
+            self.assertFalse(push.ignored(str(PureWindowsPath(r'R:\media', name))), name)
 
     def test_only_loopback_and_private_addresses_are_accepted(self):
         # 局域网那一档用 RFC 5737 的文档网段举例：`ipaddress` 把它判成 private，
@@ -378,6 +395,22 @@ class IngestPathTests(_ServiceCase):
                                   declared_roots=self.declared, mounts=self.mounts)
         self.assertTrue(result.sidecar)
         self.assertEqual(self.rows(), {})
+
+    def test_nas_metadata_is_rejected_by_create_move_and_immediate_ingest(self):
+        service = self.service()
+        for parts in (('@Recently-Snapshot', 'movie.mp4'), ('.AppleDouble', 'movie.mp4'),
+                      ('.zfs', 'snapshot', 'movie.mp4'), ('$Recycle.Bin', 'movie.mp4'),
+                      ('._movie.mp4',), ('desktop.ini',), ('@eaDir',), ('.Trash-1000',),
+                      ('.snapshots',), ('.TemporaryItems',), ('.@#local',),
+                      ('.@#local', 'trash', 'movie.mp4')):
+            path = self.ledger('local', *parts)
+            with self.subTest(parts=parts), mock.patch.object(service.queue, 'submit') as submit, \
+                    mock.patch.object(service, '_ingest') as ingest:
+                self.assertFalse(service.submit('local', path))
+                service.submit_move('local', self.ledger('local', 'old.mp4'), path)
+                self.assertFalse(service.ingest_now('local', path))
+                submit.assert_not_called()
+                ingest.assert_not_called()
 
     def test_move_event_keeps_upgrade_existing_asset_without_an_identity_cache(self):
         from contextlib import closing

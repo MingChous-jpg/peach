@@ -96,11 +96,13 @@ def prune_speeds(store):
                     logging.getLogger(__name__).warning('任务速度文件清退失败：%s', path, exc_info=True)
 
 
-def projection(store, run):
+def projection(store, run, *, descendants_active=None):
+    """`descendants_active` 是调用方已经查齐的「有没有后代还在排在跑」；不传就当场问。"""
     if not store.enabled or run.host != store.host:
         return None
     # 自己已结束的父任务，有后代还在排或在跑才算可控；这里只问有没有。
-    if not run.active and not store.active_descendants(run.id, limit=1):
+    if not run.active and not (store.active_descendants(run.id, limit=1)
+                               if descendants_active is None else descendants_active):
         return None
     command = intent(store.database.db_path, run.id, (run.parent_run_id, run.root_run_id))
     action = command.get('action', 'resume')
@@ -456,6 +458,7 @@ def _wait_process(process, control, capture, *, input, timeout, idle_timeout, on
 def _reap_process(process, job):
     """终止本次进程树并回收输出，完成后才允许任务结算。"""
     from .process_job import close_job
+    children = []
     try:
         if process.poll() is None:
             try:
@@ -482,7 +485,10 @@ def _reap_process(process, job):
                 if sys.platform != 'darwin':
                     raise
         close_job(job)
-    return process.communicate()
+    output = process.communicate()
+    # Windows 的 kill 和关闭 Job 只发起终止；后代退出后，才能清理它继承的输出文件。
+    psutil.wait_procs(children, timeout=5)
+    return output
 
 
 @controlled

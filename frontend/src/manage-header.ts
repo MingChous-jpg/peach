@@ -9,6 +9,7 @@
 
 /** `[键, 名称, 字形]`，同壳的 `MANAGE_SECTIONS`。 */
 import { CLEANUP_CRUMB_PAGES } from './cleanup-tools';
+import { MANAGE_MENU_SECTIONS, normalizeManageOrder } from './application/navigation-items';
 
 export type ManageEntry = readonly [key: string, label: string, glyph: string];
 
@@ -100,7 +101,7 @@ export function manageHeaderSkeletonHtml(props: ManageHeaderProps): string {
   if (!view) return '';
   const menu = props.menu.map(([key, label, mark]) => {
     const on = key === view.pressed;
-    return `<button type="button" data-manage="${escape(key)}" data-pill-variant="gray" aria-pressed="${on}"${on ? ' aria-current="page" data-pill-selected=""' : ''}>`
+    return `<button type="button" data-manage="${escape(key)}" aria-label="${escape(label)}" aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight" data-pill-variant="gray" aria-pressed="${on}"${on ? ' aria-current="page" data-pill-selected=""' : ''}>`
       + `${glyph(mark)}<span>${escape(label)}</span></button>`;
   }).join('');
   const crumb = view.crumb
@@ -110,7 +111,10 @@ export function manageHeaderSkeletonHtml(props: ManageHeaderProps): string {
   const lede = view.lede.kind === 'none' ? ''
     : `<p class="mono" data-manage-lede="">${view.lede.kind === 'skeleton' ? TRASH_LEDE_SKELETON_HTML
       : `<span data-lede-text="">${escape(view.lede.text)}</span>${view.lede.total ? EMPTY_TRASH_HTML : ''}`}</p>`;
-  return `<nav data-manage-bar="" aria-label="管理"><div data-manage-menu="" data-pill-nav="" role="group">${menu}</div></nav>`
+  const keys = props.menu.map(([key]) => key);
+  const reset = normalizeManageOrder(keys).join(',') === MANAGE_MENU_SECTIONS.join(',') ? ''
+    : `<button type="button" disabled data-navigation-menu="" aria-label="管理顶部菜单排序设置" aria-haspopup="dialog" aria-expanded="false">${glyph('ellipsis')}</button>`;
+  return `<nav data-manage-bar="" aria-label="管理"><div data-manage-menu="" data-pill-nav="" role="group">${menu}</div>${reset}<span data-manage-order-status="" role="status" aria-live="polite"></span></nav>`
     + crumb
     + `<h2 data-manage-title=""${view.compact ? ' data-compact=""' : ''}>${escape(view.title)}</h2>`
     + lede;

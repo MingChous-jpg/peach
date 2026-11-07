@@ -375,6 +375,16 @@ class _LedgerActivation:
             await self.task
 
 
+def _configure_capacity_guard(settings, contract, services):
+    from .storage_budget import CapacityGuard
+    config = contract.upgrade_config
+    guard = (CapacityGuard(config)
+             if settings.transcode_root.parent.resolve() == config.directory('generated').resolve() else None)
+    contract.capacity_guard = guard
+    for service in services:
+        service.capacity_guard = guard
+
+
 def create_app(
     settings: PeachSettings | None = None,
     sync: LedgerSync | None = None,
@@ -417,7 +427,7 @@ def create_app(
     contract.network_reachability = network_reachability
     resolver = FFmpegResolver(settings.ffmpeg_root)
     http_transport = HttpxTransport()
-    follow_media_resolver = FollowMediaResolver(http_transport).with_credential_loader(
+    follow_media_resolver = FollowMediaResolver(http_transport, state_root=settings.follow_state_root).with_credential_loader(
         lambda provider: web_follow._credential_store(contract).load(provider))
     # 检查更新、浏览与画面签名的取图共用这一份按站冷却：同一个站被限流，几处都得停。
     contract.follow_media_resolver = follow_media_resolver
@@ -527,6 +537,8 @@ def create_app(
         available=managed_configuration() and bool(settings.configured),
     )
     upgrade_repairs = _configure_upgrade_repairs(settings, contract, sync)
+    _configure_capacity_guard(settings, contract,
+        (transcode_service, hls_service, entity_thumb_service, cover_thumb_service, cover_small_thumb_service))
 
     async def warm_startup_entries():
         """配置页首屏要的开机启动项状态，先在后台问一遍。
