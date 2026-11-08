@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from unittest.mock import DEFAULT, Mock, patch
-from contextlib import closing
+from contextlib import closing, contextmanager
 
 from filelock import FileLock
 from PIL import Image
@@ -488,7 +488,8 @@ class LibraryNfoTests(unittest.TestCase):
         provider = stub_provider()
         provider.query.return_value = {'id': 'ABW-358', 'title': '已保存资料'}
         provider.cover.return_value = False
-        with patch('peach.library_processing.CANDIDATE_FLUSH_SECONDS', 0):
+        with patch('peach.library_processing.CANDIDATE_FLUSH_SECONDS', 0), \
+                patch('peach.library_processing.CANDIDATE_FLUSH_COST_RATIO', 0):
             result = process_library(config, db, self.root / 'generated', self.root / 'covers',
                                      stage='metadata', provider_factory=lambda: provider)
         self.assertEqual(len(result['completed_metadata']), 1)
@@ -496,6 +497,41 @@ class LibraryNfoTests(unittest.TestCase):
         process_library(config, db, self.root / 'generated', self.root / 'covers', stage='metadata',
                         provider_factory=lambda: provider, resume_state=result)
         provider.query.assert_not_called()
+
+    @windows_ledger_roots
+    def test_a_slow_candidate_file_is_rewritten_no_more_often_than_its_cost_allows(self):
+        """候选表整份写一次越久，两次写之间隔得越开：处理线程不能一半时间都在写文件。"""
+        media = self.root / 'media'
+        media.mkdir()
+        db = fresh_ledger(self.root)
+        with closing(sqlite3.connect(db)) as connection, connection:
+            for number in range(1, 9):
+                (media / f'ABW-35{number}.mp4').write_bytes(b'video')
+                connection.execute("INSERT INTO asset(path,name,location,medium,code) VALUES(?,?,'local','video',?)",
+                                   (str(media / f'ABW-35{number}.mp4'), f'ABW-35{number}.mp4', f'ABW-35{number}'))
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True,
+                             locations={'local': (str(media),)})
+        provider = stub_provider()
+        provider.query.side_effect = lambda code, *args, **kwargs: {'id': code, 'title': f'{code} 资料'}
+        provider.cover.return_value = False
+        writes = []
+        real_write = library_processing.write_rows
+
+        def slow_write(*args, **kwargs):
+            started = time.monotonic()
+            time.sleep(0.2)
+            real_write(*args, **kwargs)
+            writes.append((started, time.monotonic()))
+
+        with patch('peach.library_processing.CANDIDATE_FLUSH_SECONDS', 0), \
+                patch('peach.library_processing.CANDIDATE_FLUSH_COST_RATIO', 20), \
+                patch('peach.library_processing.write_rows', side_effect=slow_write):
+            process_library(config, db, self.root / 'generated', self.root / 'covers',
+                            stage='metadata', provider_factory=lambda: provider)
+        # 每次写耗时约 0.2 秒、倍数取 20：节流的写之间至少隔 4 秒，八部片采完用不了这么久，
+        # 只剩第一次节流写与几处收尾的强制写。倍数不起作用时每采一部片就写一次。
+        self.assertLessEqual(len(writes), 5, writes)
+        self.assertTrue(read_rows(self.root / 'generated/library-metadata-field-candidates.csv'))
 
     @windows_ledger_roots
     def test_library_policy_decides_which_network_steps_run(self):
@@ -567,6 +603,7 @@ class LibraryNfoTests(unittest.TestCase):
             except BaseException as exc:
                 errors.append(exc)
         with patch('peach.library_processing.CANDIDATE_FLUSH_SECONDS', 0), \
+                patch('peach.library_processing.CANDIDATE_FLUSH_COST_RATIO', 0), \
                 patch('peach.library_processing._enrich_finished_performers',
                       return_value={'aliases': 0, 'avatars': 0, 'conflicts': 0, 'failed': 0}):
             thread = threading.Thread(target=run)
@@ -4194,39 +4231,56 @@ class ProcessingLockTests(unittest.TestCase):
     def test_a_running_background_collection_yields_to_a_user_run_at_its_next_checkpoint(self):
         config, db, database = self.config, self.db, self.database
         entered, proceed = threading.Event(), threading.Event()
+        stopping = threading.Event()
 
-        def query(*_args, **_kwargs):
-            if not entered.is_set():
-                entered.set()
-                proceed.wait(10)
-            return {}
+        processing_lock = library_processing._processing_lock
+
+        @contextmanager
+        def pause_background(config, *, background, active):
+            with processing_lock(config, background=background, active=active) as locked_active:
+                if background:
+                    entered.set()
+                    proceed.wait()
+                yield locked_active
 
         provider = stub_provider()
-        provider.query.side_effect = query
+        provider.query.return_value = {}
         background, user = [], []
 
         def run(sink, **options):
             try:
                 sink.append(process_library(config, db, self.root / 'generated', self.root / 'covers',
-                                            provider_factory=lambda: provider, database=database, **options))
+                                            provider_factory=lambda: provider, database=database,
+                                            active=lambda: not stopping.is_set(), **options))
             except Exception as error:
                 sink.append(error)
 
         with patch('peach.library_processing.LOCK_RETRY_SECONDS', 0.01), \
+                patch('peach.library_processing._processing_lock', pause_background), \
                 patch('peach.library_processing._enrich_finished_performers',
                       return_value={'aliases': 0, 'avatars': 0, 'conflicts': 0, 'failed': 0}):
             first = threading.Thread(target=run, args=(background,), kwargs=dict(
                 asset_ids=[1, 2], stage='collect', state_file=self.root / 'state/upgrade-repairs/1.json'))
+            threads = [first]
             first.start()
-            self.assertTrue(entered.wait(10))
-            second = threading.Thread(target=run, args=(user,))
-            second.start()
-            deadline = time.monotonic() + 10
-            while not library_processing._foreground_waiting() and time.monotonic() < deadline:
-                time.sleep(0.01)
-            proceed.set()
-            first.join(30)
-            second.join(30)
+            try:
+                self.assertTrue(entered.wait(10), f'后台处理尚未取得锁，实际结果：{background!r}')
+                second = threading.Thread(target=run, args=(user,))
+                second.start()
+                threads.append(second)
+                deadline = time.monotonic() + 10
+                while not library_processing._foreground_waiting() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(library_processing._foreground_waiting())
+                proceed.set()
+                for thread in threads:
+                    thread.join(30)
+                    self.assertFalse(thread.is_alive())
+            finally:
+                stopping.set()
+                proceed.set()
+                for thread in threads:
+                    thread.join()
         self.assertIsInstance(background[0], ProcessingBusy)
         self.assertIsInstance(user[0], dict)
         self.assertNotEqual(user[0].get('outcome'), 'interrupted')
