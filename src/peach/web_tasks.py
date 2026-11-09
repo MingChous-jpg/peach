@@ -13,15 +13,18 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 from datetime import datetime
 
 from .ingest_notices import NOTICES
-from .task_runs import ACTIVE_STATUSES, TERMINAL_STATUSES
+from .task_runs import ACTIVE_STATUSES, SETTLED_FOLLOWUP_LIMIT, TERMINAL_STATUSES
 from .task_results import RESULT_FIELDS, result_counts
 from .web_result_versions import result_versions
 
 #: 不带筛选时「最近完成」那一段每页的默认条数。一屏看得完，更早的往前翻。
 RECENT_LIMIT = 20
+#: 单轮任务详情（`/api/tasks/{id}`）下发的后继条数上限，与任务中心列表每轮的已结束后继同一档。
+TASK_FOLLOWUP_LIMIT = SETTLED_FOLLOWUP_LIMIT
 
 #: 账本还没跑到 0028 时页面上显示这一句。迁移是单独一步，升级后第一次打开活动页
 #: 撞上没有这张表是正常路径，不该是一个 500。
@@ -38,8 +41,33 @@ def q_result_updates(contract, _args):
         busy = any(contract.task_runs.query(status=status, limit=1) for status in ACTIVE_STATUSES)
     except sqlite3.OperationalError:
         busy = False
-    return {"ok": True, "result_versions": result_versions(contract),
+    return {"ok": True, "result_versions": _throttled_versions(contract, busy),
             "ingest_notices": NOTICES.snapshot(), "busy": busy}
+
+
+#: 有任务在跑时，结果版本最多隔这么久变一次（`_throttled_versions`）。
+RESULT_UPDATE_INTERVAL = 30.0
+
+
+def _throttled_versions(contract, busy: bool) -> dict:
+    """后台批处理期间，结果版本至多每 `RESULT_UPDATE_INTERVAL` 秒变一次。
+
+    页面每两秒轮询一次，版本一变就让网格、资料页、统计整组重取；批处理每几秒提交一次、
+    每写一张图就改一次目录版本，页面就背靠背地重取。有任务在跑时先按住上一次下发的版本，
+    满间隔再放出最新的。前台写入（用户自己点的）之后立即放出；空闲时不节流。
+    """
+    current = result_versions(contract)
+    now = time.monotonic()
+    foreground = contract.foreground_generation
+    published = contract.published_versions
+    if (busy and published is not None and current != published[1]
+            and now - published[0] < RESULT_UPDATE_INTERVAL and foreground == published[2]):
+        return published[1]
+    if published is None or current != published[1]:
+        contract.published_versions = (now, current, foreground)
+    elif foreground != published[2]:
+        contract.published_versions = (published[0], current, foreground)
+    return current
 
 
 def q_tasks(contract, args):
@@ -131,11 +159,14 @@ def q_task(contract, run_id):
     # 要知道派出去的几条跑成什么样（ADR-0040）。父只给一层，链根在 `root_run_id` 上。
     parent = (contract.task_runs.get(run.parent_run_id)
               if run.parent_run_id else None)
-    followups = [payload(child) for child in contract.task_runs.children(run.id)]
+    # 卡片展开时每两秒取一次：一轮派出上千条后继时只给在跑的与最近派出的那些，计数按全部后继算。
+    followups = [payload(child) for child in contract.task_runs.children(run.id, limit=TASK_FOLLOWUP_LIMIT)]
+    counts = contract.task_runs.followup_counts([run.id]).get(run.id, {})
     return {"ok": True, "run": payload(run),
             "parent": payload(parent) if parent else None,
             "followups": followups,
-            "followup_counts": _counts(followups)}
+            "followup_counts": counts,
+            "followup_total": sum(counts.values())}
 
 
 def _payload_reader(contract):
@@ -187,12 +218,6 @@ def _payload_reader(contract):
     return payload
 
 
-def _counts(rows) -> dict:
-    """后继按状态数一遍。折叠着的父任务据此标出有没有失败，不必展开整层。"""
-    counts: dict[str, int] = {}
-    for row in rows:
-        counts[row["status"]] = counts.get(row["status"], 0) + 1
-    return counts
 
 
 def _before(args) -> tuple[str, int] | None:

@@ -276,7 +276,7 @@ class PullRequestIntegrationTests(_WorktreeCase):
         body = ("排查记录里顺带提到 #3，不算关联。\n\nRefs #45\r\n"
                 "  Refs peach-mitao/peach-roadmap#7\n"
                 "Fixes https://github.com/example/peach/issues/8\n"
-                "Refs N01（Telegram 反馈）\n")
+                "Refs Telegram 用户反馈（非 GitHub issue）\n")
         with self.github(json.dumps({**self.pr, "body": body})):
             result = integrate(self.repo, self.branch)
         refs = ["Refs #45", "Refs peach-mitao/peach-roadmap#7",
@@ -297,6 +297,13 @@ class PullRequestIntegrationTests(_WorktreeCase):
             self.pr["headRefOid"] = _git(self.worker, "rev-parse", "HEAD").stdout.strip()
             with self.github(json.dumps({**self.pr, "body": "只修 ZZQ-101 的前缀。"})):
                 self.assertRaisesRegex(WorkspaceError, "提交 [0-9a-f]+（人物 2 个", integrate, self.repo, self.branch)
+
+    def test_insider_terms_in_the_pr_body_are_refused_but_commit_messages_may_name_the_tooling(self):
+        with mock.patch.object(check_public_text, "load_library", return_value=None):
+            self.assertRaisesRegex(WorkspaceError, "内部用语.*合批", agent_worktree.require_public_text,
+                                   self.repo, {"PR 正文": "合批验证：两处反馈修复。"})
+            agent_worktree.require_public_text(self.repo, {"PR 正文": "两处反馈修复一起合入。",
+                                                           "提交 abc1234": "fix(worktree): 工作树残留检查跳过空目录"})
 
     def test_a_single_example_or_a_machine_without_a_ledger_still_integrates(self):
         library = check_public_text.Library(codes={"ZZQ-101", "ZZQ-102", "ZZQ-103"})
@@ -1060,6 +1067,16 @@ class CommitSubjectTests(unittest.TestCase):
         git(self.repo, "commit", "--allow-empty", "-m", "fix(web): 自己的提交")
         git(self.repo, "merge", "--no-ff", "-m", "Merge branch 'master' into worker", "master")
         self.assertEqual(commit_subject.check(self.repo, "master"), [])
+
+    def test_an_adopted_community_commit_keeps_its_own_subject(self):
+        """`merge -s ours` 记入的社区提交原样保留，主题门槛只管本机提交者写的。"""
+        git(self.repo, "checkout", "-b", "community", "master")
+        git(self.repo, "-c", "user.email=someone@users.noreply.github.com", "commit", "--allow-empty",
+            "-m", "Translate frontend UI to English")
+        git(self.repo, "checkout", "worker")
+        git(self.repo, "merge", "-s", "ours", "--no-ff", "-m", "chore(i18n): 记入社区译法", "community")
+        self.assertEqual(commit_subject.check(self.repo, "master"), [])
+        self.assertTrue(self.titled("Translate it myself"))
 
     def test_a_subject_already_on_the_remote_master_is_not_the_worker_s_to_fix(self):
         problems = self.titled("Remove section from README", "docs(readme): 并回网页上的改动")

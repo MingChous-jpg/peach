@@ -25,6 +25,7 @@ import {
   setActionBusy, setIconSwap, wireHorizontalScroller,
 } from '@peach/legacy/ui';
 
+import { isInterfaceLanguageChoice, t, type InterfaceLanguageChoice } from '../../i18n';
 import { normalizeJavImage } from '../../jav-artwork';
 import { boundedPreference } from '../../number-setting';
 import { GlowSettings } from './glow-settings';
@@ -382,6 +383,7 @@ function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost
                 attr="data-theme-choice" variant="themeswitch" epoch={epoch}
                 onChoose={(choice) => { settings.theme = choice; save(); current.changed('theme') }} />
             </Row>
+            <InterfaceLanguageSetting host={current} epoch={epoch} />
             <div data-setting-row="">
               <label htmlFor="glassContrastSetting"><b>增加对比度</b></label>
               <input type="checkbox" id="glassContrastSetting" data-toggle="" role="switch" checked={current.highContrast()}
@@ -398,7 +400,9 @@ function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost
               <div data-setting-card="">
                 <section data-sidebar-setting=""><SidebarOrder host={current} /></section>
               </div>
-              <div data-setting-card=""><NavigationOrderPreferences /></div>
+              <div data-setting-card="">
+                <section data-sidebar-setting=""><NavigationOrderPreferences /></section>
+              </div>
             </section>
           </Group>
           <BrowseGroup host={current} tab={shown.tab} epoch={epoch} />
@@ -517,13 +521,44 @@ function JavGroup({ host: current, tab, epoch }: GroupProps) {
     </Group>
   );
 }
+/* 语言名称写成各自语言的自称，不随界面语言翻译：看不懂当前界面的人也要认得出自己那一项。
+   「自动」只写一个词：手机上选择框窄，括号里再带语言名会把标题挤成两行，页面本身已经在用探测出的语言。 */
+const languageChoices = (): readonly (readonly [InterfaceLanguageChoice, string])[] =>
+  [['auto', t('settings:interfaceLanguage.auto')], ['zh-CN', '简体中文'], ['en', 'English']];
+/* 存进数据库、回来交壳对账；壳发现本地那份变了就整页重载，换成新语言。 */
+function InterfaceLanguageSetting({ host: current, epoch }: { host: SettingsPanelHost; epoch: number }) {
+  const query = useQuery({ queryKey: SETTINGS_KEY, queryFn: ({ signal }) => fetchSettings(signal), staleTime: 0 });
+  const save = useSaveSettings();
+  const [pending, setPending] = useState<InterfaceLanguageChoice | null>(null);
+  const language = query.data?.interfaceLanguage;
+  const choices = languageChoices();
+  return <>
+    <Row title={t('settings:interfaceLanguage.title')}
+      description={<small>{t('settings:interfaceLanguage.help')}</small>}>
+      <SelectField id="interfaceLanguageSetting" label={t('settings:interfaceLanguage.title')} epoch={epoch}
+        options={choices}
+        value={pending ?? language ?? current.store.value.interfaceLanguage}
+        disabled={query.isPending || query.isError || save.isPending || !language} busy={save.isPending}
+        onPick={(value) => {
+          if (save.isPending || !isInterfaceLanguageChoice(value) || value === language) return;
+          setPending(value);
+          save.mutate({ interfaceLanguage: value }, {
+            onSuccess: (saved) => { current.receipt(t('settings:interfaceLanguage.saved')); current.syncRemote(saved) },
+            onError: (error) => current.failure(t('settings:interfaceLanguage.saveFailed'), error),
+            onSettled: () => setPending(null),
+          });
+        }} />
+    </Row>
+    {query.isError ? <Note tone="error">{t('settings:interfaceLanguage.unavailable')}</Note> : null}
+  </>;
+}
 function NameLanguageSetting({ host: current, epoch }: { host: SettingsPanelHost; epoch: number }) {
   const query = useQuery({ queryKey: SETTINGS_KEY, queryFn: ({ signal }) => fetchSettings(signal), staleTime: 0 });
   const save = useSaveSettings();
   const [pending, setPending] = useState<'zh-CN' | 'ja' | null>(null);
   const language = query.data?.performerNameLanguage;
   return <>
-    <Row title="女优名称" description={<small data-copy-key="performer-name-language-help">名称与别名只显示所选语言的写法；缺少对应时保留当前名称。偏好保存在数据库，其他设备读取同一份设置。</small>}>
+    <Row title="女优名称" description={<small data-copy-key="performer-name-language-help">名称与别名只显示所选语言的写法；缺少对应时保留当前名称。</small>}>
       <SelectField id="performerNameLanguageSetting" label="女优名称" epoch={epoch}
         options={[["zh-CN", "中文"], ["ja", "日文原文"]]}
         value={pending ?? language ?? current.store.value.performerNameLanguage}

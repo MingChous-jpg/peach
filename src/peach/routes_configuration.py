@@ -240,8 +240,12 @@ def _read_section(result: dict, key: str, title: str, reader) -> None:
                               message=f"配置区域 {key} 读取失败", section=key, error_id=error_id)
 
 
-def snapshot(config) -> dict[str, Any]:
-    """配置页首屏要的一切：当前值、修订号、可写与否，以及这台机器的运行信息。"""
+def snapshot(config, reachability=None) -> dict[str, Any]:
+    """配置页首屏要的一切：当前值、修订号、可写与否，以及这台机器的运行信息。
+
+    所有设置页都等这一份。媒体目录的在线状态读 `reachability`（`MountReachability`）的快照，
+    不在请求里同步列举网盘根：网盘一卡住，整个设置区就停在加载。
+    """
     editable = managed_configuration()
     from . import remote_reporting, library_sharing
     media = config.mounts.get("local") or config.locations.get("local", ())
@@ -268,7 +272,9 @@ def snapshot(config) -> dict[str, Any]:
         ("updates", "版本更新", release_updates.snapshot),
         ("update_job", "更新任务", standalone_update.public),
         ("access", "访问设置", lambda: access.public(access.load(config.directory("secrets") / "access.json"))),
-        ("media_sources", "媒体目录", lambda: media_configuration.rows(config, windows=os.name == "nt", probe=True)),
+        ("media_sources", "媒体目录", lambda: media_configuration.rows(
+            config, windows=os.name == "nt", probe=True,
+            known=media_configuration.reachability_states(reachability))),
         ("library_count", "媒体库状态", lambda: len(media_libraries.libraries(config))),
         ("mount_dependencies", "挂载依赖", media_configuration.mount_dependencies),
         ("facts", "运行信息", lambda: runtime_fact_entries(config)),
@@ -360,7 +366,7 @@ def read_configuration(request: Request, _args=Depends(require_auth)):
     config = settings_file.load_config()
     if not config.present:
         raise HTTPException(409, "请先完成首次设置")
-    result = snapshot(config)
+    result = snapshot(config, getattr(request.app.state, "mount_reachability", None))
     _read_section(result, 'network', '访问地址', lambda: network_payload(request, config))
     sync = getattr(request.app.state, "sync", None)
     result["ledger_read_only"] = bool(sync is not None and sync.read_only)
@@ -831,16 +837,12 @@ def client_updates(request: Request, _args=Depends(require_auth)):
 def _release_notice_facts(request: Request, connection) -> dict:
     """公告条目的显示条件：只看本机回执，不发外部请求。读不到的一项按不显示处理。"""
     from . import system_file_repair
-    from .display_dimensions_repair import RECEIPT_KEY
-    from .upgrade_repairs import _read
+    from .display_dimensions_repair import progress
     facts: dict[str, Any] = {}
     service = request.app.state.upgrade_repairs
-    try:
-        display = _read(service.receipt).get(RECEIPT_KEY, {}) if service.available else {}
-    except (OSError, ValueError, TypeError):
-        display = {}
-    if display.get('dimensions'):
-        facts['display_reprobe'] = {'done': len(display.get('completed', {})), 'total': len(display['dimensions'])}
+    done, total = progress(connection) if service.available else (0, 0)
+    if total:
+        facts['display_reprobe'] = {'done': done, 'total': total}
     row = connection.execute(
         'SELECT result_json FROM ledger_upgrade_repair WHERE json_type(result_json,?) IS NOT NULL '
         'ORDER BY applied_at DESC LIMIT 1', (f'$."{system_file_repair.RULE}"',)).fetchone()
@@ -854,6 +856,13 @@ def _release_notice_facts(request: Request, connection) -> dict:
     unlinked = json.loads(row[0])['garbled_people'].get('links') if row else None
     if unlinked:
         facts['garbled_performers'] = {'count': len(unlinked)}
+    # JavDB 入口补修（`upgrade_repairs.JAVDB_RECORDS_KEY`）的回执行 id 带规则号，结果里逐项记下收起的入口与停用的订阅。
+    row = connection.execute(
+        "SELECT result_json FROM ledger_upgrade_repair WHERE id GLOB 'javdb-actor-records-*' "
+        'ORDER BY applied_at DESC LIMIT 1').fetchone()
+    javdb = json.loads(row[0]) if row else {}
+    if hidden := len(javdb.get('hidden') or ()) + len(javdb.get('disabled_feeds') or ()):
+        facts['javdb_entries'] = {'count': hidden}
     if service.available and (cloud := service.cloud_display_videos()):
         facts['display_cloud_pending'] = {'count': cloud}
     return facts
@@ -911,9 +920,11 @@ def _repair_center(request: Request) -> dict:
         directories.append(ledger_backups.organize_dir(settings_file.active().directory('generated')))
     except (OSError, ValueError):
         pass
+    reclaim = getattr(request.app.state, 'follow_evidence', None)
     with request.app.state.web_contract.read_connection() as connection:
         result = repair_center.snapshot(connection, receipt, backup_directories=directories,
-                                        cloud_pending=service.cloud_display_videos() if service.available else 0)
+                                        cloud_pending=service.cloud_display_videos() if service.available else 0,
+                                        follow_evidence_status=reclaim.status() if reclaim and service.available else None)
     return {**result, 'available': service.available}
 
 
@@ -937,6 +948,20 @@ async def include_cloud_display_dimensions(request: Request, _args=Depends(requi
         await asyncio.to_thread(request.app.state.upgrade_repairs.include_cloud_display_dimensions)
         return _repair_center(request)
     except (ValueError, OSError, Timeout) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post('/api/configuration/repairs/follow-evidence')
+def reclaim_follow_evidence(request: Request, _args=Depends(require_auth)):
+    """关注抓取的旧快照不在升级时自动删，由用户在「修复与迁移」里看过数量与体积、确认后在后台删。"""
+    local_only(request)
+    same_origin(request)
+    try:
+        if not request.app.state.upgrade_repairs.available:
+            raise ValueError('只在本机写入端可用')
+        request.app.state.follow_evidence.start()
+        return _repair_center(request)
+    except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
 
 

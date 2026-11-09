@@ -126,6 +126,28 @@ describe('数据库那一份落进本地缓存', () => {
     expect(store.value.performerNameLanguage).toBe('zh-CN');
   });
 
+  it('界面语言以数据库为准，变了才落盘并交给壳重载，不认识的值丢掉', () => {
+    const { store, changed, save } = stage({ interfaceLanguage: 'zh-CN' });
+    applySyncedSettings({ interfaceLanguage: 'en' }, changed, store);
+    expect([store.value.interfaceLanguage, save.mock.calls.length, changed.mock.calls]).toEqual(['en', 1, [['interfaceLanguage']]]);
+    applySyncedSettings({ interfaceLanguage: 'en' }, changed, store);
+    applySyncedSettings({ interfaceLanguage: 'fr' }, changed, store);
+    expect([store.value.interfaceLanguage, save.mock.calls.length]).toEqual(['en', 1]);
+    expect(normalizeAppSettings({ interfaceLanguage: 'fr' }).settings.interfaceLanguage).toBe('auto');
+    expect(normalizeAppSettings({}).settings.interfaceLanguage).toBe('auto');
+  });
+
+  it('服务端报的系统语言缓存在本地，变了也交给壳判断要不要重载', () => {
+    const { store, changed, save } = stage({ interfaceLanguage: 'auto' });
+    applySyncedSettings({ interfaceLanguage: 'auto', systemLanguage: 'zh-TW' }, changed, store);
+    expect([store.value.systemLanguage, save.mock.calls.length, changed.mock.calls]).toEqual(['zh-CN', 1, [['interfaceLanguage']]]);
+    applySyncedSettings({ interfaceLanguage: 'auto', systemLanguage: 'zh-CN' }, changed, store);
+    applySyncedSettings({ interfaceLanguage: 'auto' }, changed, store);
+    expect([store.value.systemLanguage, save.mock.calls.length]).toEqual(['zh-CN', 1]);
+    applySyncedSettings({ interfaceLanguage: 'auto', systemLanguage: null }, changed, store);
+    expect([store.value.systemLanguage, save.mock.calls.length]).toEqual([null, 2]);
+  });
+
   it('侧栏顺序没变就不落盘', () => {
     const { store, save, changed } = stage();
     applySyncedSettings({ sidebarOrder: [...store.value.sidebarOrder] }, changed, store);

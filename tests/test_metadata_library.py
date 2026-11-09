@@ -1359,6 +1359,49 @@ class LibraryNfoTests(unittest.TestCase):
         self.assertEqual({call.args[0] for call in provider.query.call_args_list}, {'ABW-358', 'SSIS-057'})
 
     @windows_ledger_roots
+    def test_spent_source_budget_stops_remote_rows_with_one_summary(self):
+        """整趟采集预算到顶后，后面要出网的行一家都不问，只记一条汇总，留给重试接着采。"""
+        from peach.scraping_access import BUDGET_SPENT
+        media = self.root / 'media'
+        media.mkdir()
+        for name in ('ABW-358', 'SSIS-057', 'SSIS-058'):
+            (media / f'{name}.mp4').write_bytes(b'video')
+        db = fresh_ledger(self.root)
+        config = PeachConfig(self.root, self.root / 'config.toml', present=True, locations={'local': (str(media),)})
+        provider = stub_provider()
+        provider.query.return_value = {'id': 'ABW-358', 'title': '作品资料'}
+        provider.cover.return_value = False
+        # 第一部问完预算就到顶。
+        provider.budget_spent.side_effect = lambda: BUDGET_SPENT['seconds'] if provider.query.called else ''
+        generated, covers = self.root / 'generated', self.root / 'covers'
+
+        process_library(config, db, generated, covers, stage='scan')
+        result = process_library(config, db, generated, covers, provider_factory=Mock(return_value=provider),
+                                 stage='metadata', database=LedgerDatabase(db))
+
+        self.assertEqual(len({call.args[0] for call in provider.query.call_args_list}), 1)
+        self.assertEqual(result['budget_skipped'], 2)
+        summary = [issue for issue in result['issue_preview'] if issue['message'].startswith('本趟采集时间已用完')]
+        self.assertEqual([issue['message'] for issue in summary],
+                         ['本趟采集时间已用完，还有 2 部没问外部来源，再跑一次接着采。'])
+        self.assertTrue(result['error'].startswith('本趟采集时间已用完，还有 2 部'))
+        asked = {call.args[0] for call in provider.query.call_args_list}
+        with closing(sqlite3.connect(db)) as connection:
+            unasked = {row_id for row_id, code in connection.execute('SELECT id,code FROM asset')
+                       if code not in asked}
+        self.assertEqual(len(unasked), 2)
+        self.assertLessEqual(unasked, set(result['retryable_asset_ids']))
+        self.assertLessEqual(unasked, set(result['paused_asset_ids']))
+
+        fresh = stub_provider()
+        fresh.query.return_value = {'id': 'SSIS-057', 'title': '作品资料'}
+        fresh.cover.return_value = False
+        process_library(config, db, generated, covers, provider_factory=Mock(return_value=fresh),
+                        database=LedgerDatabase(db), retry_ids=result['retryable_asset_ids'])
+        self.assertLessEqual({code for code in ('ABW-358', 'SSIS-057', 'SSIS-058') if code not in asked},
+                             {call.args[0] for call in fresh.query.call_args_list})
+
+    @windows_ledger_roots
     def test_local_nfo_fields_keep_remote_differences_for_review(self):
         """本地字段优先补空，在线不同值保留为覆盖复核候选。"""
         from PIL import Image
@@ -2338,6 +2381,7 @@ class LibraryNfoTests(unittest.TestCase):
         self.assertEqual((state['issue_count'], state['paused_count']), (2, 2))
         self.assertEqual(state['error'], '2 项都卡在来源限流上，等一会儿再跑一次。')
         self.assertEqual(state['retryable_asset_ids'], [1], '等来源放开之后重试仍然有意义')
+        self.assertEqual(state['paused_asset_ids'], [1], '升级补全据此把这部片延后而不是判失败')
 
     def test_the_two_kinds_are_counted_apart_in_the_line_that_sums_them_up(self):
         from peach.library_processing import issue_summary
@@ -3692,6 +3736,48 @@ class LibraryPreviewCompletionTests(unittest.TestCase):
         self.assertEqual(second['previews'], 0)
         self.assertEqual(second['status'], 'complete')
         capture.assert_not_called()
+
+    def cloud_clip(self, *, cost):
+        """把 2 号放进真实可读的网盘挂载目录，目录的流量保护按 `cost` 设。"""
+        from dataclasses import replace
+        mount = self.root / 'unmounted-cloud'
+        mount.mkdir(exist_ok=True)
+        (mount / 'clip-2.mp4').write_bytes(b'video')
+        self.config = replace(self.config, media_costs={self.ledger_roots['pikpak']: cost})
+        self.enterContext(patch('peach.settings_file.active', return_value=self.config))
+
+    def test_unprotected_cloud_directory_gets_previews_like_local(self):
+        self.cloud_clip(cost='free')
+        with patch('peach.library_processing.FFmpegResolver', return_value=self.resolver), \
+                patch('peach.frame_capture.capture_with_retry', return_value=True), \
+                patch('peach.frame_capture.tile_frames', side_effect=self.make_tile):
+            result = self.run_processing(stage='previews')
+        self.assertEqual((result['status'], result['previews']), ('complete', 2))
+        with self.database.read_connection() as connection:
+            snapshot = connection.execute('SELECT snapshot_path FROM asset WHERE id=2').fetchone()[0]
+        self.assertTrue(Path(snapshot).is_relative_to(self.root / 'generated' / 'snapshots' / 'pikpak'))
+
+    def test_protected_directory_is_read_only_with_an_explicit_grant(self):
+        self.cloud_clip(cost='metered')
+        with patch('peach.library_processing.FFmpegResolver', return_value=self.resolver), \
+                patch('peach.frame_capture.capture_with_retry', return_value=True) as capture, \
+                patch('peach.frame_capture.tile_frames', side_effect=self.make_tile):
+            skipped = self.run_processing(stage='previews', asset_ids=[2])
+            self.assertEqual((skipped['previews'], capture.call_count), (0, 0))
+            granted = self.run_processing(stage='previews', asset_ids=[2], allow_metered=True)
+        self.assertEqual((granted['status'], granted['previews']), ('complete', 1))
+        self.assertTrue(granted['allow_metered'])
+
+    def test_metered_grant_only_covers_named_videos_for_previews(self):
+        from peach.web_library_processing import _metered_grant
+        self.assertTrue(_metered_grant({'allow_metered': True}, 'previews', [2]))
+        self.assertFalse(_metered_grant({}, 'previews', None))
+        for body, stage, ids in (({'allow_metered': True}, 'collect', [2]),
+                                 ({'allow_metered': True}, 'all', [2]),
+                                 ({'allow_metered': True}, 'previews', None),
+                                 ({'allow_metered': 'yes'}, 'previews', [2])):
+            with self.subTest(stage=stage, ids=ids), self.assertRaises(ValueError):
+                _metered_grant(body, stage, ids)
 
     def test_one_video_reuses_decode_probe_for_all_nine_frames(self):
         from peach import frame_capture, hardware_transcode

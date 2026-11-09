@@ -456,8 +456,10 @@ def create_app(
                                                     quality=COVER_SMALL_THUMB_QUALITY)
     transcode_service = TranscodeService(resolver, settings.transcode_root, state_root=settings.follow_state_root)
     header_repairs = HeaderRepairStore(settings.transcode_root, resolver, runs=contract.task_runs)
+    # 分片计划按会话记住（`SessionPlans`），这里只跑没记过的那一次；一次可能要等 ffprobe，
+    # 两个线程时两部探不动的片子就让所有会话的分片排队。
     hls_plan_executor = ThreadPoolExecutor(
-        max_workers=2, thread_name_prefix="PeachHlsPlan",
+        max_workers=8, thread_name_prefix="PeachHlsPlan",
     )
     hls_service = HlsSegmentService(
         resolver, settings.stream_root, prefer_hardware=transcode_service.prefer_hardware,
@@ -634,6 +636,8 @@ def create_app(
     app.state.media_engine = media_engine
     app.state.preview_service = preview_service
     app.state.photo_service = photo_service
+    from .subtitles import SidecarListings
+    app.state.sidecar_listings = SidecarListings()
     app.state.sample_cache = sample_cache
     app.state.entity_thumb_service = entity_thumb_service
     app.state.cover_thumb_service = cover_thumb_service
@@ -641,6 +645,8 @@ def create_app(
     app.state.transcode_service = transcode_service
     app.state.header_repairs = header_repairs
     app.state.hls_plan_executor = hls_plan_executor
+    from .segments import SessionPlans
+    app.state.hls_session_plans = SessionPlans()
     app.state.hls_service = hls_service
     app.state.mdns = mdns
     app.state.providers = providers
@@ -652,6 +658,10 @@ def create_app(
     app.state.follow_scheduler = follow_scheduler
     app.state.automatic_updates = automatic_updates
     app.state.upgrade_repairs = upgrade_repairs
+    from pathlib import Path
+    from .follow_evidence import Reclaim
+    app.state.follow_evidence = Reclaim(Path(contract.follow_sources_root) / "follow", contract,
+                                        runs=contract.task_runs)
     app.state.push_discovery = push_discovery
     app.state.downloads = downloads
     app.state.jav_browser = jav_browser

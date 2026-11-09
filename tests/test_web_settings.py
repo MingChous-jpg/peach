@@ -7,6 +7,7 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from peach import web_settings
@@ -77,6 +78,10 @@ class SettingsRoundTripTests(unittest.TestCase):
         con.commit()
         con.close()
         self.contract = WebContract(self.db)
+        # 系统语言随跑测试的机器变，这里固定成「报不出」。
+        system = mock.patch.object(web_settings, "system_language", return_value=None)
+        system.start()
+        self.addCleanup(system.stop)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -132,7 +137,8 @@ class SettingsRoundTripTests(unittest.TestCase):
                           "organizeTemplates": {}, "codePatterns": [],
                           "feedHideGroupCompilations": True,
                           "feedHideSoloCompilations": False, "feedHideExcerpts": True,
-                          "searchHistoryLimit": None, "performerNameLanguage": "zh-CN", "taskSpeedMode": "standard"})
+                          "searchHistoryLimit": None, "performerNameLanguage": "zh-CN", "taskSpeedMode": "standard",
+                          "interfaceLanguage": "auto", "systemLanguage": None})
 
     def test_code_patterns_are_checked_when_saved(self):
         """写错的规则在保存那一刻报出来；存下的规则去掉空行，读回来是同一份。"""
@@ -174,6 +180,23 @@ class SettingsRoundTripTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 w_settings(self.contract, {'performerNameLanguage': value})
             self.assertEqual(self._stored_json(), {'performerNameLanguage': 'ja'})
+
+    def test_interface_language_is_shared_and_rejects_languages_without_translations(self):
+        self.assertEqual(q_settings(self.contract)['interfaceLanguage'], 'auto')
+        w_settings(self.contract, {'interfaceLanguage': 'auto'})
+        self.assertEqual(q_settings(self.contract)['interfaceLanguage'], 'auto')
+        w_settings(self.contract, {'interfaceLanguage': 'en'})
+        self.assertEqual(q_settings(WebContract(self.db.resolve()))['interfaceLanguage'], 'en')
+        for value in ('fr', 'EN', '', None, 1, ['en']):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                w_settings(self.contract, {'interfaceLanguage': value})
+        self.assertEqual(self._stored_json(), {'interfaceLanguage': 'en'})
+
+    def test_interface_languages_match_the_shipped_locales(self):
+        """后端放行的语言必须有前端译文：多放一个，存进去以后整页回落成中文；少放一个，选了存不进去。"""
+        locales = Path(__file__).resolve().parents[1] / 'frontend' / 'src' / 'locales'
+        shipped = sorted(path.name for path in locales.iterdir() if path.is_dir() and path.name != 'glossary')
+        self.assertEqual(sorted(web_settings.INTERFACE_LANGUAGES), shipped)
 
     def test_a_hand_broken_rule_reads_as_unset(self):
         con = sqlite3.connect(self.db)
@@ -221,7 +244,8 @@ class SettingsRoundTripTests(unittest.TestCase):
                           "organizeTemplates": {}, "codePatterns": [],
                           "feedHideGroupCompilations": True,
                           "feedHideSoloCompilations": False, "feedHideExcerpts": True,
-                          "searchHistoryLimit": None, "performerNameLanguage": "zh-CN", "taskSpeedMode": "standard"})
+                          "searchHistoryLimit": None, "performerNameLanguage": "zh-CN", "taskSpeedMode": "standard",
+                          "interfaceLanguage": "auto", "systemLanguage": None})
         self.assertEqual(q_settings(self.contract)["sidebarOrder"], order)
         self.assertEqual(self._stored_json()["sidebarOrder"], order)
 
