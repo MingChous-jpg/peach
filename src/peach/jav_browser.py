@@ -12,7 +12,7 @@ import threading
 import time
 from functools import lru_cache
 from pathlib import Path
-from urllib.parse import parse_qsl, urlencode, urlsplit
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit
 
 from .catalog_rules import (
     is_jav_code, normalise_code_key, release_code_from_product, same_release_code, without_store_prefix,
@@ -29,6 +29,8 @@ from .follow_secrets import CredentialError
 from .feeds import scan_code
 from .fsutil import atomic_write_text
 from .sources.dmm import code_from_cid
+from .jav_editions import bonus_cid
+from .user_messages import UserFacingError
 
 LOGGER = logging.getLogger(__name__)
 CREDENTIAL = "jav-browser"
@@ -112,9 +114,8 @@ def source_page(value: object) -> str:
     return parsed._replace(query=urlencode(parameters), fragment="").geturl()
 
 
-def identify_source(value: object, hint: str = "") -> str:
-    """从已登记发行平台的详情地址提取商品号，复用编目规则确认番号。"""
-    source = source_page(value)
+def _registered_product(source: str) -> tuple[dict | None, str]:
+    """已净化的发行平台详情地址里的商品号；FANZA 剪辑页交回其中的 DMM 商品号。"""
     url = urlsplit(source)
     site = source_site(url.hostname or "")
     product = ""
@@ -123,22 +124,80 @@ def identify_source(value: object, hint: str = "") -> str:
         if match:
             product = (match.group(1) if match.lastindex else "") or next(
                 (dict(parse_qsl(url.query)).get(key, "") for key in site.get("query_keys", ())), "")
+    if site and site["id"] == "fanza-clip":
+        # FANZA 剪辑页的 id 是 img-<DMM 商品号>-<片段序号>，片段序号不属于番号。
+        clip = re.fullmatch(r"img-((?:h_\d+)?[a-z0-9]+)-\d{1,4}", product, re.IGNORECASE)
+        product = clip.group(1) if clip else ""
+    return site, product
+
+
+def dmm_cid(value: object) -> str:
+    """DMM 本站与 FANZA 剪辑页地址里的 DMM 商品号；别的来源或认不出时为空。"""
+    try:
+        site, product = _registered_product(source_page(value))
+    except ValueError:
+        return ""
+    return product.lower() if site and site["id"] in {"dmm", "fanza-clip"} else ""
+
+
+def page_edition(value: object, probe) -> str:
+    """作品同时有通常版与特典版时，来源页是哪一版：`bonus` / `regular`；没有特典版或认不出时为空。
+
+    特典版页面看商品号尾字母就能定；通常版页面要问 DMM 有没有对应的特典版（`probe`，失败按没有处理）。
+    """
+    cid = dmm_cid(value)
+    if not cid:
+        return ""
+    if bonus_cid(cid):
+        return "bonus"
+    return "regular" if probe is not None and probe(cid) else ""
+
+
+def identify_source(value: object, hint: str = "") -> str:
+    """从已登记发行平台的详情地址提取商品号，复用编目规则确认番号。"""
+    site, product = _registered_product(source_page(value))
     if not product:
         raise ValueError("未识别到作品番号，请选中页面的完整番号后加入 Peach")
     # DMM 的商品号按编目规则拆出番号；FC2 内容市场的商品页地址里只有数字编号，番号是 FC2-PPV-<编号>。
-    code = code_key(code_from_cid(product) if site["id"] == "dmm"
+    code = code_key(code_from_cid(product) if site["id"] in {"dmm", "fanza-clip"}
                     else f"FC2-PPV-{product}" if site["id"] == "fc2-market" else product)
     if hint and not same_release_code(code, code_key(hint)):
         raise ValueError("页面番号与商品号不一致，请核对作品详情")
     return code
 
 
-def _download_candidate(items, code, skip=frozenset()):
-    """搜索结果里第一个番号相符的正片磁力；`skip` 是换磁力时排除的 infohash。"""
+#: 种子名、磁力显示名或文件名里标明特典版的写法。
+_BONUS_MARK = re.compile(r"特典|special[\s._-]*edition", re.IGNORECASE)
+
+
+def _bonus_code(code: str):
+    """`SDJS-304` 的特典版写法：`SDJS-304V`、`sdjs-304-v`；番号不是「字母-数字」时为 None。"""
+    parts = re.fullmatch(r"([A-Z]+)-(\d+)", code)
+    return re.compile(rf"(?<![A-Z0-9]){parts[1]}[-_ ]?0*{int(parts[2])}[-_ ]?V(?![A-Z0-9])",
+                      re.IGNORECASE) if parts else None
+
+
+def _magnet_text(item) -> str:
+    """一条候选能看到的全部名字：种子名、磁力显示名与文件名。"""
+    uri = str(item.get("uri") or "")
+    shown = parse_qs(urlsplit(uri).query).get("dn", []) if uri.startswith("magnet:") else []
+    files = [str(entry.get("name") if isinstance(entry, dict) else entry) for entry in item.get("file_list") or ()]
+    return " ".join([str(item.get("name") or ""), *shown, *files])
+
+
+def _download_candidate(items, code, skip=frozenset(), edition=""):
+    """搜索结果里番号相符的正片磁力；`skip` 是换磁力时排除的 infohash。
+
+    `edition` 是用户在特典版与通常版之间选的那一版：特典版写法（`SDJS-304V`）的种子也收进候选，
+    选中版本的种子排前面；没有对应版本时退回第一个相符的（特典版含通常版全部正片）。
+    """
+    bonus = _bonus_code(code) if edition else None
+    eligible = []
     for item in items:
         name = str(item.get("name") or "")
         matches = (same_release_code(scan_code(name), code)
-                   or same_release_code(scan_code(name, product=True), code))
+                   or same_release_code(scan_code(name, product=True), code)
+                   or bool(bonus and bonus.search(name)))
         if not matches or re.search(r"(?i)\b(?:sample|trailer|preview)\b|予告|预告|預告", name):
             continue
         try:
@@ -147,8 +206,15 @@ def _download_candidate(items, code, skip=frozenset()):
             continue
         if magnet.info_hash in skip:
             continue
-        return item
-    return None
+        if not edition:
+            return item
+        eligible.append(item)
+
+    def is_bonus(item):
+        text = _magnet_text(item)
+        return bool(_BONUS_MARK.search(text) or (bonus and bonus.search(text)))
+    return next((item for item in eligible if is_bonus(item) == (edition == "bonus")),
+                eligible[0] if eligible else None)
 
 
 def _postprocess_retry_status(task) -> dict:
@@ -164,8 +230,10 @@ def _postprocess_retry_status(task) -> dict:
 class JavBrowser:
     """本机持久队列；搜索完成前退出时，下一次启动继续处理。"""
 
-    def __init__(self, contract, *, search):
+    def __init__(self, contract, *, search, edition_probe=None):
         self.contract = contract
+        # 通常版页面问 DMM 有没有对应特典版的探测（`jav_editions.EditionProbe`）；None 时不问。
+        self.edition_probe = edition_probe
         self.downloads = contract.downloads
         self.credentials = self.downloads.credentials
         self.path = Path(contract.follow_state_root) / "jav-browser-queue.json"
@@ -356,9 +424,31 @@ class JavBrowser:
                     "updated_at": task.updated_at}
                 row.update(_postprocess_retry_status(task))
             state = row.get("state", "idle")
-            return {"ok": True, "code": code, **row, **detail, "state": state,
+            return {"ok": True, "code": code, **row, **detail, **self._queue_detail(code, state), "state": state,
                     "stage": "submitting" if code in self._submitting else state,
                     "message": row.get("message") or MESSAGES[state]}
+
+    def _queue_detail(self, code: str, state: str) -> dict:
+        """排队中的番号排在搜索队列第几位；搜索逐个进行，用户脚本据此决定要不要给「提前处理」。"""
+        if state != "queued":
+            return {}
+        with self._lock:
+            waiting = [key for key, other in self.rows.items() if other["state"] == "queued"]
+        return {"queue_position": waiting.index(code) + 1 if code in waiting else 1}
+
+    def prioritize(self, value: object) -> dict:
+        """把排队中的番号挪到搜索队列最前面；搜索、下载与整理阶段的任务不受影响。"""
+        code = code_key(value)
+        with self._lock:
+            row = self.rows.get(code)
+            if row is None or row["state"] != "queued":
+                raise UserFacingError("这个番号不在排队中", code="javBrowser.notQueued")
+            ordered = [(code, row), *((key, other) for key, other in self.rows.items() if key != code)]
+            self.rows.clear()
+            self.rows.update(ordered)
+            self._save()
+            self._wake.set()
+        return self.status(code)
 
     def retry_postprocess(self, value: object) -> dict:
         """重试这个番号入库后失败的整理，与任务中心的「重试整理」同一入口。"""
@@ -430,6 +520,8 @@ class JavBrowser:
                 return status
             if body.get("switch") not in (None, False, True):
                 raise ValueError("换磁力参数无效")
+            if body.get("edition") not in (None, "", "bonus", "regular"):
+                raise ValueError("版本参数无效")
             # 换磁力：把上一次提交的磁力记入跳过名单，重新搜索时取下一个。
             previous = self.rows.get(code, {})
             skip = list(previous.get("skip", ()))
@@ -443,8 +535,11 @@ class JavBrowser:
                 if completed is None:
                     raise ValueError("添加队列已满，请等待当前任务结束")
                 del self.rows[completed]
+            # 要哪一版：本次明说的优先，其次沿用上一次的选择（换磁力），都没有时按来源页的商品号定。
+            edition = body.get("edition") or previous.get("edition") or (
+                "bonus" if bonus_cid(dmm_cid(page)) else "")
             self.rows[code] = {"state": "queued", "provider": config["provider"], "source_url": page,
-                               **({"skip": skip[-20:]} if skip else {})}
+                               **({"skip": skip[-20:]} if skip else {}), **({"edition": edition} if edition else {})}
             self._save()
             self._wake.set()
             return self.status(code)
@@ -471,7 +566,8 @@ class JavBrowser:
             self._ready(provider)
             skip = list(row.get("skip", ()))
             result = self.search(self.contract, {"code": code, "goal": "quality", **({"skip": skip} if skip else {})})
-            candidate = _download_candidate(result.get("items", ()), code, frozenset(row.get("skip", ())))
+            candidate = _download_candidate(result.get("items", ()), code, frozenset(row.get("skip", ())),
+                                            row.get("edition", ""))
             should_submit = False
             with self._lock:
                 if row["state"] != "searching" or not self._config().get("token_hash"):

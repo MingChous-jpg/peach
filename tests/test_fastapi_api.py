@@ -4360,6 +4360,7 @@ class RouteAuthContractTests(unittest.TestCase):
             ("POST", "/api/jav-browser"): routes_jav_browser.browser_client,
             ("POST", "/api/jav-browser/errors"): routes_jav_browser.browser_client,
             ("POST", "/api/jav-browser/postprocess"): routes_jav_browser.browser_client,
+            ("POST", "/api/jav-browser/prioritize"): routes_jav_browser.browser_client,
             ("GET", "/api/jav-browser/performer"): routes_jav_browser.browser_client,
             ("POST", "/api/jav-browser/performer"): routes_jav_browser.browser_client,
             ("POST", "/api/jav-browser/dismiss"): routes_jav_browser.browser_client,
@@ -4465,7 +4466,7 @@ class LoginPageWithoutSessionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('data-page="error" data-status="404" data-detail="这个地址下没有页面。"', page.text)
         script = await self.client.get("/dist/no-such.js")
         self.assertEqual(script.status_code, 404)
-        self.assertEqual(script.json(), {"error": "这个地址下没有页面。"})
+        self.assertEqual(script.json(), {"error": "这个地址下没有页面。", "message_code": "http.notFound", "message_params": {}})
 
 
 if __name__ == "__main__":

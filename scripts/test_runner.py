@@ -32,7 +32,7 @@ from . import change_impact, test_evidence, test_history, test_resume, test_run_
 from .test_inputs import repository_paths_read_by as repository_paths_read_by
 
 COMMON_PATTERNS = ("test_context_budget.py", "test_test_collection.py", "test_complexity_ratchet.py",
-                   "test_source_assertion_ratchet.py", "test_python_lint.py")
+                   "test_source_assertion_ratchet.py", "test_python_lint.py", "test_user_messages.py")
 SCOPES: dict[str, tuple[str, ...]] = {
     "checks": ("test_copy_final_state.py", "test_dependency_policy.py", "test_repo_hygiene.py", "test_test_planning.py", "test_reference_updates.py", "test_readme_contracts.py",
                "test_complexity_ratchet.py", "test_source_assertion_ratchet.py", "test_python_lint.py"),
@@ -1117,7 +1117,21 @@ def rerun_failures(rows: list[dict], spawn=subprocess.run) -> bool:
         return False
     FLAKY[:] = selectors
     print(f"偶发通过（全量失败、单独重跑通过，已写入测试记录）：{', '.join(selectors)}", flush=True)
+    report_flaky(selectors)
     return True
+
+
+def report_flaky(selectors: list[str]) -> None:
+    """偶发写进测试历史供排行；在 GitHub Actions 上同时标成警告并写进作业摘要，PR 上看得见。"""
+    if test_history.nested():
+        return
+    test_history.append_flaky(ROOT, selectors)
+    if not os.environ.get("GITHUB_ACTIONS"):
+        return
+    print(f"::warning title=偶发失败::单独重跑通过，需要修等待写法：{', '.join(selectors)}", flush=True)
+    if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(summary, "a", encoding="utf-8") as stream:
+            stream.write("### 偶发失败（单独重跑通过）\n\n" + "".join(f"- `{name}`\n" for name in selectors) + "\n")
 
 
 def local_batches(names, jobs):
@@ -1233,6 +1247,9 @@ def run_shard_child(args, requested, scopes, files) -> int:
         test_history.append(ROOT, scope=f"{' '.join(requested)}:{' '.join(scopes)} "
                             f"shard {args.shard_index + 1}/{args.shard_count}",
                             rows=rows, files=[name.removesuffix(".py") for name in names])
+        # 独立分片同样先把失败文件单独重跑一次，不让一个负载偶发把整片判红、只能整片重跑。
+        if not success and rows:
+            success = rerun_failures(rows)
     return 0 if success else 1
 
 
@@ -1245,6 +1262,9 @@ def main(argv: list[str] | None = None) -> int:
     reuse.add_argument("--fresh", action="store_true", help="实际重跑，不复用本机记录")
     reuse.add_argument("--resume", action="store_true", help="正式验证续跑，full 也复用有效的完成证明")
     parser.add_argument("--focus", action="append", default=[], help="定向调试指定 Python/浏览器用例，不签发记录")
+    parser.add_argument("--rerun-failures", action="store_true",
+                        help="定向运行失败后把失败文件单独重跑一次，通过的记为偶发（CI 浏览器分片用）")
+    parser.add_argument("--full-lock-held", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--lock-timeout", type=float, default=1800,
                         help="全量锁等待秒数；0 表示锁忙时立即返回")
     parser.add_argument("--base", default="master", help="CI 选测的已验证 Git 基线")
@@ -1268,6 +1288,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.resume_plan is not None and args.shard_plan is None:
         parser.error('恢复计划仅供正式父运行的分片使用')
+    if args.rerun_failures and not args.focus:
+        parser.error('--rerun-failures 只用于定向运行；正式入口本来就会单独重跑失败文件')
     if args.focus:
         return run_focus(parser, args)
     if os.environ.get("PEACH_TEST_FOCUS") or os.environ.get("PEACH_E2E_FILES") or os.environ.get("PEACH_VITEST_FILES"):
@@ -1294,14 +1316,28 @@ def main(argv: list[str] | None = None) -> int:
         success, count, _ = run_local_suite(scopes, args.jobs, f"{' '.join(requested)}:{' '.join(scopes)}")
         return 0 if success and count > 0 else 1
     try:
-        guard = test_evidence.held(test_evidence.evidence_dir(ROOT) / "full-suite.lock",
-                                  wait_seconds=args.lock_timeout,
-                                  scope=" ".join(scopes), root=str(ROOT)) \
-            if "full" in scopes else nullcontext()
-        with guard:
+        with full_suite_guard(parser, args, scopes):
             return verified_run(args, requested, scopes, files)
     except test_evidence.Timeout as error:
         return busy(error)
+
+
+def full_suite_guard(parser, args, scopes):
+    """全量验证取得仓库的全量锁。集成入口持锁补验时，由它直接派出的运行器沿用那把锁，
+    否则子进程会等父进程放锁、父进程等子进程结束，互等到超时。"""
+    if args.full_lock_held:
+        lock = test_evidence.evidence_dir(ROOT) / "full-suite.lock"
+        try:
+            holder = json.loads(test_evidence.holder_path(lock).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            holder = {}
+        if holder.get("pid") != os.getppid():
+            parser.error("--full-lock-held 只供持有全量锁的集成入口直接调用")
+        return nullcontext()
+    if "full" not in scopes:
+        return nullcontext()
+    return test_evidence.held(test_evidence.evidence_dir(ROOT) / "full-suite.lock", wait_seconds=args.lock_timeout,
+                              scope=" ".join(scopes), root=str(ROOT))
 
 
 def run_focus(parser, args) -> int:
