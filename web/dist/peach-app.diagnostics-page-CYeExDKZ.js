@@ -1,10 +1,10 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "8b951119-09ec-4462-871a-796e01c213db", e._sentryDebugIdIdentifier = "sentry-dbid-8b951119-09ec-4462-871a-796e01c213db");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "3f63538b-a0b9-44a7-a897-fa7e36a487bb", e._sentryDebugIdIdentifier = "sentry-dbid-3f63538b-a0b9-44a7-a897-fa7e36a487bb");
 	} catch {}
 })();
-import { ApiError as e, Button as t, ButtonLink as n, Chip as r, DIAGNOSTICS_KEY as i, Disclosure as a, EmptyState as o, Fact as s, FactList as c, Fieldset as l, FieldsetTitle as u, Input as d, LOC as f, LinkButton as p, Note as m, Section as h, SettingsCard as g, SettingsSectionLabel as _, Stack as v, TaskProgress as y, __toESM as b, apiGet as x, apiSend as S, busyProps as C, configurationSection as w, cx as T, diagnosticHeaders as E, diagnosticsSkeleton as ee, errorMessage as D, fetchDiagnostics as O, fmtDur as k, fmtSize as A, queryClient as j, require_jsx_runtime as M, require_react as N, settingsPath as P, t as F, tl as I, useAction as L, useQuery as R } from "./peach-app.js";
+import { ApiError as e, Button as t, ButtonLink as n, Chip as r, DIAGNOSTICS_KEY as i, Disclosure as a, EmptyState as o, Fact as s, FactList as c, Fieldset as l, FieldsetTitle as u, Input as d, LOC as f, LinkButton as p, Note as m, Section as h, SettingsCard as g, SettingsSectionLabel as _, Stack as v, TaskProgress as y, __toESM as b, apiGet as x, apiSend as S, busyProps as C, configurationSection as w, cx as T, diagnosticHeaders as E, diagnosticsSkeleton as D, errorMessage as O, fetchDiagnostics as ee, fmtDur as k, fmtSize as te, interfaceLanguage as A, queryClient as j, require_jsx_runtime as M, require_react as N, settingsPath as ne, stageText as P, t as F, tl as I, useAction as L, useQuery as R } from "./peach-app.js";
 import { ErrorExcerpt as z } from "./peach-app.error-excerpt-Ugft6I5o.js";
 import { SiteMark as B } from "./peach-app.site-mark-D_VlIyJz.js";
 import { DataTable as V } from "./peach-app.data-table-C4egVbd2.js";
@@ -89,7 +89,7 @@ function K({ group: e, openItem: n, receipt: r }) {
 			label: F("manage:shared.size"),
 			width: 112,
 			value: (e) => e.size ?? 0,
-			render: (e) => e.size === null ? F("manage:shared.notFound") : A(e.size)
+			render: (e) => e.size === null ? F("manage:shared.notFound") : te(e.size)
 		}
 	];
 	return /* @__PURE__ */ (0, U.jsx)(a, {
@@ -210,11 +210,11 @@ function Y({ kind: r, codes: i = "", children: a }) {
 				value: c.done || 0,
 				total: c.total,
 				label: c.total ? F("manage:diagnosticsExport.progress", {
-					stage: c.stage,
+					stage: P(c),
 					done: c.done || 0,
 					count: c.total
 				}) : [
-					c.stage || F("manage:diagnosticsExport.preparing"),
+					P(c) || F("manage:diagnosticsExport.preparing"),
 					c.rows ? F("manage:diagnosticsExport.candidateCount", { count: c.rows }) : "",
 					c.files ? F("manage:diagnosticsExport.fileCount", { count: c.files }) : ""
 				].filter(Boolean).join(" · ")
@@ -285,7 +285,7 @@ function X() {
 	});
 }
 // src/react/diagnostics/diagnostics-page.tsx
-var te = {
+var re = {
 	ok: F("manage:diagnostics.statusOk"),
 	warning: F("manage:diagnostics.statusWarning"),
 	failed: F("manage:diagnostics.statusFailed"),
@@ -293,7 +293,7 @@ var te = {
 	disabled: F("manage:diagnostics.statusDisabled"),
 	stale: F("manage:diagnostics.statusStale"),
 	unchecked: F("manage:diagnostics.statusUnchecked")
-}, ne = { "/tasks": F("manage:diagnostics.viewTasks") }, re = [
+}, ie = { "/tasks": F("manage:diagnostics.viewTasks") }, ae = [
 	[F("manage:diagnostics.groupLibraries"), ["media_mounts", "data_root"]],
 	[F("manage:diagnostics.groupDatabase"), ["database", "schema"]],
 	[F("manage:diagnostics.groupTools"), ["ffmpeg"]],
@@ -304,20 +304,20 @@ var te = {
 		"version"
 	]],
 	[F("manage:diagnostics.groupTasks"), ["tasks"]]
-], Z = (e) => new Date(e).toLocaleString();
+], Z = (e) => new Date(e).toLocaleString(A);
 function Q({ status: e }) {
 	return /* @__PURE__ */ (0, U.jsx)(r, {
 		variant: "caption",
 		"data-diagnostic-status": e,
 		color: e === "failed" ? "rose" : e === "ok" ? "lime" : e === "warning" || e === "stale" ? "yellow" : "neutral",
-		children: te[e] ?? F("manage:shared.notFound")
+		children: re[e] ?? F("manage:shared.notFound")
 	});
 }
-function ie() {
+function oe() {
 	return /* @__PURE__ */ (0, U.jsx)(Y, { kind: "support" });
 }
 function $({ name: e, check: t, compact: r = !1 }) {
-	let i = t.target === "/settings/library" && (e === "security" || e === "port") ? P("network") : t.target, a = r ? "h4" : "h3";
+	let i = t.target === "/settings/library" && (e === "security" || e === "port") ? ne("network") : t.target, a = r ? "h4" : "h3";
 	return /* @__PURE__ */ (0, U.jsxs)("div", {
 		"data-diagnostic-check": e,
 		className: T("flex flex-col gap-4 border-b border-separator-border pr-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between", r ? "py-3" : "py-5"),
@@ -347,30 +347,30 @@ function $({ name: e, check: t, compact: r = !1 }) {
 				size: "small",
 				variant: "secondary",
 				href: i,
-				children: i.startsWith("/settings/") ? F("manage:diagnostics.openSection", { section: w(i) }) : ne[i] ?? F("manage:diagnostics.openRelated")
+				children: i.startsWith("/settings/") ? F("manage:diagnostics.openSection", { section: w(i) }) : ie[i] ?? F("manage:diagnostics.openRelated")
 			})
 		}) : null]
 	});
 }
-function ae(e) {
+function se(e) {
 	let r = R({
 		queryKey: i,
-		queryFn: ({ signal: e }) => O(e),
+		queryFn: ({ signal: e }) => ee(e),
 		staleTime: 1e4
 	}), o = L(), [l, u] = (0, H.useState)(""), d = () => void o.run("refresh", async () => {
 		let e = await r.refetch();
 		if (e.error) throw e.error;
 		return e.data;
-	}, () => u(""), (e) => u(D(e))), f = r.data;
+	}, () => u(""), (e) => u(O(e))), f = r.data;
 	if (!f && r.isPending) return /* @__PURE__ */ (0, U.jsx)("div", {
 		role: "status",
 		"aria-label": F("manage:diagnostics.loading"),
-		dangerouslySetInnerHTML: { __html: ee() }
+		dangerouslySetInnerHTML: { __html: D() }
 	});
 	if (!f) return /* @__PURE__ */ (0, U.jsxs)("div", {
 		className: "ui-configpage",
 		children: [
-			/* @__PURE__ */ (0, U.jsx)(ie, {}),
+			/* @__PURE__ */ (0, U.jsx)(oe, {}),
 			/* @__PURE__ */ (0, U.jsx)(m, {
 				tone: "error",
 				title: F("manage:diagnostics.loadFailed"),
@@ -380,7 +380,7 @@ function ae(e) {
 					...C(o.busy === "refresh"),
 					children: F("manage:diagnostics.checkAgain")
 				}),
-				children: r.error ? D(r.error) : F("manage:diagnostics.reportNotFound")
+				children: r.error ? O(r.error) : F("manage:diagnostics.reportNotFound")
 			}),
 			/* @__PURE__ */ (0, U.jsx)(X, {})
 		]
@@ -437,7 +437,7 @@ function ae(e) {
 				children: /* @__PURE__ */ (0, U.jsx)(a, {
 					summary: F("manage:diagnostics.otherChecks", { count: y.length }),
 					contentClassName: "gap-5",
-					children: re.map(([e, t]) => {
+					children: ae.map(([e, t]) => {
 						let n = y.filter(([e]) => t.some((t) => t === e));
 						return n.length ? /* @__PURE__ */ (0, U.jsxs)("section", {
 							"aria-label": e,
@@ -506,6 +506,6 @@ function ae(e) {
 		]
 	});
 }
-export { ae as DiagnosticsPage };
+export { se as DiagnosticsPage };
 
-//# debugId=8b951119-09ec-4462-871a-796e01c213db
+//# debugId=3f63538b-a0b9-44a7-a897-fa7e36a487bb

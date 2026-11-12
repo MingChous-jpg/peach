@@ -5,9 +5,10 @@
 import { apiGet, apiSend } from '../../api';
 import { fmtSize } from '@peach/legacy/core';
 import { requestErrorMessage } from '../../core/request-error';
+import { serverLabel, stageText } from '../../core/server-text';
 import { queryClient } from '../query';
 import type { ProcessingSpeed } from '../library-processing/library-processing';
-import { t } from '../../i18n';
+import { interfaceLanguage, t } from '../../i18n';
 
 export const TASKS_URL = '/api/tasks';
 /** 整页共用这一个键：三段是同一次响应的三个字段。 */
@@ -39,8 +40,13 @@ export interface TaskRunPayload {
   progress_current: number | null;
   progress_total: number | null;
   progress_label: string;
+  /** `progress_label` 与 `error` 的 code 和参数（ADR-0156 第三条）；旧行没有。 */
+  progress_code?: string;
+  progress_params?: Record<string, unknown>;
   result_summary: Record<string, unknown>;
   error: string;
+  error_code?: string;
+  error_params?: Record<string, unknown>;
   /** 派出这一轮的父任务；不是后继时为 null（ADR-0040）。 */
   parent_run_id: number | null;
   root_run_id: number | null;
@@ -287,16 +293,50 @@ export const isRoutine = (run: TaskRunPayload) => run.trigger === 'scheduled'
 
 export const isActive = (run: TaskRunPayload) => run.status === 'pending' || run.status === 'running';
 
-/** 后继那一行的说明：它在做哪一件（标签去掉与任务名重复的前缀）、做到第几项或结果如何。
- *  标题已经是任务名，这里再写一遍「新作资料采集：」读起来就是同一句话说了两次。 */
+/** 任务名按 `task_key` 取当前界面语言；没有译文的照用服务端的中文名。 */
+export const taskName = (run: Pick<TaskRunPayload, 'task_key' | 'task_label'>): string =>
+  serverLabel(`task.${run.task_key}`, run.task_label);
+
+const ITEM_PROGRESS = 'taskRun.progress.item';
+const ITEMS_PROGRESS = 'taskRun.progress.items';
+
+/** 落库的一句说明（ADR-0156 第三条）：带 code 的按界面语言显示，任务名、触发方式和阶段换成当前语言的名字；
+ *  旧行没有 code，照原文显示。 */
+function runText(run: TaskRunPayload, code: string | null | undefined, params: Record<string, unknown> | undefined,
+  original: string): string {
+  if (!code) return original;
+  if (code === ITEM_PROGRESS && !params?.name) return taskName(run);
+  const trigger = String(params?.trigger || ''), stage = String(params?.stage || '');
+  return serverLabel(code, original, {
+    ...params, task: taskName(run), ...(trigger ? { trigger: TRIGGER_LABELS[trigger] || trigger } : {}),
+    ...(stage ? { stage: stageText({ stage, stage_code: stage }) } : {}),
+  });
+}
+
+/** 这一轮此刻在做什么。 */
+export const progressLabel = (run: TaskRunPayload): string =>
+  runText(run, run.progress_code, run.progress_params, run.progress_label || '');
+
+/** 这一轮为什么停下：跳过、被打断这类由任务中心自己写的原因按界面语言显示，其余照原文。 */
+export const runError = (run: TaskRunPayload): string =>
+  runText(run, run.error_code, run.error_params, run.error || '');
+
+/** 后继在做的那一件。标题已经是任务名，这里只写条目，不再说一遍「新作资料采集：」。 */
+function followupItem(row: TaskRunPayload): string {
+  const params = row.progress_params || {};
+  if (row.progress_code === ITEM_PROGRESS) return String(params.name || '');
+  if (row.progress_code === ITEMS_PROGRESS) return t('manage:taskCenter.batchItems', { first: params.first, count: params.count });
+  if (row.progress_code) return progressLabel(row);
+  // 旧行没有 code，照原文显示；只是任务名的那一句与标题重复，不写。
+  return row.progress_label === row.task_label ? '' : row.progress_label || '';
+}
+
+/** 后继那一行的说明：它在做哪一件、做到第几项或结果如何。 */
 export function followupDetail(row: TaskRunPayload): string {
-  const prefix = `${row.task_label}：`;
-  const label = row.progress_label || '';
-  const item = String(row.result_summary?.name || '')
-    || (label.startsWith(prefix) ? label.slice(prefix.length) : label === row.task_label ? '' : label);
+  const item = String(row.result_summary?.name || '') || followupItem(row);
   const total = row.progress_total || 0;
   const { name: _name, ...result } = row.result_summary || {};
-  const tail = readableErrorHeadline(row.error) || summaryText(result)
+  const tail = readableErrorHeadline(runError(row)) || summaryText(result)
     || (isActive(row) && total > 0 ? t('manage:taskCenter.progressItems', { progress: progressText(row.progress_current, total) }) : '');
   return [item, tail].filter(Boolean).join(' · ');
 }
@@ -367,7 +407,7 @@ export function momentText(stamp: string | null | undefined): string {
   if (!stamp) return '';
   const moment = new Date(stamp);
   if (Number.isNaN(moment.getTime())) return '';
-  return moment.toLocaleString(undefined,
+  return moment.toLocaleString(interfaceLanguage,
     { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 

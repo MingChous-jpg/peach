@@ -349,7 +349,7 @@ Windows 复用 FFmpeg 的 D3D11VA 解码与 `h264_amf`、`h264_qsv` 编码，沿
 
 ## GitHub 项目看板
 
-用户反馈归属应用仓库 `peach-mitao/peach`，维护者项目任务归属 `peach-mitao/peach-roadmap`，共同使用一个公开 Project。集中在应用仓库处理 PR、主线与发布事件，每小时同步两仓 Issue，不逐次响应 Issue 的编辑、标签与开闭事件，凭据仅保留在应用仓库。应用仓库的新 Issue 复用 `issue_intake.verdict` 的模板准入判定；已有条目因待补模板关闭时，以 GitHub `closedAt` 为起点保留 2 小时修改窗口，再按当前状态同步。Issue 关联使用仓库名与编号，迁移映射兼容已存在的关联行；交付版本始终按应用仓库的主线提交和发布制品核验。
+用户反馈和维护者任务都在应用仓库 `peach-mitao/peach`，共用一个公开 Project；原规划仓库已归档，旧编号由迁移映射接到转移后的 Issue。集中在应用仓库处理 PR、主线与发布事件，每小时同步 Issue，不逐次响应 Issue 的编辑、标签与开闭事件，凭据仅保留在应用仓库。应用仓库的新 Issue 复用 `issue_intake.verdict` 的模板准入判定；已有条目因待补模板关闭时，以 GitHub `closedAt` 为起点保留 2 小时修改窗口，再按当前状态同步。Issue 关联使用仓库名与编号，迁移映射兼容已存在的关联行；交付版本始终按应用仓库的主线提交和发布制品核验。
 
 看板同步复用 GitHub CLI 的已登录认证、GraphQL Projects API 和 Git 的提交祖先校验；不新增 Python 依赖。官方 [Projects Actions 自动化](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/automating-projects-using-actions)支持独立项目凭据，仓库默认令牌不能写组织 Project。项目原生状态工作流没有发布标签与制品归属判定；通用自动加卡 Action 也不覆盖验收和发布的分别记录，因此由 `scripts/project_board.py` 保留 Peach 的状态规则，传输与认证交给系统已安装的 `gh`。运行依赖是官方维护、MIT 许可的 GitHub CLI 和 GPL-2.0 Git，使用 GitHub 托管 runner 内置版本；本机只读 GraphQL 与标签祖先验证后再应用。无生产服务、ledger 或媒体写入。
 
@@ -552,6 +552,8 @@ Windows 连接清理复用 [CPython 3.14.7 的 Proactor 对象协议](https://gi
 馆藏与口味群体研究复用 `LedgerDatabase.read_connection`、规范编号、`entities.male_performer_ids`、`taste_evidence.era/length_band`、实体收藏快照、`error_reporting.redact` 与固定版 Sentry 内存附件 API。`library_research` 负责本机去重、用户信号、手动标签和分组评分直方图，这是 Peach 的领域投影；不读取浏览历史或写入偏好缓存。JSON 使用 Python 3.14 标准库 `gzip`（PSF，无新增依赖），固定文件名，gzip 头不含源文件名或生成时间。万条作品投影逐字节还原，真实 SDK 的内存传输验证最终附件、白名单与同意门槛。Sentry 附件接收复用官方 SDK（MIT）；没有引入匿名中继或独立聚合服务，本契约保留逐份投影并披露关联风险。字段、体积上限和验收见[馆藏与口味群体研究](DIAGNOSTICS.md#馆藏与口味群体研究)。
 
 代码展示统一复用 `frontend/src/react/components/code-block.tsx`：BoardUI 已固定版本的 Button、语义颜色、排版与圆角，加现有覆盖式滚动条；包含语言标识、完整原文复制、可聚焦滚动区、剪贴板失败反馈与可选的屏幕截断。用于馆藏上传 JSON、CloudDrive2 TOML 和自定义来源 JSON。2026-10-19 核对 [BoardUI 官方目录](https://www.boardui.com/components) 与 `boardui list`，公开注册表没有独立 Code Block，故以现有原语组合 Peach 包装件；无需引入只为只读文本服务的语法解析依赖，也不复制 Pro 模板。组件测试覆盖原文复制与 HTML 文本安全，布局通过桌面和窄屏浏览器验证。无新增依赖，vendored 上游源文件保持原样。
+
+研究附件归档复用标准库 SQLite 事务、gzip、SHA-256 与现有 `library_research.valid_projection`、容量字段校验和 `fsutil.atomic_write_text`，通过 `scripts/research_archive.py` 导入、汇总、清理及按实例删除。当前上传标签复用 `genre_taxonomy.CONTENT_GENRES` 的规范名称。诊断随机实例与研究实例分别保存在各自选择文件，日联系和快照回执沿用已有传输闸门。方案见 [ADR-0157](adr/0157-diagnostic-instances-and-research-receipts.md)。
 
 实体收藏复用 `profiles.read_settings` 与 `library_favorites.favorite_entities`，集中处理规范身份、重定向、标签选择、数量上限与去重，供页面和群体研究共用。命名筛选及 HTTP 展示由网页层负责；数据层不依赖网页模块。
 

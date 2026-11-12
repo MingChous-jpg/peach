@@ -11,7 +11,7 @@ import { BACKGROUND_ISSUES_URL, type BackgroundIssue } from '../../src/react/act
 import { DOWNLOADS_URL } from '../../src/react/activity/downloads-panel';
 import { ErrorExcerpt } from '../../src/react/activity/error-excerpt';
 import {
-  elapsedText, errorHeadline, followupDetail, hasResultProblems, isRoutine, prefetchTasks, progressText, summaryItems, summaryText, TASKS_URL,
+  elapsedText, errorHeadline, followupDetail, hasResultProblems, isRoutine, prefetchTasks, progressLabel, progressText, summaryItems, summaryText, TASKS_URL,
 } from '../../src/react/activity/tasks';
 import type { ActivityData, TaskResourcesPayload, TaskRunPayload } from '../../src/react/activity/tasks';
 import type { DownloadsSnapshot } from '../../src/react/bundle';
@@ -58,6 +58,7 @@ const followup = (parent: number, overrides: Partial<TaskRunPayload> = {}): Task
   run({
     id: 90, task_key: 'entity-avatar', task_label: '资料图片补全', status: 'succeeded',
     progress_total: null, progress_current: null, progress_label: '资料图片补全：涼森れむ',
+    progress_code: 'taskRun.progress.item', progress_params: { name: '涼森れむ' },
     finished_at: '2026-09-11T10:04:00Z', parent_run_id: parent, root_run_id: parent,
     followup_key: 'entity-avatar:performer:12', followup_depth: 1,
     result_summary: { outcome: '已装上' }, ...overrides,
@@ -683,13 +684,15 @@ it('被挡下的那一轮单独成段，不在最近完成里再出现一次', a
   const blocked = run({
     id: 7, status: 'cancelled', trigger: 'scheduled', progress_total: null,
     finished_at: '2026-09-11T10:05:00Z', elapsed_seconds: null,
-    result_summary: { blocked_by: 3 }, error: '与第 3 轮（手动触发）冲突，本次跳过',
+    // 带 code 的原因按界面语言取译文，触发方式换成当前语言的名字；库里的原文只在没有译文时用。
+    result_summary: { blocked_by: 3 }, error: '旧写法：被第 3 轮挡下',
+    error_code: 'taskRun.error.skippedBy', error_params: { run: 3, trigger: 'manual' },
   });
   const { host } = await open(payload({ skipped: [blocked], finished: [blocked] }));
   expect(sections(host)).toEqual(['正在进行', '本次未执行']);
   expect(host.querySelectorAll('li')).toHaveLength(1);
   // 原因落在卡片底部的说明区，状态由徽章说。
-  expect(host.querySelector('[data-status=cancelled]')?.textContent).toContain('与第 3 轮');
+  expect(host.querySelector('[data-status=cancelled]')?.textContent).toContain('与第 3 轮（手动触发）冲突，本次跳过');
   expect(host.querySelector('[data-status=cancelled] span')?.textContent).toBe('已取消');
 });
 
@@ -697,7 +700,7 @@ it('跑完那一轮显示摘要，失败那一轮显示原因', async () => {
   const { host } = await open(payload({ finished: [
     run({ id: 2, status: 'succeeded', finished_at: '2026-09-11T10:02:00Z',
           progress_total: null, result_summary: { checked: 7, results: [1, 2] } }),
-    run({ id: 3, status: 'failed', task_label: '扫描与采集', finished_at: '2026-09-11T10:03:00Z',
+    run({ id: 3, status: 'failed', task_key: 'library-processing', task_label: '扫描与采集', finished_at: '2026-09-11T10:03:00Z',
           progress_total: null, error: 'RuntimeError: 上游挡回来了' }),
   ] }));
   expect(host.querySelector('[data-status=succeeded]')?.textContent).toContain('已检查 7');
@@ -738,7 +741,7 @@ it('派出几十条后继的几批合成一张进行中的卡，进度按计数�
   const child = (id: number, parentId: number, status: string) => followup(parentId, {
     id, task_key: 'upgrade-library', task_label: '资料自动修复', status, finished_at: null,
     progress_label: status === 'running' ? 'ABC-001 · 采集缺失资料' : 'ABC-00' + id, result_summary: {},
-    followup_key: `upgrade-library:x:${id}` });
+    progress_code: undefined, progress_params: undefined, followup_key: `upgrade-library:x:${id}` });
   const { host } = await open(payload({
     running: [child(12, 2, 'pending'), child(11, 1, 'running')],
     finished: [parent(2, '2026-10-28T09:03:00Z')],
@@ -848,7 +851,8 @@ it('后继还在跑时，派出它的那一轮整张卡留在正在进行，那�
                        result_summary: { followups: 1 } });
   const scraping = followup(parent.id, {
     task_key: 'feed-scrape', task_label: '新作资料采集', status: 'running', finished_at: null,
-    progress_label: '新作资料采集：MIZD-441', progress_current: 13, progress_total: 22,
+    progress_label: '新作资料采集：MIZD-441', progress_code: 'taskRun.progress.item',
+    progress_params: { name: 'MIZD-441' }, progress_current: 13, progress_total: 22,
     followup_key: 'feed-scrape:MIZD-441', result_summary: {} });
   const { host } = await open(payload({ running: [scraping], finished: [parent] }));
   expect(sections(host)).toEqual(['正在进行']);
@@ -923,7 +927,7 @@ it('轮询间隔跟着内容走：有东西在跑两秒一次，全是终态十�
 
 it('一轮请求失败不擦掉上一份数据，只在页内多一条原因', async () => {
   vi.useFakeTimers();
-  const fetcher = serve(payload({ finished: [run({ id: 5, status: 'succeeded', task_label: '扫描与采集' })] }), null);
+  const fetcher = serve(payload({ finished: [run({ id: 5, status: 'succeeded', task_key: 'library-processing', task_label: '扫描与采集' })] }), null);
   await prefetchTasks(new AbortController().signal);
   const host = await mount(page());
 
@@ -1054,6 +1058,29 @@ it('任务主摘要使用中文结果，内部字段保留给技术详情', () =
   expect(followupDetail(followup(4, { task_key: 'performer-profile', task_label: '女优资料补全',
     progress_label: '补女优资料：演示人物', result_summary: { name: '演示人物', outcome: 'avwikidb 绑定；javdb 绑定' } })))
     .toBe('演示人物 · 已关联 AVWikiDB 资料页；已关联 JavDB 资料页');
+});
+
+it('后继那一行按 code 只写条目；一批几部写成首部加总数，没有 code 的旧行照原文', () => {
+  const pending = { status: 'pending', finished_at: null, result_summary: {} };
+  expect(followupDetail(followup(4, pending))).toBe('涼森れむ');
+  expect(followupDetail(followup(4, { ...pending, task_key: 'feed-scrape', task_label: '新作资料采集',
+    progress_label: '新作资料采集：MIZD-441 等 3 部', progress_code: 'taskRun.progress.items',
+    progress_params: { first: 'MIZD-441', count: 3 } }))).toBe('MIZD-441 等 3 部');
+  expect(followupDetail(followup(4, { ...pending, progress_code: undefined, progress_params: undefined })))
+    .toBe('资料图片补全：涼森れむ');
+  expect(followupDetail(followup(4, { ...pending, progress_label: '资料图片补全', progress_code: undefined,
+    progress_params: undefined }))).toBe('');
+});
+
+it('进度说明里的阶段和批量操作按 code 取当前语言，库里的原文只在没有译文时用', () => {
+  const running = (overrides: Partial<TaskRunPayload>) => followup(4, { status: 'running', finished_at: null, ...overrides });
+  expect(progressLabel(running({ task_key: 'upgrade-library', task_label: '资料自动修复', progress_label: '旧写法',
+    progress_code: 'taskRun.progress.subjectStage', progress_params: { subject: 'ABC-001', stage: 'library.fetchMetadata' } })))
+    .toBe('ABC-001 · 采集缺失资料');
+  expect(progressLabel(running({ task_key: 'library-processing', progress_label: '旧写法',
+    progress_code: 'stage.library.scanFiles', progress_params: {} }))).toBe('扫描文件');
+  expect(progressLabel(running({ task_key: 'batch', progress_label: '旧写法',
+    progress_code: 'batchOperation.performer-delete', progress_params: {} }))).toBe('按女优永久删除影片');
 });
 
 it('报错在列表里只露一行：traceback 取最后一行，别的取第一行非空', () => {

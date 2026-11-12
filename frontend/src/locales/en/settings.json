@@ -104,6 +104,7 @@
     "download": "Download certificate",
     "fingerprint": "SHA-256 fingerprint",
     "help": "Other devices warn that the certificate isn't trusted the first time they open the HTTPS address. Install and trust Peach's CA certificate on that device to stop the warning. The certificate doesn't include the private key.",
+    "iosDevices": "iPhone/iPad",
     "iosSteps": "Scan with the Camera app and allow the profile download in Safari. Install it in Settings → General → VPN & Device Management, then turn on full trust for this certificate in Settings → General → About → Certificate Trust Settings.",
     "qrHelp": "The QR code refreshes every 10 minutes while this page is open. If Android can't open the .local address, open this page using the LAN IP and scan again.",
     "qrLabel": "Scan with your phone to download Peach's CA certificate",
@@ -668,6 +669,7 @@
     "summary": "Every library reads local NFO files and images in the same directory first. The processing mode only decides whether to fill in missing data online."
   },
   "librarySharing": {
+    "acceptedHelp": "The endpoint accepted the request. Attachment retention requires verification in the receiver archive.",
     "agreeAndEnable": "Agree and turn on upload",
     "blocked": "Blocked",
     "consent": "I've reviewed the upload preview and agree to upload collection and taste details",
@@ -695,6 +697,9 @@
     "saved": "Collection and taste upload settings saved",
     "sendFailed": "Send failed",
     "sent": "Sent",
+    "snapshot": "This week's snapshot",
+    "snapshotId": "Snapshot ID",
+    "snapshotSizes": "Original {{raw}} KiB, gzip-compressed {{compressed}} KiB.",
     "statusUnavailable": "Couldn't get the collection upload status.",
     "truncated": "Showing the first 24,000 characters. Download to see the full content.",
     "unavailable": "Upload service not configured",
@@ -714,6 +719,7 @@
     "changeTypeLabel": "Directory change type {{index}}",
     "changeTypePlaceholder": "Choose how to change this directory",
     "dependencyMissing": "Not detected:",
+    "dependencyMissingName": "{{name}} not found.",
     "directoriesLabel": "Directories in {{name}}",
     "directoryLabel": "Media directory {{index}}",
     "goToCollection": "Go to collection",

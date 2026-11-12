@@ -11,12 +11,13 @@ from .downloads import (INGESTED, POSTPROCESS_COMPLETE,
                         POSTPROCESS_PENDING, POSTPROCESS_QUEUED, POSTPROCESS_RUNNING,
                         DownloadStore, iso)
 from .field_owners import SCAN_FILENAME, write_owned_fields
-from .followups import FollowupType, register
+from .followups import Followup, FollowupType, register
 from .ingest_notices import NOTICES
 from .jobs import JobDeferred
 from .library_processing import COLLECT_STAGE, _ffprobe_path, process_library
 from .media_probe import probe_unmeasured
-from .task_runs import declared_rows
+from .task_runs import declared_rows, item_progress, run_progress
+from .task_stages import stage_label, stage_progress
 from .task_retry import RetryableTaskError
 
 TASK_KEY = "download-postprocess"
@@ -44,12 +45,11 @@ def enqueue(contract, task) -> int | None:
         return None
     parent = contract.task_runs.start(
         TASK_KEY, trigger="scheduled", mutex_key=f"download-ingest:{task.id}",
-        conflict="skip", label=f"下载已入库：{task.code or task.display_name or task.id}")
+        conflict="skip", **run_progress("downloadLanded", name=str(task.code or task.display_name or task.id)))
     if parent is None:
         return None
-    result = contract.task_runs.enqueue_followups(parent.id, [(
-        followup_key(task.id), TASK_KEY,
-        f"{TASK_LABEL}：{task.code or task.display_name or task.id}")])
+    result = contract.task_runs.enqueue_followups(parent.id, [Followup.item(
+        followup_key(task.id), TASK_KEY, str(task.code or task.display_name or task.id)).as_row()])
     active = contract.task_runs.blocking(followup_key(task.id))
     run_id = result["queued"][0] if result["queued"] else (active.id if active else None)
     contract.task_runs.finish(parent.id, "succeeded", summary={"followups": len(result["queued"])})
@@ -120,7 +120,7 @@ def _collect(contract, main: int, handle) -> dict:
         state_file=state_file, resume_state=previous, protected_ids=[main],
         report=lambda state: handle.progress(
             current=int(state.get("checked") or 0), total=int(state.get("total") or 0),
-            label=str(state.get("stage") or TASK_LABEL)))
+            **(stage_progress(state) if state.get("stage") else item_progress(TASK_KEY))))
     if state.get("status") == "failed":
         # 问题全是来源限流或拒绝访问时，其余资料已经落库，等的是那一站放开；文件照常整理，
         # 不为一项暂缺的资料把整条下载卡在云下载目录里。
@@ -214,19 +214,19 @@ def run(contract, key: str, handle) -> dict:
     store.postprocess(task_id, POSTPROCESS_RUNNING, detail="正在识别正片")
     try:
         main, _path, folder_ids = _bind_main(contract, task)
-        handle.progress(label="隔离推广附件", throttle=0)
+        handle.progress(**stage_label("download.isolateExtras"), throttle=0)
         isolated = _isolate_ads(contract, main, folder_ids)
-        handle.progress(label='读取下载媒体属性', throttle=0)
+        handle.progress(**stage_label("download.probeMedia"), throttle=0)
         measured_junk = []
         probed = _probe_folder(contract, task, main, folder_ids, on_junk=measured_junk.append)
         isolated += sum(result['isolated'] for result in measured_junk)
         isolated += _isolate_ads(contract, main, folder_ids)
-        handle.progress(label="采集作品资料", throttle=0)
+        handle.progress(**stage_label("download.fetchMetadata"), throttle=0)
         metadata = _collect(contract, main, handle)
         isolated += int(metadata.get('junk_isolated') or 0)
         isolated += _isolate_ads(contract, main, folder_ids)
         task = store.get(task_id)
-        handle.progress(label="按模板整理文件", throttle=0)
+        handle.progress(**stage_label("download.organizeFiles"), throttle=0)
         organized = _organize(contract, task, main)
         rows = declared_rows(metadata.get('followups'))
         if rows and getattr(handle, 'run_id', None) is not None:

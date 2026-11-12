@@ -110,7 +110,7 @@ SCOPES: dict[str, tuple[str, ...]] = {
                  "test_resource_identification.py",
                  "test_agency_entity.py", "test_agency_reject.py", "test_label_maker.py",
                  "test_seed_pack.py", "test_seed_followup.py", "test_seed_corrections.py"),
-    "tooling": ("test_scripts.py", "test_trash_junk.py", "test_auth.py", "test_access.py", "test_cli.py", "test_server.py", "test_diagnostics.py", "test_error_reporting.py", "test_remote_reporting.py", "test_reporting_*.py", "test_library_sharing.py", "test_library_diagnostics.py", "test_script_policy.py",
+    "tooling": ("test_scripts.py", "test_trash_junk.py", "test_auth.py", "test_access.py", "test_cli.py", "test_server.py", "test_diagnostics.py", "test_error_reporting.py", "test_remote_reporting.py", "test_reporting_*.py", "test_library_sharing.py", "test_research_archive.py", "test_library_diagnostics.py", "test_script_policy.py",
                 "test_scan.py", "test_record_rehome.py", "test_wants.py", "test_push_discovery.py", "test_media_probe.py", "test_subtitles.py", "test_onboarding.py", "test_configuration_sources.py", "test_clouddrive_proxy.py", "test_folder_picker.py", "test_ledger_backups.py", "test_clear_camera_filename_codes.py",
                 "test_agent_worktree.py", "test_ci_test_evidence.py", "test_check_public_text.py", "test_issue_intake.py", "test_star_history.py", "test_test_evidence.py", "test_test_history.py", "test_test_environment.py", "test_dependency_policy.py",
                 "test_version_bump.py", "test_changelog.py", "test_release_due.py", "test_release_candidate.py", "test_media_build_cache.py", "test_runner_launcher.py",
@@ -1323,7 +1323,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def full_suite_guard(parser, args, scopes):
-    """全量验证取得仓库的全量锁。集成入口持锁补验时，由它直接派出的运行器沿用那把锁，
+    """全量验证取得仓库的全量锁。集成入口持锁补验时，由它派出的运行器沿用那把锁，
     否则子进程会等父进程放锁、父进程等子进程结束，互等到超时。"""
     if args.full_lock_held:
         lock = test_evidence.evidence_dir(ROOT) / "full-suite.lock"
@@ -1331,13 +1331,29 @@ def full_suite_guard(parser, args, scopes):
             holder = json.loads(test_evidence.holder_path(lock).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             holder = {}
-        if holder.get("pid") != os.getppid():
+        if not _is_ancestor(holder.get("pid")):
             parser.error("--full-lock-held 只供持有全量锁的集成入口直接调用")
         return nullcontext()
     if "full" not in scopes:
         return nullcontext()
     return test_evidence.held(test_evidence.evidence_dir(ROOT) / "full-suite.lock", wait_seconds=args.lock_timeout,
                               scope=" ".join(scopes), root=str(ROOT))
+
+
+def _is_ancestor(pid: object) -> bool:
+    """持锁的集成进程是否在本进程的祖先链上。
+
+    Windows 的 venv `python.exe` 是启动器，会再派出真正的解释器：直接父进程是那层启动器，
+    持锁的集成进程还在它上面。"""
+    if not isinstance(pid, int):
+        return False
+    if pid == os.getppid():
+        return True
+    import psutil
+    try:
+        return any(parent.pid == pid for parent in psutil.Process().parents())
+    except psutil.Error:
+        return False
 
 
 def run_focus(parser, args) -> int:
