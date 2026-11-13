@@ -27,18 +27,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from . import studio_icons, studio_sites
+from . import interface_text, studio_icons, studio_sites
 from .followups import Attempts, Followup, FollowupType, attempts_root, register
-from .task_runs import item_progress
+from .task_outcomes import is_outcome, outcome_parts, said
+from .task_runs import item_progress, task_label
 
 #: 这类后继在任务中心的身份，也是活动页上那一行的名字来源。
 TASK_KEY = "studio-mark"
-TASK_LABEL = "厂牌官网与标识补全"
+TASK_LABEL = task_label(TASK_KEY)
 
 #: 这条后继写下的一切都带这个归属串，撤回按它认。
 SOURCE = "auto:studio-mark"
 
-#: 官网登记成哪一种链接、链接上写什么字，与人工复核装进去的那批相同。
+#: 官网登记成哪一种链接、链接上写什么字，与人工复核装进去的那批相同。链接名写进账本，是数据。
 OFFICIAL, OFFICIAL_LABEL = "official", "官方网站"
 
 #: 取候选地址的间隔与超时，与命令行那一趟的缺省相同。
@@ -67,7 +68,7 @@ def release_unbounded_misses(root, clock=time.time) -> int:
             record = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if (not isinstance(record, dict) or record.get("outcome") != "官网未取得"
+        if (not isinstance(record, dict) or not is_outcome(record, "officialSite", "unfetched")
                 or record.get("retry_until") is not None):
             continue
         record["retry_until"] = clock()
@@ -84,7 +85,7 @@ def parse_key(key: str) -> int:
     """把后继 key 拆回厂牌 id。形状不对就抛——那说明排队的行不是这个版本写的。"""
     prefix, _, raw = str(key).partition(":")
     if prefix != TASK_KEY or not raw.isdigit():
-        raise ValueError(f"认不出这条补厂牌后继：{key}")
+        raise ValueError(f"unrecognized studio followup key: {key}")
     return int(raw)
 
 
@@ -165,7 +166,7 @@ def run(contract, key: str, handle) -> dict:
         current = fingerprint(connection, parse_key(key))
     site = summary.get("site") or {}
     Attempts(attempts_root(contract.candidate_root)).record(
-        key, current, str(summary.get("outcome", "")),
+        key, current, outcome_parts(summary),
         retry_after=RETRY_UNREACHED if site.get("unreached") else None)
     return summary
 
@@ -180,10 +181,10 @@ def _run(contract, key: str, handle) -> dict:
                                  (entity_id,)).fetchone()
         if row is None:
             # 实体被合并或删掉了。这不是失败：那件事已经不存在了。
-            return {"outcome": "档案已不存在"}
+            return said("gone")
         name = str(row[0] or "")
         if has_mark(logo_root, name):
-            return {"name": name, "outcome": "已有标识"}
+            return {"name": name, **said("hasMark")}
         linked = connection.execute(
             "SELECT count(*) FROM entity_link WHERE entity_id=? AND link_kind IN (?,?)",
             (entity_id, *studio_icons.ICON_LINK_KINDS)).fetchone()[0]
@@ -194,8 +195,8 @@ def _run(contract, key: str, handle) -> dict:
     if not linked:
         site = _land_site(contract, entity_id, name, aliases, batch)
         summary["site"] = site
-        if site["outcome"] != "已登记":
-            return {**summary, "outcome": f"官网{site['outcome']}"}
+        if not is_outcome(site, "registered"):
+            return {**summary, **said("officialSite", outcome_parts(site))}
     return {**summary, **_land_mark(contract, entity_id, name, batch)}
 
 
@@ -208,7 +209,7 @@ def _land_site(contract, entity_id: int, name: str, aliases, batch: str) -> dict
     verdict = str(row["verdict"])
     if verdict != "ok":
         # `weak` 与 `未取得` 都不写：前者要人看，后者是没有证据。
-        result = {"outcome": "待人确认" if verdict == "weak" else "未取得",
+        result = {**said("needsReview" if verdict == "weak" else "unfetched"),
                   "verdict": verdict, "note": str(row["note"])[:200]}
         # 试过候选却没有一个回了 HTTP 状态：全是传输层失败，多半是断网，不是这家没有官网。
         if row.get("candidate_url") and not row.get("status"):
@@ -217,7 +218,9 @@ def _land_site(contract, entity_id: int, name: str, aliases, batch: str) -> dict
     url = str(row["final_url"] or row["candidate_url"])
     now = datetime.now(timezone.utc).isoformat()
     metadata = {"source": SOURCE, "batch": batch, "verdict": verdict, "installed_at": now,
-                "evidence": f"{row['note']}；标题「{row['title']}」", "sha256": row["sha256"]}
+                "evidence": interface_text.text("server:labels.studioFollowup.evidence",
+                                                {"note": row["note"], "title": row["title"]}),
+                "sha256": row["sha256"]}
     with contract.database.write_transaction() as connection:
         connection.execute(
             "INSERT OR IGNORE INTO entity_link"
@@ -226,7 +229,7 @@ def _land_site(contract, entity_id: int, name: str, aliases, batch: str) -> dict
             (entity_id, OFFICIAL, OFFICIAL_LABEL, url, urlsplit(url).hostname or "",
              json.dumps(metadata, ensure_ascii=False), now, now))
     contract.cache_bust()
-    return {"outcome": "已登记", "url": url}
+    return {**said("registered"), "url": url}
 
 
 def _land_mark(contract, entity_id: int, name: str, batch: str) -> dict:

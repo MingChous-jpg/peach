@@ -178,7 +178,7 @@ SCOPE_TEST_IDS: dict[str, tuple[str, ...]] = {
 AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
     "scripts/run_gitlab_runner.py": ("tooling",),
     "scripts/render_star_history.py": ("tooling",),
-    "frontend/e2e/jav-userscript-contract.mjs": ("catalog", "web"),
+    "frontend/e2e/jav-userscript-contract.ts": ("catalog", "web"),
     "web/integrations/peach-jav.user.js": ("catalog", "web"),
     "scripts/build_macos_media.py": ("tooling", "packaging"),
     "scripts/setup_macos_media_tools.py": ("tooling", "packaging"),
@@ -232,6 +232,15 @@ AUTO_SCOPE_FILES: dict[str, tuple[str, ...]] = {
     "src/peach/genre_taxonomy.py": ("metadata", "catalog", "web"),
     # 标签词表是 genre 投影的落点，复核页与目录页也按它筛选。
     "src/peach/catalog_rules.py": ("metadata", "catalog", "web"),
+    # 内容数据模块与带 code 的原句（ADR-0159）：没有自己的测试文件，域取直接用它们的那些模块。
+    # 账本取值、文件名原词与 `Said` 散在扫描、采集、关注、下载与页面各处，几乎每个域都有读者。
+    "src/peach/catalog_vocabulary.py": ("follow", "catalog", "media", "sync", "metadata", "tooling", "web", "core"),
+    "src/peach/content_words.py": ("follow", "catalog", "media", "sync", "metadata", "tooling", "web", "core"),
+    "src/peach/coded_text.py": ("follow", "catalog", "media", "metadata", "tooling", "web", "core"),
+    "src/peach/junk_words.py": ("follow", "catalog", "media", "metadata", "tooling", "web", "core"),
+    "src/peach/source_page_words.py": ("metadata",),
+    "src/peach/studio_words.py": ("catalog", "metadata", "web"),
+    "src/peach/taste_words.py": ("catalog", "tooling"),
     # 来源顺序一变，`test_scripts.py` 里钉住的 field_rank 就跟着挪，而那份用例
     # 住在 tooling——按名字只推得出 metadata，不指明就跑不到。
     "src/peach/metadata_policy.py": ("metadata", "tooling"),
@@ -356,7 +365,7 @@ AUTO_SCOPE_PREFIXES: tuple[tuple[str, str | tuple[str, ...]], ...] = (
     ("scripts/sync_brand_marks.py", ("catalog", "tooling")),
     ("scripts/detect_cover_faces.py", ("web", "tooling")),
     ("scripts/demo_dataset.py", ("web", "tooling")),
-    ("scripts/vendor_web_dependencies.mjs", ("web", "tooling")),
+    ("scripts/vendor_web_dependencies.ts", ("web", "tooling")),
     ("scripts/audit_video_endcards.py", ("media", "tooling")),
     ("scripts/setup_macos_port80.sh", ("sync", "tooling")),
     # 订阅源的解析与建壳验在 `test_feeds*.py`，两份都登记在 catalog：壳的边界是
@@ -391,6 +400,8 @@ AUTO_SCOPE_PREFIXES: tuple[tuple[str, str | tuple[str, ...]], ...] = (
     # 应用图标：页面站标（web）、托盘与菜单栏（sync）、安装包与 DMG（packaging），
     # `test_scripts.py` 读 `peach-logo.png`（tooling）。
     ("resources/setup/", ("web", "packaging")),
+    # 语言资源：前端（web）直接导入；后端渲染与资源对照测试在 tooling（ADR-0159）。
+    ("resources/locales/", ("web", "tooling")),
     ("resources/", ("sync", "tooling", "web", "packaging")),
     ("web/", "web"),
     ("frontend/", "web"),
@@ -1485,6 +1496,8 @@ def isolated_temp(base: Path | None = None):
 if __name__ == "__main__":
     # 故障注入的默认错误日志属于当前测试进程，不能写进真实数据目录。
     os.environ["PEACH_REPORTING_TEST_MODE"] = "1"
+    # 命令行跟系统语言（ADR-0159 第三条）；测试按源语言断言，不随跑测试那台机器的语言变。
+    os.environ["PEACH_LANGUAGE"] = "zh-CN"
     from peach import error_reporting, remote_reporting
     remote_reporting.disable_for_process()
     with isolated_temp(), tempfile.TemporaryDirectory(prefix='peach-test-errors-') as error_logs:

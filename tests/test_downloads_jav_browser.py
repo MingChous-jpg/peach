@@ -101,7 +101,7 @@ class BrowserTests(unittest.TestCase):
         self.downloads.clock = lambda: now[0]
         task = self.downloads.store.save(dl.DownloadTask(id=0, info_hash=HASH, provider='115', source_uri=MAGNET,
             display_name='ABC-123', target='/115/Movies', state=dl.INGESTED, postprocess_state=dl.POSTPROCESS_PENDING))
-        self.downloads.store.fail_postprocess(task.id, TimeoutError('暂时超时'), now=now[0])
+        self.downloads.store.fail_postprocess(task.id, TimeoutError('timed out'), now=now[0])
         restored = dl.DownloadStore(self.downloads.store.database)
         self.assertEqual(restored.pending_postprocess(now[0]), [])
         self.assertEqual(self.downloads.poll_once(), 0)
@@ -378,7 +378,7 @@ class BrowserTests(unittest.TestCase):
         def ask(cid):
             asked.append(cid)
             if cid == "broken00001v":
-                raise OSError("DMM 未取得")
+                raise OSError("connection refused")
             return cid == "1sdjs00304v"
         probe._ask = ask
         self.assertTrue(probe("1sdjs00304"))
@@ -406,7 +406,7 @@ class BrowserTests(unittest.TestCase):
         other = f"magnet:?xt=urn:btih:{other_hash}&dn=ABC-123"
         self.service.search.return_value = {"items": [{"name": "ABC-123 1080p", "uri": MAGNET},
                                                       {"name": "ABC-123 720p", "uri": other}]}
-        self.remote.submit.side_effect = dl.DownloadError("no_source", "没有可用下载源")
+        self.remote.submit.side_effect = dl.DownloadError("no_source", "errors.downloads.noSeeders", {"hours": 24})
         self.add()
         self.service.process_one()
         failed = self.status().json()
@@ -462,18 +462,151 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(dispatch.call_args.args[0].id, task.id)
 
     def test_cloud_failure_is_visible_and_a_manual_retry_uses_existing_task(self):
-        self.remote.submit.side_effect = dl.DownloadError("config", "请更新网盘账号")
+        self.remote.submit.side_effect = dl.classify_remote_message("任务已存在")
         self.add()
         self.service.process_one()
         failed = self.status().json()
         self.assertEqual(failed["state"], "failed")
-        self.assertEqual((failed["failure"], failed["cause"]), ("config", "cloud"))
-        self.assertEqual(failed["message"], "请更新网盘账号")
+        self.assertEqual((failed["failure"], failed["cause"]), ("duplicate", "cloud"))
+        self.assertEqual(failed["message"], "远端已有同一个任务：任务已存在")
         self.remote.submit.side_effect = None
         self.add()
         self.service.process_one()
         result = self.status().json()
         self.assertEqual((result["state"], result["task_id"]), ("submitted", failed["task_id"]))
+
+    def test_failures_a_short_retry_can_fix_go_back_to_the_queue_without_a_click(self):
+        self.add()
+        self.service.process_one()
+        task_id = self.status().json()["task_id"]
+
+        def fail(failure, detail):
+            task = self.downloads.store.get(task_id)
+            task.state, task.failure, task.failure_detail = dl.FAILED, failure, detail
+            self.downloads.store.save(task)
+            self.service._swept_at = float("-inf")
+
+        # 网盘没收下：自动再交，最多两次，之后留给用户。
+        for _ in range(2):
+            fail("not_accepted", "网盘没有收下这个任务")
+            self.assertTrue(self.service.process_one())
+            self.assertEqual((self.status().json()["state"], self.status().json()["task_id"]), ("submitted", task_id))
+        fail("not_accepted", "网盘没有收下这个任务")
+        self.assertFalse(self.service.process_one())
+        self.assertEqual(self.status().json()["state"], "failed")
+        # 磁力本身的问题不自动重来。
+        fail("no_source", "没有可用下载源")
+        self.assertFalse(self.service.process_one())
+        # 升级前空间不足被记成 rejected：按原文认回来，不限次数放回队列。
+        fail("rejected", "提交离线任务失败：api error: code: 190031, message: 云空间不足")
+        self.assertTrue(self.service.process_one())
+        self.assertEqual(self.status().json()["state"], "submitted")
+        self.assertEqual(self.remote.submit.call_count, 4)
+
+    def test_broken_cloud_settings_pause_the_channel_until_a_probe_succeeds(self):
+        self.remote.submit.side_effect = dl.DownloadError("config", "errors.downloadsClouddrive.tokenMissing")
+        self.add()
+        self.service.process_one()
+        waiting = self.status().json()
+        self.assertEqual((waiting["state"], waiting["paused"]["failure"]), ("queued", "config"))
+        paused = self.listed()["paused"]
+        self.assertEqual([(row["reason"], row["tone"]) for row in paused], [("网盘配置或登录有问题", "error")])
+        self.assertFalse(self.service.process_one())
+        # 令牌补上后，到了试探时间拿同一个磁力再交一次。
+        self.remote.submit.side_effect = None
+        start = time.time()
+        self.downloads.clock = lambda: start + 601
+        self.service.process_one()
+        self.assertEqual(self.status().json()["state"], "submitted")
+        self.assertEqual(self.remote.submit.call_count, 2)
+
+    def test_an_unavailable_search_source_pauses_the_whole_queue(self):
+        self.service.search.return_value = {"items": [], "state": "unavailable", "retry_after": 300}
+        for code in ("ABC-123", "ABC-124"):
+            self.add(code)
+        self.service.process_one()
+        # 后面的番号不再各自撞同一个故障，也不耗它们自己的重试次数。
+        self.assertFalse(self.service.process_one())
+        self.assertEqual(self.service.search.call_count, 1)
+        second = self.client.get("/api/jav-browser", params={"code": "ABC-124"}, headers=self.script_headers).json()
+        self.assertEqual((second["state"], second["paused"]["failure"]), ("queued", "search"))
+        self.assertNotIn("retry_attempt", second)
+        self.assertEqual([(row["provider"], row["waiting"], row["tone"]) for row in self.listed()["paused"]],
+                         [("search", 2, "warning")])
+        self.service.search.return_value = {"items": [{"name": "ABC-123 1080p", "uri": MAGNET}]}
+        start = time.time()
+        self.downloads.clock = lambda: start + 301
+        self.assertTrue(self.service.process_one())
+        self.assertEqual(self.listed()["paused"], [])
+
+    def listed(self):
+        response = self.client.get("/api/jav-browser/active", headers=self.script_headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        return response.json()
+
+    def test_full_storage_pauses_the_channel_keeps_titles_queued_and_resumes_after_a_probe(self):
+        def by_code(contract, query):
+            digest = hashlib.sha1(query["code"].encode()).hexdigest()
+            return {"items": [{"name": f"{query['code']} 1080p", "uri": f"magnet:?xt=urn:btih:{digest}"}]}
+
+        self.service.search = Mock(side_effect=by_code)
+        self.remote.submit.side_effect = dl.classify_remote_message("code: 190031, message: 云空间不足")
+        for code in ("ABC-123", "ABC-124"):
+            self.assertEqual(self.add(code).json()["state"], "queued")
+        self.assertTrue(self.service.process_one())
+        first = self.status().json()
+        self.assertEqual((first["state"], first["paused"]["failure"], first["message"]),
+                         ("queued", "storage", "网盘空间不足，已暂停；扩容或清理后自动继续"))
+        self.assertNotIn("task_id", first)
+        # 暂停期间后面的番号不搜索也不提交，不会一个接一个地失败。
+        self.assertFalse(self.service.process_one())
+        self.assertEqual((self.service.search.call_count, self.remote.submit.call_count), (1, 1))
+        paused = self.listed()["paused"]
+        self.assertEqual([(row["provider"], row["waiting"], row["failure"], row["reason"], row["hint"]) for row in paused],
+                         [("115", 2, "storage", "网盘空间不足", "扩容或清理后自动继续")])
+        # 到了试探时间拿排在最前的番号再交一次；网盘恢复了就解除暂停，后面的接着处理。
+        self.remote.submit.side_effect = None
+        start = time.time()
+        self.downloads.clock = lambda: start + 601
+        self.assertTrue(self.service.process_one())
+        self.assertEqual(self.status().json()["state"], "submitted")
+        self.assertEqual(self.listed()["paused"], [])
+        self.assertTrue(self.service.process_one())
+        second = self.client.get("/api/jav-browser", params={"code": "ABC-124"}, headers=self.script_headers).json()
+        self.assertEqual(second["state"], "submitted")
+
+    def test_storage_failures_recorded_before_the_split_point_to_the_cloud(self):
+        self.add()
+        self.service.process_one()
+        task = self.downloads.store.get(self.status().json()["task_id"])
+        task.state, task.failure = dl.FAILED, "rejected"
+        task.failure_detail = "提交离线任务失败：api error: code: 190031, message: 云空间不足，请扩容空间或升级VIP"
+        self.downloads.store.save(task)
+        failed = self.status().json()
+        self.assertEqual((failed["failure"], failed["cause"], failed["message"]),
+                         ("storage", "cloud", "网盘空间不足，扩容或清理后重试"))
+
+    def test_results_without_a_download_task_survive_a_full_queue_and_stay_listed_until_dismissed(self):
+        self.service.search.return_value = {"items": []}
+        self.service.ended["since"] = "2026-01-01T00:00:00+00:00"
+        self.add()
+        self.service.process_one()
+        item = {row["code"]: row for row in self.listed()["items"]}["ABC-123"]
+        self.assertEqual((item["state"], item["dismissed"]), ("no_match", False))
+        self.assertTrue(item["ended_key"].startswith("ABC-123@"))
+        # 队列连同已结束的行满了，先腾掉结果已记在别处的行，「未找到资源」留着。
+        self.service.rows["XYZ-001"] = {"state": "owned", "provider": "115", "source_url": ""}
+        with patch("peach.jav_browser.ROWS_LIMIT", 2):
+            self.assertEqual(self.add("ABC-124").json()["state"], "queued")
+        self.assertEqual(set(self.service.rows), {"ABC-123", "ABC-124"})
+        self.assertEqual(self.status().json()["state"], "no_match")
+        response = self.client.post("/api/jav-browser/dismiss", json={"keys": [item["ended_key"]]},
+                                    headers=self.script_headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue({row["code"]: row for row in response.json()["items"]}["ABC-123"]["dismissed"])
+        # 只有排队与搜索中的番号计入添加上限。
+        with patch("peach.jav_browser.ACTIVE_LIMIT", 1):
+            self.assertEqual(self.add("ABC-125").status_code, 400)
 
     def test_ingested_and_cancelled_states_follow_the_download_task(self):
         self.add()
@@ -502,7 +635,7 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual((status['state'], status['task_id'], status['download']['postprocess_state']),
                          ('ingested', task.id, dl.POSTPROCESS_FAILED))
         self.assertEqual(self.service.active()['items'][0]['download']['postprocess_state'], dl.POSTPROCESS_FAILED)
-        self.downloads.store.fail_postprocess(task.id, TimeoutError('暂时断开'))
+        self.downloads.store.fail_postprocess(task.id, TimeoutError('connection dropped'))
         self.assertEqual(self.status().json()['retry_attempt'], 1)
         self.downloads.store.postprocess(task.id, dl.POSTPROCESS_COMPLETE)
         self.assertEqual(self.status().json()['state'], 'owned')
@@ -653,7 +786,10 @@ class BrowserTests(unittest.TestCase):
         self.assertEqual(self.add().json()["state"], "queued")
         self.downloads.channel_catalog.assert_not_called()
         self.service.process_one()
-        self.assertEqual(self.status().json()["state"], "failed")
+        # 渠道读不到时不让番号逐个失败：放回队列、暂停这个渠道，不搜索也不提交。
+        waiting = self.status().json()
+        self.assertEqual((waiting["state"], waiting["paused"]["failure"]), ("queued", "config"))
+        self.assertFalse(self.service.process_one())
         self.service.search.assert_not_called()
         self.remote.submit.assert_not_called()
 
@@ -1003,7 +1139,7 @@ class BrowserTests(unittest.TestCase):
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
         try:
-            result = subprocess.run([node, str(PROJECT_ROOT / "frontend/e2e/jav-userscript-contract.mjs"),
+            result = subprocess.run([node, str(PROJECT_ROOT / "frontend/e2e/jav-userscript-contract.ts"),
                                      f"http://127.0.0.1:{server.server_port}",
                                      str(PROJECT_ROOT / "web/integrations/peach-jav.user.js"), chrome],
                                     capture_output=True, text=True, encoding="utf-8", timeout=120)

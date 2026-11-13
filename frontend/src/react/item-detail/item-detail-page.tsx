@@ -16,13 +16,14 @@ import {
 import { confirmModal, spinnerHtml } from '@peach/legacy/ui';
 
 import { apiGet, apiSend } from '../../api';
+import { codedText } from '../../core/server-text';
 import { Button } from '@/components/base/buttons/button';
 import { RiArrowDownSLine } from '@remixicon/react';
 import { CatalogGridPage } from '../catalog-grid/catalog-grid-page';
 import { patchCatalogItems, replaceCatalogItem } from '../catalog-grid/catalog-grid';
 import type { MediaItem } from '../catalog-grid/types';
 import { RetryNote } from '../components/grid-reveal';
-import { PendingWork, pendingRefetch } from '../components/pending-work';
+import { PendingWork, pendingRefetch, usePendingWorkRefetch } from '../components/pending-work';
 import { MixQueue, MixQueueRow } from '../components/mix-queue';
 import { RelatedSection } from '../components/related-section';
 import { DetailContinuation } from '../components/detail-continuation';
@@ -75,6 +76,7 @@ export function ItemDetailPage(props: ItemDetailProps) {
     enabled: id != null,
     refetchInterval: pendingRefetch,
   });
+  usePendingWorkRefetch(result.data?.pending_work, itemKey(id ?? 0));
   if (!result.data || (ref && !queue)) {
     const error = result.error || queueResult.error;
     return (
@@ -397,7 +399,7 @@ function Side({ item, queue, write, helpers, actions }: {
             <button type="button" data-spec-item="" data-open-region={item.region || ''}
               title={t('catalog:detailSpecs.openRegion')}
               onClick={() => actions.openRegion(item.region || '')}>
-              <Glyph name="globe" /><span>{item.region_settled ? item.region_label : t('catalog:detailSpecs.regionInferred', { region: item.region_label })}</span>
+              <Glyph name="globe" /><span>{item.region_settled ? codedText(item, 'region_label') : t('catalog:detailSpecs.regionInferred', { region: codedText(item, 'region_label') })}</span>
             </button>
           ) : null}
         </div>

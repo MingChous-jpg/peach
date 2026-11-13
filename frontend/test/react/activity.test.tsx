@@ -61,7 +61,7 @@ const followup = (parent: number, overrides: Partial<TaskRunPayload> = {}): Task
     progress_code: 'taskRun.progress.item', progress_params: { name: '涼森れむ' },
     finished_at: '2026-09-11T10:04:00Z', parent_run_id: parent, root_run_id: parent,
     followup_key: 'entity-avatar:performer:12', followup_depth: 1,
-    result_summary: { outcome: '已装上' }, ...overrides,
+    result_summary: { outcome: '已保存资料图片', outcome_parts: [{ code: 'installed', params: {} }] }, ...overrides,
   });
 
 const payload = (overrides: Partial<ActivityData> = {}): ActivityData => ({
@@ -134,11 +134,16 @@ it('扫描各阶段已结束且留有问题时显示部分结果状态', async (
 
 it('追更检查的问题详情绑定任务快照并提供来源入口', async () => {
   serve(payload({ finished: [run({ status: 'succeeded', result_summary: { source_failed: 1,
-    issues: [{ source: 7, label: '示例作者', provider: '示例站点', kind: '检查失败', error: 'HTTP 403' }] } })] }));
+    issues: [{ source: 7, label: '示例作者', provider: '示例站点', kind: '检查失败', error: 'HTTP 403' },
+      // 带 code 的一条按 code 渲染：类别取 `kind_code`，原因按段拼，不读服务端的原句。
+      { source: 8, label: '订阅源', provider: '', kind: '旧类别', kind_code: 'labels.taskResults.kind.backfill',
+        error: '旧原句', error_parts: [{ code: 'labels.taskResults.noResult' }] }] } })] }));
   await prefetchTasks(new AbortController().signal);
   const host = await mount(page());
   expect(host.querySelector('[data-task-issues]')?.textContent).toContain('示例作者 · 示例站点 · 检查失败');
   expect(host.querySelector('[data-task-issues]')?.textContent).toContain('HTTP 403');
+  expect(host.querySelector('[data-task-issues]')?.textContent).toContain('订阅源 · 补查失败');
+  expect(host.querySelector('[data-task-issues]')?.textContent).toContain('来源未返回检查结果');
   expect(host.querySelector('[data-task-issues]')?.closest('details')?.open).toBe(false);
   expect(host.querySelector('a[href="/subscriptions"]')?.textContent).toContain('查看关注来源');
 });
@@ -1056,7 +1061,9 @@ it('任务主摘要使用中文结果，内部字段保留给技术详情', () =
     eta_seconds_min: 0, entity_watermark: 9936, performer_aliases: 7, auto_rejected: 0 }))
     .toEqual(['已安排 9 项补充任务', '女优别名 7']);
   expect(followupDetail(followup(4, { task_key: 'performer-profile', task_label: '女优资料补全',
-    progress_label: '补女优资料：演示人物', result_summary: { name: '演示人物', outcome: 'avwikidb 绑定；javdb 绑定' } })))
+    progress_label: '补女优资料：演示人物', result_summary: { name: '演示人物', outcome: '已关联 avwikidb 资料页；已关联 javdb 资料页',
+      outcome_parts: [{ code: 'siteLinked', params: { site: 'avwikidb' } }, { code: 'semicolon', params: {} },
+        { code: 'siteLinked', params: { site: 'javdb' } }] } })))
     .toBe('演示人物 · 已关联 AVWikiDB 资料页；已关联 JavDB 资料页');
 });
 
@@ -1108,13 +1115,16 @@ it('报错摘要平时只露一行，「查看详情」展开全文、再点收�
 });
 
 it('缺人脸模型跑完的后继标成发现问题，不是已完成', async () => {
-  const down = { outcome: '图库里没有这个名字，人脸模型不可用：取人脸模型失败：断网', face_match_unavailable: true };
+  const down = { outcome: '图库里没有这个名字，人脸模型不可用：取人脸模型失败：断网', face_match_unavailable: true,
+    outcome_parts: [{ code: 'galleryMissing', params: {} }, { code: 'comma', params: {} },
+      { code: 'faceModelUnavailable', params: { reason: '取人脸模型失败：断网' } }] };
   const settled = followup(4, { result_summary: down });
   expect(hasResultProblems(settled)).toBe(true);
   expect(isRoutine(run({ status: 'succeeded', trigger: 'scheduled', result_summary: down }))).toBe(false);
   expect(hasResultProblems(followup(4, { result_summary: { face_match_unavailable: false } }))).toBe(false);
   // 结论本身没写原因时补一句，写了就不重复。
-  expect(summaryItems({ outcome: '图库 2 张彼此认不出同一个人', face_match_unavailable: true }))
+  expect(summaryItems({ outcome: '图库 2 张彼此认不出同一个人', face_match_unavailable: true,
+    outcome_parts: [{ code: 'galleryDisagree', params: { count: 2 } }] }))
     .toEqual(['图库 2 张彼此认不出同一个人', '人脸模型不可用，未做人脸核对']);
   expect(summaryItems(down)).toEqual([down.outcome]);
   const parent = run({ id: 4, status: 'succeeded', task_label: '扫描与采集', progress_total: null,

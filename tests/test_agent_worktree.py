@@ -822,6 +822,146 @@ class PruneTests(_WorktreeCase):
                       "注册还在就是没回收成，分支不能删")
 
 
+class IdleWorktreeTests(_WorktreeCase):
+    """锁只在 `integrate` 时解开，批量集成和弃置的工作树就一直锁着、一直占地方。
+
+    2026-11-12 清点：367 个工作树占 276 GB，其中 202 个锁定，大多早已没人碰。
+    """
+
+    def _created(self, name: str) -> Path:
+        return Path(create(self.repo, "Codex", name, self.root / "worktrees")["path"])
+
+    def _age(self, worker: Path, days: int = agent_worktree.IDLE_DAYS + 1) -> None:
+        then = time.time() - days * 86400
+        admin = Path(_git(worker, "rev-parse", "--path-format=absolute", "--git-dir").stdout.strip())
+        reflog = admin / "logs" / "HEAD"
+        entries = []
+        for line in reflog.read_text(encoding="utf-8").splitlines():
+            head, _, message = line.partition("\t")
+            fields = head.split()
+            fields[-2] = str(int(then))
+            entries.append(" ".join(fields) + "\t" + message)
+        reflog.write_text("".join(entry + "\n" for entry in entries), encoding="utf-8")
+        for path in [admin / "HEAD", reflog, *worker.rglob("*")]:
+            if path.exists():
+                os.utime(path, (then, then))
+
+    def test_an_idle_worktree_with_the_task_lock_is_reclaimed(self):
+        worker = self._created("abandoned")
+        self._age(worker)
+        report = prune(self.repo, apply=True)
+        self.assertIn(str(worker), report["reclaimed"])
+        self.assertFalse(worker.exists())
+
+    def test_touching_the_reflog_file_does_not_count_as_activity(self):
+        """reflog 文件被批量操作碰过，mtime 刷新了，记录里的时间仍是旧的。"""
+        worker = self._created("touched-reflog")
+        self._age(worker)
+        admin = Path(_git(worker, "rev-parse", "--path-format=absolute", "--git-dir").stdout.strip())
+        os.utime(admin / "logs" / "HEAD")
+        report = prune(self.repo, apply=True)
+        self.assertIn(str(worker), report["reclaimed"])
+
+    def test_an_emptied_reflog_falls_back_to_the_commit_time(self):
+        worker = self._created("emptied-reflog")
+        old = time.time() - (agent_worktree.IDLE_DAYS + 1) * 86400
+        (worker / "worker.txt").write_text("old change\n", encoding="utf-8")
+        with mock.patch.dict(os.environ, {"GIT_COMMITTER_DATE": f"{int(old)} +0000"}):
+            commit(worker, "old change")
+        _git(self.repo, "merge", "--no-ff", "-m", "merge old change", "agent/codex/emptied-reflog")
+        self._age(worker)
+        admin = Path(_git(worker, "rev-parse", "--path-format=absolute", "--git-dir").stdout.strip())
+        (admin / "logs" / "HEAD").write_text("", encoding="utf-8")
+        report = prune(self.repo, apply=True)
+        self.assertIn(str(worker), report["reclaimed"])
+
+    def test_an_emptied_reflog_on_a_recent_commit_is_kept(self):
+        worker = self._created("recent-commit")
+        (worker / "worker.txt").write_text("fresh change\n", encoding="utf-8")
+        commit(worker, "fresh change")
+        self._age(worker)
+        admin = Path(_git(worker, "rev-parse", "--path-format=absolute", "--git-dir").stdout.strip())
+        (admin / "logs" / "HEAD").write_text("", encoding="utf-8")
+        report = prune(self.repo, apply=True)
+        self.assertTrue(worker.is_dir())
+        self.assertEqual(report["reclaimed"], [])
+
+    def test_deleting_old_files_under_build_does_not_count_as_activity(self):
+        """清理删掉旧文件会把目录 mtime 刷成今天；工作树本身仍然闲置。"""
+        worker = self._created("cleaned-up")
+        logs = worker / agent_worktree.TEST_OUTPUT / "browser" / "network"
+        logs.mkdir(parents=True)
+        (logs / "network-1.json").write_text("{}", encoding="utf-8")
+        (logs / "network-2.json").write_text("{}", encoding="utf-8")
+        self._age(worker)
+        (logs / "network-2.json").unlink()
+        report = prune(self.repo, apply=True)
+        self.assertIn(str(worker), report["reclaimed"])
+
+    def test_a_recent_worktree_with_the_task_lock_is_kept(self):
+        worker = self._created("in-progress")
+        report = prune(self.repo, apply=True)
+        self.assertTrue(worker.is_dir())
+        self.assertEqual(next(row["why"] for row in report["kept"] if row["path"] == str(worker)),
+                         "工作树被活动任务锁定")
+
+    def test_a_lock_with_another_reason_is_never_expired(self):
+        worker = self._created("kept-on-purpose")
+        _git(self.repo, "worktree", "unlock", str(worker))
+        _git(self.repo, "worktree", "lock", "--reason", "保留：用户已确认的预览", str(worker))
+        self._age(worker)
+        report = prune(self.repo, apply=True)
+        self.assertTrue(worker.is_dir())
+        self.assertEqual(report["reclaimed"], [])
+
+    def test_test_output_alone_does_not_hold_back_reclaiming(self):
+        """测试入口的产物能重跑生成，单个工作树里却能到几 GB。"""
+        worker = self._created("tested")
+        records = worker / agent_worktree.TEST_OUTPUT / "browser" / "network"
+        records.mkdir(parents=True)
+        (records / "network-1.json").write_text("{}", encoding="utf-8")
+        self._age(worker)
+        report = prune(self.repo, apply=True)
+        self.assertIn(str(worker), report["reclaimed"])
+        self.assertEqual(report["archived"], [])
+
+    def test_session_files_of_an_idle_worktree_move_to_attic(self):
+        worker = self._created("coordinated")
+        (worker / "build").mkdir()
+        (worker / "build" / "report.md").write_text("复盘报告\n", encoding="utf-8")
+        (worker / agent_worktree.TEST_OUTPUT).mkdir(parents=True)
+        (worker / agent_worktree.TEST_OUTPUT / "auto.json").write_text("{}", encoding="utf-8")
+        self._age(worker)
+        report = prune(self.repo, apply=True)
+        self.assertFalse(worker.exists())
+        moved = Path(report["archived"][0]["to"])
+        self.assertEqual(moved, self.repo.parent / agent_worktree.BUILD_ARCHIVE / worker.name)
+        self.assertEqual((moved / "report.md").read_text(encoding="utf-8"), "复盘报告\n")
+        self.assertFalse((moved / "agent-verification").exists())
+
+    def test_an_idle_unmerged_worktree_keeps_its_work_but_drops_rebuildable_dependencies(self):
+        worker = self._created("unmerged")
+        (worker / "worker.txt").write_text("还没合入的改动\n", encoding="utf-8")
+        commit(worker, "unmerged change")
+        modules = worker / "frontend" / "node_modules" / "left-pad"
+        modules.mkdir(parents=True)
+        (modules / "index.js").write_text("module.exports = 1\n", encoding="utf-8")
+        self._age(worker)
+        report = prune(self.repo, apply=True)
+        self.assertTrue((worker / "worker.txt").is_file())
+        self.assertFalse((worker / "frontend" / "node_modules").exists())
+        self.assertEqual(report["slimmed"], [str(worker / "frontend" / "node_modules")])
+
+    def test_create_prunes_at_most_once_a_day(self):
+        abandoned = self._created("first")
+        self._age(abandoned)
+        (self.repo / ".git" / agent_worktree.PRUNE_STAMP).unlink()
+        second = create(self.repo, "Codex", "second", self.root / "worktrees")
+        self.assertEqual(second["pruned"]["reclaimed"], 1)
+        self.assertFalse(abandoned.exists())
+        self.assertIsNone(create(self.repo, "Codex", "third", self.root / "worktrees")["pruned"])
+
+
 class UnregisteredLeftoverTests(_WorktreeCase):
     """清掉两个工作树落点里已经不登记的残留目录。
 

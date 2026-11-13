@@ -656,7 +656,7 @@ class LedgerBackupManagerTests(unittest.TestCase):
                 self.manager.start_restore(f"database/{backup.name}")
 
     def test_new_tasks_are_held_off_while_restoring(self):
-        token = update_tasks.reserve(self.live, busy="正在从备份恢复账本，暂时不能启动新任务。")
+        token = update_tasks.reserve(self.live, busy="errors.ledgerBackups.restoringBusy")
         self.addCleanup(update_tasks.release, self.live, token)
         with self.assertRaisesRegex(update_tasks.UpdateBusy, "正在从备份恢复账本"):
             with update_tasks.admission(self.live):
@@ -679,7 +679,7 @@ class LedgerBackupManagerTests(unittest.TestCase):
             missing = client.post("/api/configuration/ledger-backups/restore",
                                   json={"id": "database/ledger.pre-manual-1.db", "confirm": True})
             self.assertEqual(missing.status_code, 409)
-            self.assertIn("已经不在", missing.json()["detail"])
+            self.assertIn("已经不在", missing.json()["detail"]["message"])
             self.assertEqual(client.post("/api/configuration/ledger-backups/backup",
                                          headers={"origin": "https://other.invalid"}).status_code, 403)
 

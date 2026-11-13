@@ -8,6 +8,9 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from sqlite3 import Connection
 
+from .catalog_vocabulary import PERFORMER_TAG_PREFIX
+from .user_messages import UserValueError
+
 #: 只读请求里记住的名字解析结果，见 `memoized_resolution`。
 _RESOLVED: ContextVar[dict | None] = ContextVar("peach_resolved_entities", default=None)
 
@@ -99,7 +102,7 @@ def _ingest_name_id(connection: Connection, kind: str, name: str) -> int | None:
                    "SELECT a.entity_id,a.alias FROM entity_alias a JOIN entity e ON e.id=a.entity_id WHERE e.kind='tag'")
                    if normalize_entity_name(canonical_tag_name(row[1])) == normalized}
     if kind == 'tag' and len(matches) > 1:
-        raise ValueError('标签别名存在冲突，请先合并重复标签')
+        raise UserValueError('errors.entities.tagAliasConflict')
     return next(iter(matches)) if len(matches) == 1 else None
 
 
@@ -344,7 +347,7 @@ def rewrite_flat_projection(connection: Connection, kind: str, entity_id: int,
                            (new_name, old_name))
         return connection.execute("SELECT changes()").fetchone()[0]
     rewritten = 0
-    old_tag, new_tag = f"演员:{old_name}", f"演员:{new_name}"
+    old_tag, new_tag = PERFORMER_TAG_PREFIX + old_name, PERFORMER_TAG_PREFIX + new_name
     for item in connection.execute(
         "SELECT DISTINCT asset_id FROM asset_entity WHERE entity_id=?", (entity_id,)
     ):
@@ -458,10 +461,10 @@ def merge_entity(
     改指 target，链条始终只有一跳；`resolve_entity_id` 按它把旧 id 解析到 target。
     """
     if source_id == target_id:
-        raise ValueError("不能合并到同一份档案")
+        raise UserValueError("errors.entities.mergeIntoSelf")
     target = connection.execute("SELECT kind FROM entity WHERE id=?", (target_id,)).fetchone()
     if target is None:
-        raise ValueError(f"合并目标档案 {target_id} 不存在")
+        raise UserValueError("errors.entities.mergeTargetMissing", {"id": target_id})
     target_kind = str(target[0])
     stamp = now or datetime.now(timezone.utc).isoformat()
     moved = {"assets": 0, "aliases": 0, "refs": 0, "links": 0, "terms": 0,
