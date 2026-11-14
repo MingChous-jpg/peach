@@ -6,6 +6,14 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 
+[manifest]
+excludes = [
+    "numpy",
+    "onnxruntime",
+    "pyobjc-framework-coreml",
+    "tokenizers",
+]
+
 [[package]]
 name = "ag-ui-protocol"
 version = "1.0.0"
@@ -61,8 +69,8 @@ wheels = [
 
 [[package]]
 name = "amane"
-version = "0.22.1"
-source = { git = "https://github.com/sqzw-x/amane?rev=fd9294fbe5b4aa88ce1df84d534f6816ad9460d5#fd9294fbe5b4aa88ce1df84d534f6816ad9460d5" }
+version = "0.27.1"
+source = { git = "https://github.com/sqzw-x/amane?rev=ffaedbcdfa170c158bf457128f534f5b59365ec7#ffaedbcdfa170c158bf457128f534f5b59365ec7" }
 dependencies = [
     { name = "aiofiles" },
     { name = "aiolimiter" },
@@ -86,7 +94,6 @@ dependencies = [
     { name = "tomli-w" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "watchdog" },
-    { name = "zhconv" },
 ]
 
 [[package]]
@@ -988,7 +995,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "amane", git = "https://github.com/sqzw-x/amane?rev=fd9294fbe5b4aa88ce1df84d534f6816ad9460d5" }]
+requires-dist = [{ name = "amane", git = "https://github.com/sqzw-x/amane?rev=ffaedbcdfa170c158bf457128f534f5b59365ec7" }]
 
 [[package]]
 name = "pillow"
@@ -1760,9 +1767,3 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/69/35/cf33cba7248fcd80cfe5911ffe67aa2637f50c2bfaada123b1e9d2aeca90/websockets-17.4-cp315-cp315t-win_arm64.whl", hash = "sha256:fcac44d917672ad6257ad64b80b5168306f168a78cab5c0612e4c699caed18cf", size = 219117, upload-time = "2026-10-30T15:10:13.771Z" },
     { url = "https://files.pythonhosted.org/packages/eb/27/9db924cb0dbf22eade78d98fbae77790f9bf6bc729e6ab29aef9d68e4156/websockets-17.4-py3-none-any.whl", hash = "sha256:c6bd2c9781915592b209160d0f017d4c7c82ad53075e6b0c24d2a89299e7f9e9", size = 212900, upload-time = "2026-10-30T15:10:34.482Z" },
 ]
-
-[[package]]
-name = "zhconv"
-version = "1.4.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/25/47/c8ae2d5d4025e253211ff3d8c163f457db1da94976cb582337a5ab76cb87/zhconv-1.4.3.tar.gz", hash = "sha256:ad42d9057ca0605f8e41d62b67ca797f879f58193ee6840562c51459b2698c45", size = 211571, upload-time = "2021-10-31T05:59:44.096Z" }

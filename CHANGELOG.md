@@ -31,6 +31,10 @@ Removed / Fixed / Security。
 
 - **采集**：「想要」清单定时给待找作品查资源，没查到的卡片注明日期，查到的链接直接列在卡片上（#650）。
 
+### 修复
+
+- **采集**：MGStage 番号前多一段数字、AIRAV 番号带来源名的作品能查到了，片商官网另取导演、剧情与剧照（#653）。
+
 ## [0.58.0] - 2026-11-14
 
 > Peach now has a full English interface. It follows your browser language automatically; if you picked Chinese under Settings → Interface language before, switch it back to Auto or English. Titles, names and tags stay in their original language. Docker images were not published for 0.58.0; they ship with 0.58.1, including linux/arm64 and the `latest` tag.

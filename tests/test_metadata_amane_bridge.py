@@ -275,8 +275,8 @@ class RuntimePackagingTests(unittest.TestCase):
 
     def test_locked_runtime_uses_the_existing_revision_and_build_toolchain(self):
         facts = self.builder.locked_amane()
-        self.assertEqual(facts, {"revision": "fd9294fbe5b4aa88ce1df84d534f6816ad9460d5",
-                                 "version": "0.22.1"})
+        self.assertEqual(facts, {"revision": "ffaedbcdfa170c158bf457128f534f5b59365ec7",
+                                 "version": "0.27.1"})
         requirements = self.builder.build_requirements()
         self.assertIn("pyinstaller==6.22.3", requirements)
         self.assertTrue(all("==" in item for item in requirements))
