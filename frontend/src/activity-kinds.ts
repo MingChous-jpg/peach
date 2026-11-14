@@ -16,7 +16,7 @@ const TABLE: Record<ActivityKind, readonly string[]> = {
   ],
   radar: [
     'follow-check', 'feed-check', 'follow-resolve', 'follow-creator', 'creator-identity', 'link-check', 'source-check',
-    'resource-scan',
+    'resource-scan', 'want-search',
     'stage:library.scanFiles', 'stage:library.checkCompanions', 'stage:library.probeMedia', 'stage:library.checkNetwork',
     'stage:library.checkJunk', 'stage:library.recheckJunk', 'stage:library.prepareImages', 'stage:library.readImages',
     'stage:backup.checkIntegrity', 'stage:diagnostics.readSystem', 'stage:mediaRepair.scan',

@@ -240,6 +240,9 @@ class WebContract:
         self.follow_job = self._job("PeachFollowCheckJob", "follow-check")
         self.feed_job = self._job("PeachFeedCheckJob", "feed-check")
         self.want_job = self._job("PeachWantScrapeJob", "want-scrape")
+        self.want_search_job = self._job("PeachWantSearchJob", "want-search")
+        #: 想要定时查找因来源失败停下后，下一轮最早何时起（`time.monotonic()`）；None 是没在歇。
+        self.want_search_resume_at = None
         self.follow_resolve_job = self._job("PeachFollowResolveJob", "follow-resolve")
         self.taste_refresh_job = self._job("PeachTasteRefreshJob", "taste-refresh")
         self.link_prune_job = self._job("PeachLinkPruneJob", "link-prune")
@@ -514,6 +517,7 @@ class WebContract:
         self.link_check.stop()
         self.feed_job.stop()
         self.want_job.stop()
+        self.want_search_job.stop()
         self.organize_job.stop()
         self.media_repair_job.stop()
         self.amane_bridge_job.stop()

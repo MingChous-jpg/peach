@@ -93,7 +93,7 @@ TASK_KEYS = (
     "jav-discovery-metadata", "diagnostic-export", "ledger-backup", "ledger-restore", "upgrade-repairs",
     "upgrade-library", "follow-evidence-reclaim", "organize", "batch", "scrape-codes", "jav-covers",
     "entity-avatar", "performer-profile", "performer-alias", "studio-mark", "creator-identity", "code-samples",
-    "feed-check", "feed-scrape", "feed-cover", "want-scrape", "timeline-thumbnails", "download-postprocess",
+    "feed-check", "feed-scrape", "feed-cover", "want-scrape", "want-search", "timeline-thumbnails", "download-postprocess",
     "seed-import", "follow-creator", "amane-bridge", "source-check", "face-models",
 )
 

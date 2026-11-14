@@ -470,7 +470,8 @@
     "timeline-thumbnails": "视频缩略图采集",
     "upgrade-library": "资料自动修复",
     "upgrade-repairs": "自动修复",
-    "want-scrape": "想要作品资料采集"
+    "want-scrape": "想要作品资料采集",
+    "want-search": "想要作品查找资源"
   },
   "taskRun": {
     "progress": {
@@ -2667,7 +2668,8 @@
       "unusableCandidate": "候选封面未通过检查：图片未取得、无法解码或宽度不足 700px。"
     },
     "webWants": {
-      "scrapeStopped": "想要资料任务已停止"
+      "scrapeStopped": "想要资料任务已停止",
+      "searchStopped": "想要查找资源任务已停止"
     },
     "webFolders": {
       "rulesChanged": "目录规则已变化，请重新打开设置"

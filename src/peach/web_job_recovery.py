@@ -12,7 +12,7 @@ from .web_scraping import w_scraping_cover, w_scraping_amane_rebuild
 from .web_timeline_thumbnails import w_thumbnail_jobs
 from .web_follow import w_follow_check, w_follow_resolve
 from .web_feeds import w_feed_check
-from .web_wants import start_scrape
+from .web_wants import start_scrape, start_search
 from .web_links import w_links_check, w_links_prune
 from .web_resource_sync import w_resource_sync_scan, w_resource_sync_apply
 from .web_stats import w_taste_refresh
@@ -40,6 +40,7 @@ def restore(contract, track=lambda key, handler: handler):
         "follow-check": lambda body: w_follow_check(contract, body),
         "feed-check": lambda body: w_feed_check(contract, body),
         "want-scrape": lambda _body: start_scrape(contract),
+        "want-search": lambda _body: start_search(contract),
         "link-check": lambda body: w_links_check(contract, {**body, 'restart': True}),
         "resource-scan": lambda body: w_resource_sync_scan(contract, {**body, 'background': True}),
         "resource-apply": lambda body: w_resource_sync_apply(contract, body),

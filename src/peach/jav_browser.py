@@ -564,13 +564,15 @@ class JavBrowser:
         """没搜到资源时按设置把番号加入想要；已在库、已登记或写入失败都不影响队列本身。
 
         只登记这一行：封面与资料的积压由新作的定时刷新顺带补上，不在队列线程里另起取资料任务。
+        这次没搜到也记一笔查找（`record_search`），定时查找从这一次起算间隔，不马上再查一遍。
         """
         from . import wants
         try:
             if not self.want_on_no_match():
                 return
             with self.contract.database.write_transaction() as connection:
-                wants.add_code(connection, code)
+                row = wants.add_code(connection, code)
+                wants.record_search(connection, row["id"], "none")
             self.contract.cache_bust()
         except UserValueError:
             pass

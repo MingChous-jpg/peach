@@ -397,8 +397,11 @@ def w_feed_check(contract, body) -> dict:
     """拉一轮订阅。不带参数只拉到期的源，`all` 拉全部启用的源。
 
     定时那一跳没有到期的源就什么也不起：每半小时一跳（`feeds.TICK_MINUTES`），任务中心
-    不该每半小时多一行空跑。
+    不该每半小时多一行空跑。定时那一跳也顺带给「想要」查资源：有到期的才起一轮，与订阅源到没到期无关。
     """
+    if body.get("automatic") and not body.get("background"):
+        # 续跑的那一次带 `background`，跑在订阅源任务的恢复上下文里，不顺带起别的任务。
+        web_wants.start_search(contract)
     if body.get("automatic") and "sources" not in body and not body.get("all"):
         with contract.database.read_connection() as connection:
             if not feeds.due_sources(connection):
