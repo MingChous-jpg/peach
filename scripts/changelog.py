@@ -240,6 +240,18 @@ def section_of(document: str, version: str) -> str:
     return found["body"].strip("\n") if found else ""
 
 
+#: 条目句末带来源编号：issue 或 PR，跨仓库写 `owner/repo#编号`。
+REFERENCE = re.compile(r"(?:^|[\s(,（、，])(?:[\w.-]+/[\w.-]+)?#\d+(?!\w)")
+#: 0.58.0 及更早的版本不补编号；之后每一版与「未发布」段的条目都要带。
+REFERENCES_SINCE = (0, 58, 0)
+
+
+def needs_references(version: str) -> bool:
+    if version == UNRELEASED:
+        return True
+    return tuple(int(part) for part in version.split(".")) > REFERENCES_SINCE
+
+
 def require_labeled_entries(document: str, version: str) -> None:
     """定版条目必须使用封闭的中文区域标签，不能把提交 scope 直接发给使用者；
     全部已发布版本的条目都不超过 `ENTRY_LIMIT` 字，改旧版本时也守住。"""
@@ -252,6 +264,13 @@ def require_labeled_entries(document: str, version: str) -> None:
         remainder = t("changelog.moreEntries", count=len(invalid) - 3) if len(invalid) > 3 else ""
         raise version_bump.VersionError(t("changelog.unlabeledEntries", file=CHANGELOG, version=version,
                                           preview=preview, remainder=remainder))
+    if needs_references(version):
+        bare = [line for line in entries if REFERENCE.search(line) is None]
+        if bare:
+            preview = t("common.clauseSeparator").join(line[:40] for line in bare[:3])
+            remainder = t("changelog.moreEntries", count=len(bare) - 3) if len(bare) > 3 else ""
+            raise version_bump.VersionError(t("changelog.entriesWithoutReference", file=CHANGELOG,
+                                              version=version, preview=preview, remainder=remainder))
     # 按读到的字数算：标签与链接地址不算，链接只计显示的文字。
     label = re.compile(r"^- (?:\*\*[^*]+\*\*：)?")
     long = [(released, line)

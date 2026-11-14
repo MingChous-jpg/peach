@@ -1965,6 +1965,7 @@
     "dueUrgent": "There are {{groups}} entries, which do not wait for the cycle",
     "moreEntries": " ({{count}} more)",
     "unlabeledEntries": "The {{version}} section of {{file}} still has entries without an area label: {{preview}}{{remainder}}",
+    "entriesWithoutReference": "The {{version}} section of {{file}} has entries without a source number; end each with (#issue or PR number): {{preview}}{{remainder}}",
     "longEntry": "{{version}}: {{line}}…",
     "entriesTooLong": "{{file}} has entries over {{limit}} characters; rewrite each as one sentence: {{preview}}{{remainder}}",
     "noSectionForNotes": "{{file}} has no {{version}} section, so the Release body cannot be generated",

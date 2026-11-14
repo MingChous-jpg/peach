@@ -1965,6 +1965,7 @@
     "dueUrgent": "有{{groups}}，这类不等周期",
     "moreEntries": "（另有 {{count}} 条）",
     "unlabeledEntries": "{{file}} 的 {{version}} 一节还有未归类条目：{{preview}}{{remainder}}",
+    "entriesWithoutReference": "{{file}} 的 {{version}} 一节有条目没带来源编号，句末补上（#issue 或 PR 编号）：{{preview}}{{remainder}}",
     "longEntry": "{{version}}：{{line}}…",
     "entriesTooLong": "{{file}} 有条目超过 {{limit}} 字，改成一句话：{{preview}}{{remainder}}",
     "noSectionForNotes": "{{file}} 里没有 {{version}} 这一节，Release 正文无从生成",
