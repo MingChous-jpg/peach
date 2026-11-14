@@ -3,6 +3,14 @@
 一版一条，只写使用者需要知道的：新入口、更新后自动进行的事、需要自己动手的事。每条说明一句短话；
 修复与完整清单留给 Release 页的变更日志。
 
+放哪些条目（0.58.0 起由 `tests/test_release_updates.py` 检查）：
+- `features` 只放使用者一打开就能明显感知的变化：新入口、默认行为变了、换了用法。修复、提速、内部改进、
+  文案调整都不放；确实只有两条就只放两条。任一平台上显示的 `features` 不超过 `FEATURE_LIMIT` 条。
+- `automatic` 是升级时改了使用者数据的事，每条都带 `when`，本机确实改了才显示。
+- `attention` 是要使用者自己动手的事。
+- `icon` 从 `ICON_MEANINGS` 里按含义挑：一个键只表示一种含义，新含义就登记新键并在前端 `ICONS` 补上同名图标，
+  不借用含义相近的旧键；泛泛的「新功能」图标（`GENERIC_ICONS`）不再使用。
+
 条目字段：
 - `id`：条目在这一版里的稳定 id。这一版的总标题和每条的标题、说明只写在 `resources/locales/<语言>/server.json` 的
   `releaseNotes.v<版本，点换成连字符>`（`headline`、`items.<id>.title`、`items.<id>.body`，ADR-0159）；
@@ -17,7 +25,42 @@
 """
 from __future__ import annotations
 
+#: 任一平台上一版最多显示几条 `features`。
+FEATURE_LIMIT = 4
+#: 从这一版起按上面的规则检查；更早的公告保持原样。
+RULES_SINCE = "0.58.0"
+#: 图标键与它表示的含义；前端 `release-notice.tsx` 的 `ICONS` 必须同名同集。
+ICON_MEANINGS = {
+    "storage": "storage and disk space",
+    "reorder": "drag to reorder",
+    "library": "media libraries and folders",
+    "select": "multi-select",
+    "resize": "video dimensions and orientation",
+    "server": "server, NAS and system files",
+    "person": "performers and people",
+    "shield": "access, sign-in and security",
+    "stack": "Docker images and packaging",
+    "switch": "switching between sources or hosts",
+    "speed": "speed and performance",
+    "refresh": "updates, repairs and re-runs",
+    "database": "ledger and backups",
+    "sparkle": "generic new feature (retired)",
+    "translate": "interface language",
+    "download": "downloads and intake",
+}
+#: 说不清含义的泛用图标，`RULES_SINCE` 起不再使用。
+GENERIC_ICONS = frozenset({"sparkle"})
+
 NOTICES: dict[str, dict] = {
+    "0.58.0": {
+        "level": "notice",
+        "features": [
+            {"id": "english-interface", "icon": "translate"},
+            {"id": "browser-intake", "icon": "download"},
+            {"id": "docker-arm64", "icon": "stack", "platforms": ["docker"]},
+            {"id": "docker-nas-setup", "icon": "server", "platforms": ["docker"]},
+        ],
+    },
     "0.57.0": {
         "level": "notice",
         "features": [
@@ -53,7 +96,6 @@ NOTICES: dict[str, dict] = {
     "0.55.0": {
         "level": "notice",
         "features": [
-            {"id": "rescrape-fields", "icon": "refresh"},
             {"id": "docker-one-click", "icon": "stack", "platforms": ["docker"]},
             {"id": "ledger-backup", "icon": "database"},
         ],

@@ -20,8 +20,9 @@ import { bodyFieldErrors, codedText, serverLabel, serverText } from '../../core/
 import type { StorageCategory, StorageRelocation, StorageState } from '../bundle';
 import { AnimatedNumber } from '../components/animated-number';
 import { cardClass } from '../components/card';
-import { LoadingDots } from '../components/loading-dots';
+import { ActivityStatus } from '../components/activity-motion';
 import { PathLine } from '../components/path-line';
+import { pickServerFolder, type FolderReply } from '../components/server-path-dialog';
 import { Progress } from '../components/progress';
 import { CommandSteps, ErrorText, Fact, FactList, Footer, Help, Stack, Section, translateWithNodes } from './section';
 import { CATEGORY_SWATCH, REST_SWATCH, StorageOverview } from './storage-charts';
@@ -64,7 +65,7 @@ const relocationLines = (last: StorageRelocation) =>
 const localizeStep = (step: { text: string; command: string }) =>
   ({ text: codedText(step, 'text'), command: codedText(step, 'command') });
 
-/** 统计进行中：知道上次有多少文件就画进度条，不知道就只说走过多少。 */
+/** 统计进行中：知道上次有多少文件就按它画一条估算的进度条（文案写明是估算），不知道就画检查动画、只说走过多少。 */
 function Measuring({ job }: { job: StorageState['job'] }) {
   const files = job.files || 0;
   const expected = job.expected_files || 0;
@@ -77,7 +78,7 @@ function Measuring({ job }: { job: StorageState['job'] }) {
             <Progress label={t('settings:storageSpace.measureProgress')} value={Math.min(files, expected * 0.99)} max={expected} />
             <Help>{translateWithNodes('settings:storageSpace.measuringOfLast', { count: files, expected }, nodes)}</Help>
           </>
-        : <LoadingDots label={t('settings:storageSpace.measuringLabel')} />}
+        : <ActivityStatus kind="radar" label={t('settings:storageSpace.measuringLabel')} />}
       {!expected ? <Help>{translateWithNodes('settings:storageSpace.measuring', { count: files }, nodes)}</Help> : null}
     </div>
   );
@@ -170,7 +171,8 @@ export function StorageSettings({ initial, receipt }: { initial: StorageState; r
   };
 
   const relocate = () => void action.run('relocate', async (signal) => {
-    const target = (await apiSend<{ path: string | null }>(PICK_FOLDER_URL, { initial: storage.data_root }, 'POST', signal)).path;
+    const target = await pickServerFolder(storage.data_root,
+      body => apiSend<FolderReply>(PICK_FOLDER_URL, body, 'POST', signal), 'data');
     if (!target) return;
     const size = storage.usage ? fmtSize(storage.usage.total_bytes) : '';
     await confirmModal({

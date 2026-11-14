@@ -293,7 +293,7 @@ it('卸载默认保留数据，勾选完全卸载后确认文案点名要删的�
   expect(full.checked).toBe(false);
   expect([...area.querySelectorAll('details p')].map(p => p.textContent)).toEqual(['fixture', 'fixture/cache']);
   // 每条路径自己带一颗打开键：要删的是哪几个目录，看一眼比照着路径再翻一遍快。
-  expect([...area.querySelectorAll('details button[aria-label="在资源管理器中显示"]')]).toHaveLength(2);
+  expect([...area.querySelectorAll('details button[aria-label="查看文件位置"]')]).toHaveLength(2);
   await click(buttonNamed('卸载 Peach', area));
   expect(modal.mock.calls[0]?.[0]).toMatchObject({ title: '卸载 Peach', danger: true, confirmLabel: '卸载 Peach' });
   expect(String(modal.mock.calls[0]?.[0].body)).toContain('设置、本地数据库、观看记录与缓存保留');
@@ -303,7 +303,7 @@ it('卸载默认保留数据，勾选完全卸载后确认文案点名要删的�
   const options = modal.mock.calls[1]![0];
   expect(String(options.body)).toContain('凭据和缓存');
   await act(async () => { await options.onConfirm?.(); });
-  expect(sentBody(fetcher)).toEqual({ delete_data: true, confirmation: '卸载 Peach' });
+  expect(sentBody(fetcher)).toEqual({ delete_data: true, confirmation: 'uninstall-peach' });
   expect(area.querySelector('[role="status"]')?.textContent).toBe('Peach 将在几秒后退出并卸载。');
   expect(buttonNamed('卸载 Peach', area)?.disabled).toBe(true);
 });

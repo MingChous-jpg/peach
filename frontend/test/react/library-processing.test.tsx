@@ -352,7 +352,7 @@ it('失败时把问题清单折叠进错误提示，重试只交失败的那些�
   expect(details.parentElement?.className).toContain('border-t');
   /* 完整记录是出事之后自己去翻的东西，退回灰字，清单收着也看得见；旁边是打开它和
      导出它的两颗键，导出和这份记录排在一起。 */
-  const reveal = alert!.querySelector('button[aria-label="在资源管理器中显示"]')!;
+  const reveal = alert!.querySelector('button[aria-label="查看文件位置"]')!;
   expect(details.contains(reveal)).toBe(false);
   const logRow = reveal.closest('.text-text-secondary')!;
   expect(logRow.querySelector('p')?.textContent).toBe(`完整记录：${LOG}`);
@@ -422,7 +422,8 @@ it('横幅闲着不问，全站那一处报出任务在跑才接上，任务结�
   expect(served.calls).toHaveLength(1);
   expect(mounted.host.textContent).toContain('采集缺失资料');
   expect(mounted.host.querySelector('a')?.getAttribute('href')).toBe('/data-cleanup#libraryProcessing');
-  expect(mounted.host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('40');
+  const ring = mounted.host.querySelector('[role="progressbar"]');
+  expect([ring?.getAttribute('aria-valuenow'), ring?.getAttribute('aria-valuemax')], '小环形报真实计数').toEqual(['2', '5']);
 
   job.at = { status: 'complete', job_id: 'one', identified: 3, candidates: 2 };
   await tick(2000);

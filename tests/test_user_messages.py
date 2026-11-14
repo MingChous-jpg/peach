@@ -19,7 +19,7 @@ from peach import (code_creators, data_storage, downloads, downloads_clouddrive,
                    repair_center, task_outcomes, task_runs, task_stages, taste_history, taste_preferences, web_entry,
                    web_stats)
 from peach.jobs import BackgroundJob
-from peach import interface_text
+from peach import catalog_vocabulary, interface_text
 from peach.coded_text import Said, coded, parallel
 from peach.user_messages import UserFacingError, error_fields, message_fields
 
@@ -157,6 +157,7 @@ def registered_keys() -> set[str]:
     keys |= {f"labels.feedFollowup.cover.{name}" for name in feed_followup.COVER_REASONS}
     keys |= {f"labels.codeCreators.reason.{name}" for name in code_creators.REASONS}
     keys |= {f"labels.followDiscovery.tagType.{kind}" for kind in follow_discovery.TAG_TYPES}
+    keys |= {catalog_vocabulary.EDITION_LABEL_CODE_PREFIX + edition for edition in catalog_vocabulary.EDITION_ORDER}
     if HAS_DEPS:
         from peach import routes_pages
         keys |= {f"pages.setup.question.{name}.{field}" for name, has_help in routes_pages._SETUP_COPY.values()
@@ -285,6 +286,16 @@ class BackendCopyRatchetTests(unittest.TestCase):
         self.assertEqual(checker.count_literals("genre_taxonomy.py", source), 0)
         # 白名单按 `src/peach/` 下的相对路径认，子包里的同名模块照样计数。
         self.assertEqual(checker.count_literals("sources/genre_taxonomy.py", source), 8)
+        # 开发工具另有一份内容数据登记，按 `scripts/` 下的路径认。
+        self.assertEqual(checker.count_literals("genre_taxonomy.py", source, {"words.py"}), 8)
+        self.assertEqual(checker.count_literals("words.py", source, {"words.py"}), 0)
+
+    def test_writing_a_baseline_only_lowers_limits_and_drops_cleared_files(self):
+        counts = {"a.py": 2, "b.py": 9, "new.py": 1}
+        baseline = {"a.py": 5, "b.py": 4, "gone.py": 3}
+        self.assertEqual(checker.raised(counts, baseline), {"b.py": 9, "new.py": 1})
+        self.assertEqual(checker.tightened(counts, baseline), {"a.py": 2, "b.py": 4})
+        self.assertEqual(checker.tightened(counts, None), counts)
 
     def test_codes_are_found_wherever_the_backend_writes_them(self):
         source = "\n".join([

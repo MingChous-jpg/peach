@@ -28,6 +28,7 @@ import {
 import { Note } from '../components/note';
 import { SiteMark } from '../components/site-mark';
 import { TaskProgress } from '../components/task-progress';
+import { activityKind } from '../../activity-kinds';
 import { spriteGlyph } from '../components/sprite-glyph';
 import { LEGACY_AVATAR_IMG } from '../components/legacy-avatar';
 import { LinkCheckIcon } from './link-check-icon';
@@ -40,6 +41,7 @@ import {
 } from './links';
 import { jobText, serverLabel } from '../../core/server-text';
 import { t } from '../../i18n';
+import { linkLabel } from '../../core/stored-values';
 
 const RETRY = spriteGlyph('rotate-cw');
 
@@ -85,9 +87,9 @@ function LinkTable(
       </a> },
     { id: 'kind', label: t('cleanup:shared.type'), width: 128, value: (item) => LINK_KINDS[item.link_kind] || item.link_kind,
       render: (item) => LINK_KINDS[item.link_kind] || item.link_kind },
-    { id: 'label', label: t('cleanup:links.columnName'), min: 128, value: (item) => item.label || '',
+    { id: 'label', label: t('cleanup:links.columnName'), min: 128, value: (item) => linkLabel(item.label),
       render: (item) => <span className="flex min-w-24 items-center gap-2" data-link-name="">
-        <span className="min-w-0 wrap-anywhere">{item.label || new URL(item.url).hostname}</span></span> },
+        <span className="min-w-0 wrap-anywhere">{linkLabel(item.label) || new URL(item.url).hostname}</span></span> },
     { id: 'note', label: t('cleanup:links.columnResult'), width: 320, min: 192, value: (item) => item.note,
       render: (item) => <div className="min-w-0 w-full" data-link-result={confirmed ? 'gone' : 'unclear'}>
         {/^(?:HTTP\s+)?[1-5]\d{2}$/.test(item.note.trim())
@@ -107,7 +109,7 @@ function LinkTable(
     <div className={RESULT_SECTION} data-link-results={confirmed ? 'gone' : 'unclear'}>
       <DataTable label={title} items={items} columns={columns} rowId={(item) => String(item.id)}
         description={hint} unit={t('cleanup:links.unit')} panel={false} footerActions={footer}
-        rowLabel={(item) => t('cleanup:links.rowLabel', { entity: item.entity, link: item.label || item.url })}
+        rowLabel={(item) => t('cleanup:links.rowLabel', { entity: item.entity, link: linkLabel(item.label) || item.url })}
         selected={picked.map(String)} onSelected={(ids) => onPick(ids.map(Number))}
         actions={() => children} />
     </div>
@@ -185,10 +187,10 @@ export function LinkManager() {
   } else if (state && state.status !== 'idle') {
     progress = <>
       {state.status === 'running'
-        ? <TaskProgress embedded label={checkLine(state)} value={Math.min(state.checked || 0, state.total || 0)} total={state.total} />
+        ? <TaskProgress embedded kind={activityKind('link-check')} label={checkLine(state)} value={Math.min(state.checked || 0, state.total || 0)} total={state.total} />
         : null}
       {removing
-        ? <TaskProgress embedded label={jobText(prune.job) || t('cleanup:links.pruning')}
+        ? <TaskProgress embedded kind={activityKind('link-prune')} label={jobText(prune.job) || t('cleanup:links.pruning')}
             value={Math.min(prune.job?.checked || 0, prune.job?.total || 0)} total={prune.job?.total} />
         : null}
     </>;

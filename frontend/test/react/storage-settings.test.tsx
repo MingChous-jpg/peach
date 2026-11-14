@@ -110,7 +110,7 @@ it('统计中按上次的文件数画进度，读数是已走过的文件与大�
   const host = await mount(<StorageSettings initial={measuring} receipt={vi.fn()} />);
   const bar = host.querySelector('[role="progressbar"]')!;
   expect([bar.getAttribute('aria-valuenow'), bar.getAttribute('aria-valuemax')]).toEqual(['120', '300']);
-  expect(host.textContent).toContain('已统计 120 个文件 · 1.0 GB，上次共 300 个');
+  expect(host.textContent).toContain('已统计 120 个文件 · 1.0 GB，按上次的 300 个估算进度');
   expect(buttonNamed('全部清理', host)!.disabled).toBe(true);
 });
 
@@ -181,4 +181,18 @@ it('空目录自动读取 CloudDrive，填入表单后由保存写入设置', as
   await submit(host.querySelector('#storageBudgetSettings'));
   await settle();
   expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toEqual({ ...policy, external_cache_path: '/detected-cache' });
+});
+
+it('服务端迁移选择数据目录，确认前不提交迁移', async () => {
+  const seen = confirmWith(false);
+  const fetcher = fetchMock(200, { mode: 'manual', path: '/data', editable: true, container: false });
+  vi.stubGlobal('fetch', fetcher);
+  const host = await mount(<StorageSettings initial={measured} receipt={vi.fn()} />);
+  await click(buttonNamed('更改位置', host));
+  expect(sentBody(fetcher)).toEqual({ initial: measured.data_root, purpose: 'data', start: true });
+  await type(document.querySelector<HTMLInputElement>('input[aria-label="服务端数据目录"]'), '/srv/peach-data');
+  await click(buttonNamed('使用此目录'));
+  await settle();
+  expect(String(seen[0]!.body)).toContain('/srv/peach-data');
+  expect(fetcher).toHaveBeenCalledTimes(1);
 });

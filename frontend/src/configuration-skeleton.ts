@@ -181,7 +181,8 @@ export function javBrowserSkeleton(): string {
     + `<p class="text-caption-1-regular text-text-secondary">${text('70%')}</p>`
     + `<div class="flex flex-wrap items-center gap-2">${button(t('settings:userscriptStatus.checkAgain'), 'secondary')}</div></div>`;
   return section(t('settings:javBrowser.title'), stack(`<div class="flex min-w-0 flex-col gap-4">${status}${selectField(t('settings:browserAdd.channel'))}`
-    + `${on(shape?.ready) ? '' : help(t('settings:browserAdd.needsCloudDrive'))}${inputField(t('settings:browserAdd.peachUrl'))}</div>`),
+    + `${on(shape?.ready) ? '' : help(t('settings:browserAdd.needsCloudDrive'))}`
+    + `<div>${row(t('settings:browserAdd.wantOnNoMatch'), t('settings:browserAdd.wantOnNoMatchHelp'))}</div>${inputField(t('settings:browserAdd.peachUrl'))}</div>`),
   (enabled ? button(t('settings:javBrowser.disable'), 'secondary') : '') + button(enabled ? t('settings:javBrowser.updateChannelToken') : t('settings:javBrowser.enable')));
 }
 
@@ -312,6 +313,13 @@ export function devicesSkeleton(): string {
   const rows = Array.from({ length: Math.max(1, count(shape?.rows, 8)) }, () => controlRow(text('8em'), text('14em'), text('3em'), block('20px', '20px'))).join('');
   return section(t('settings:signedInDevices.title'), rows, on(shape?.manageable) ? button(t('settings:signedInDevices.revokeOthers'), 'secondary') : '',
     on(shape?.manageable) ? { status: t('settings:signedInDevices.passwordChangeNotice') } : {});
+}
+
+/** 账本备份：分区自己首次取数时画这一份。备份行数随机器变、首次读回前不知道，按三行画。 */
+export function ledgerBackupsSkeleton(): string {
+  const rows = Array.from({ length: 3 }, () => controlRow(text('9em'), text('14em'), button(t('settings:databaseBackups.restore'), 'secondary'))).join('');
+  return section(t('settings:databaseBackups.title'), stack(help(t('settings:databaseBackups.help')))
+    + `<div class="border-t border-separator-border">${rows}</div>`, button(t('settings:databaseBackups.backUpNow')), { status: text('5em') });
 }
 
 const network = () => {

@@ -401,6 +401,105 @@ class BrowserTests(unittest.TestCase):
         self.service.process_one()
         self.assertEqual(self.service.search.call_count, 2)
 
+    def wants(self):
+        with self.service.contract.database.read_connection() as connection:
+            return [tuple(row) for row in connection.execute("SELECT code_key, origin, state FROM want_item")]
+
+    def test_no_match_adds_the_code_to_wants_unless_the_setting_is_off(self):
+        self.service.search.return_value = {"items": []}
+        self.assertIsNone(self.status().json()["want"])
+        self.add()
+        self.service.process_one()
+        self.assertEqual(self.wants(), [("ABC-123", "code", "wanted")])
+        # 这次没搜到记作一次查找，想要的定时查找从这里起算间隔。
+        with self.service.contract.database.read_connection() as connection:
+            self.assertEqual(tuple(connection.execute(
+                "SELECT last_search_outcome, last_search_at IS NOT NULL FROM want_item").fetchone()), ("none", 1))
+        self.assertEqual(self.status().json()["want"], {"phase": "searching"})
+        self.assertTrue(self.client.get("/api/configuration/jav-browser", headers=self.headers).json()["want_on_no_match"])
+        # 关掉之后没搜到的只留在队列里；重试同一个番号也不会补登记。
+        response = self.client.post("/api/settings", headers=self.headers, json={"javBrowserWantOnNoMatch": False})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertFalse(self.client.get("/api/configuration/jav-browser", headers=self.headers).json()["want_on_no_match"])
+        self.add("ABP-616")
+        self.service.process_one()
+        self.assertEqual(self.service.rows["ABP-616"]["state"], "no_match")
+        self.assertEqual(self.wants(), [("ABC-123", "code", "wanted")])
+
+    def test_a_failed_search_is_not_added_to_wants(self):
+        self.service.search.return_value = {"state": "unavailable", "items": [], "error": "需要配置索引器"}
+        self.add()
+        self.service.process_one()
+        self.assertEqual(self.status().json()["state"], "failed")
+        self.assertEqual(self.wants(), [])
+
+    def test_an_unanswered_source_retries_on_its_cooldown_even_when_the_indexer_answered(self):
+        now = [1_800_000_000.0]
+        self.downloads.clock = lambda: now[0]
+        # 2026-11 实测形态：JavDB 冷却中未取得，后备索引器答复了但候选全被筛掉，合并后是 ready、无报错。
+        self.service.search.return_value = {
+            "ok": True, "state": "ready", "items": [], "error": "", "warnings": ["JavDB：未取得"],
+            "unfetched_sources": ["JavDB"], "retry_after": 900.0}
+        self.add()
+        self.add("ABP-616")
+        self.service.process_one()
+        status = self.status().json()
+        self.assertEqual((status["state"], status["retry_attempt"], status["message"]),
+                         ("queued", 1, "JavDB 未取得，等待自动重试"))
+        self.assertEqual(status["retry_at"], dl.iso(now[0] + 900))
+        self.assertEqual(self.wants(), [])
+        # 只是一个来源没答复，不暂停整条队列：下一个番号照常搜索。
+        self.assertTrue(self.service.process_one())
+        self.assertEqual(self.service.search.call_args.args[1]["code"], "ABP-616")
+        for _ in range(8):
+            now[0] += 1800
+            self.service.process_one()
+        self.assertEqual(self.service.search.call_count, 8)
+        status = self.status().json()
+        self.assertEqual((status["state"], status["retry_exhausted"]), ("failed", True))
+        self.assertEqual(status["message"], "JavDB 自动重试 3 次后仍未取得，请在 Peach 检查来源后重试")
+        self.assertNotIn("sources_complete", self.service.rows["ABC-123"])
+        self.assertEqual(self.wants(), [])
+        now[0] += 3600
+        self.assertFalse(self.service.process_one())
+
+    def test_no_match_recorded_before_the_source_check_is_searched_again_once(self):
+        now = [1_800_000_000.0]
+        self.downloads.clock = lambda: now[0]
+        self.service.path.parent.mkdir(parents=True, exist_ok=True)
+        self.service.path.write_text(json.dumps({
+            "ABC-123": {"state": "no_match", "provider": "115", "source_url": PAGE,
+                        "message": "未找到可自动下载的磁力，可重试", "ended_at": "2026-11-13T08:00:00+00:00"},
+            "ABP-616": {"state": "no_match", "provider": "115", "source_url": "", "sources_complete": True},
+        }), encoding="utf-8")
+        search = Mock(return_value={"items": [{"name": "ABC-123 1080p", "uri": MAGNET}]})
+        restored = JavBrowser(self.service.contract, search=search)
+        self.assertTrue(restored.process_one())
+        search.assert_called_once()
+        self.assertEqual(search.call_args.args[1]["code"], "ABC-123")
+        self.assertEqual(restored.status("ABC-123")["state"], "submitted")
+        now[0] += 120
+        self.assertFalse(restored.process_one())
+        self.assertEqual(restored.rows["ABP-616"]["state"], "no_match")
+        search.assert_called_once()
+
+    def test_the_userscript_can_add_a_code_to_wants_directly(self):
+        # 与想要清单「按番号添加」同一入口：登记后立即起一轮取资料。
+        with patch("peach.web_wants.start_scrape") as scrape:
+            response = self.client.post("/api/jav-browser/want", headers=self.script_headers, json={"code": "abc-123"})
+            self.assertEqual(response.status_code, 200, response.text)
+            scrape.assert_called_once()
+            again = self.client.post("/api/jav-browser/want", headers=self.script_headers, json={"code": "ABC-123"})
+        body = response.json()
+        self.assertEqual((body["code"], body["state"], body["want"]), ("ABC-123", "idle", {"phase": "searching", "created": True}))
+        self.assertEqual(again.json()["want"], {"phase": "searching", "created": False})
+        self.assertEqual(self.wants(), [("ABC-123", "code", "wanted")])
+        identified = self.client.get("/api/jav-browser/identify", headers=self.script_headers,
+                                     params={"source_url": "https://video.dmm.co.jp/av/content/?id=abc00123"})
+        self.assertEqual(identified.json().get("want"), {"phase": "searching"}, identified.text)
+        refused = self.client.post("/api/jav-browser/want", headers={"Origin": "https://missav.ws"}, json={"code": "ABC-123"})
+        self.assertIn(refused.status_code, (401, 403))
+
     def test_magnet_failure_can_switch_to_the_next_magnet_until_none_are_left(self):
         other_hash = "b" * 40
         other = f"magnet:?xt=urn:btih:{other_hash}&dn=ABC-123"
@@ -425,6 +524,56 @@ class BrowserTests(unittest.TestCase):
         self.downloads.store.save(task)
         self.assertEqual(self.add(switch=True).json()["state"], "queued")
         self.service.process_one()
+        exhausted = self.status().json()
+        self.assertEqual((exhausted["state"], exhausted["message"]), ("no_match", "没有其他可用磁力，可在 Peach 手动选择资源"))
+
+    def test_magnet_failures_switch_to_the_next_candidate_without_waiting_for_the_user(self):
+        hashes = [HASH, *(letter * 40 for letter in "bcdef")]
+        items = [{"name": f"ABC-123 {index}", "uri": f"magnet:?xt=urn:btih:{value}&dn=ABC-123"}
+                 for index, value in enumerate(hashes)]
+        self.service.search.return_value = {"items": items}
+        self.add()
+        self.service.process_one()
+
+        def fail_current(failure="no_source"):
+            task = self.downloads.store.get(self.status().json()["task_id"])
+            task.state, task.failure, task.failure_detail = dl.FAILED, failure, "没有可用下载源"
+            self.downloads.store.save(task)
+            self.service._swept_at = float("-inf")
+            return task.info_hash
+
+        # 每次磁力失败都跳过它交下一个候选，不用用户点「换一个磁力」。
+        tried = []
+        for failure in ("no_source", "invalid_link", "mismatch"):
+            tried.append(fail_current(failure))
+            self.assertTrue(self.service.process_one())
+            self.assertEqual(self.service.search.call_args.args[1]["skip"], tried)
+            self.assertEqual(self.status().json()["state"], "submitted")
+        self.assertEqual(self.downloads.store.get(self.status().json()["task_id"]).info_hash, hashes[3])
+        # 自动换满三次后停下，留给用户决定；状态仍是磁力问题，脚本给「换一个磁力」。
+        fail_current()
+        self.assertFalse(self.service.process_one())
+        stopped = self.status().json()
+        self.assertEqual((stopped["state"], stopped["cause"]), ("failed", "magnet"))
+        # 用户手动换磁力时沿用已跳过的名单，接着交下一个候选。
+        self.assertEqual(self.add(switch=True).json()["state"], "queued")
+        self.service.process_one()
+        self.assertEqual(self.downloads.store.get(self.status().json()["task_id"]).info_hash, hashes[4])
+
+    def test_automatic_magnet_switch_ends_as_no_other_magnet_when_candidates_run_out(self):
+        other = "b" * 40
+        self.service.search.return_value = {"items": [{"name": "ABC-123 1080p", "uri": MAGNET},
+                                                      {"name": "ABC-123 720p", "uri": f"magnet:?xt=urn:btih:{other}&dn=ABC-123"}]}
+        self.add()
+        self.service.process_one()
+        for expected in (other, None):
+            task = self.downloads.store.get(self.status().json()["task_id"])
+            task.state, task.failure = dl.FAILED, "rejected"
+            self.downloads.store.save(task)
+            self.service._swept_at = float("-inf")
+            self.assertTrue(self.service.process_one())
+            if expected:
+                self.assertEqual(self.downloads.store.get(self.status().json()["task_id"]).info_hash, expected)
         exhausted = self.status().json()
         self.assertEqual((exhausted["state"], exhausted["message"]), ("no_match", "没有其他可用磁力，可在 Peach 手动选择资源"))
 
@@ -494,9 +643,7 @@ class BrowserTests(unittest.TestCase):
         fail("not_accepted", "网盘没有收下这个任务")
         self.assertFalse(self.service.process_one())
         self.assertEqual(self.status().json()["state"], "failed")
-        # 磁力本身的问题不自动重来。
-        fail("no_source", "没有可用下载源")
-        self.assertFalse(self.service.process_one())
+        # 磁力本身的问题改为跳过换下一个候选，见 test_magnet_failures_switch_to_the_next_candidate_without_waiting_for_the_user。
         # 升级前空间不足被记成 rejected：按原文认回来，不限次数放回队列。
         fail("rejected", "提交离线任务失败：api error: code: 190031, message: 云空间不足")
         self.assertTrue(self.service.process_one())

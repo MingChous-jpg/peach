@@ -516,7 +516,7 @@ class Sha1SyncOptionsTests(unittest.TestCase):
                     mock.patch.object(self.script, "REVIEW_DIR", root / "review"):
                 args = self.script.parse_args([])
             self.assertEqual(args.cookie_file, root / "secrets" / "115-cookies.txt")
-            self.assertEqual(args.dupes_out, root / "review" / "115-sha1重复.csv")
+            self.assertEqual(args.dupes_out, root / "review" / "115-sha1-duplicates.csv")
             self.assertEqual(args.deprioritize_dir, [])
             self.assertFalse((root / "secrets").exists())
             self.assertFalse((root / "review").exists())
@@ -561,8 +561,8 @@ class Sha1SyncOptionsTests(unittest.TestCase):
                              (1, 1024**3))
             with output.open(encoding=self.script.ENCODING, newline="") as stream:
                 rows = list(csv.DictReader(stream))
-            self.assertEqual([(row["动作"], row["路径"]) for row in rows],
-                             [("保留", r"B:\library\b.mp4"), ("删除", r"B:\incoming\a.mp4")])
+            self.assertEqual([(row["action"], row["path"]) for row in rows],
+                             [("keep", r"B:\library\b.mp4"), ("delete", r"B:\incoming\a.mp4")])
             self.assertEqual(conn.execute("SELECT * FROM asset ORDER BY id").fetchall(), assets)
 
 
@@ -1685,7 +1685,11 @@ class OperationalScriptTests(unittest.TestCase):
             self.assertEqual(rows["javbus"]["auth_skips"], "4")
             self.assertEqual(rows["javbus"]["blocked"], "1")
             self.assertEqual(rows["r18dev"]["auth_skips"], "0")
-            self.assertIn("鉴权失败的来源", printed.getvalue())
+            # 控制台跟本机语言（测试固定 zh-CN），日志文件同一句固定英文。
+            self.assertIn("鉴权失败的来源 1 家", printed.getvalue())
+            written = "\n".join(path.read_text(encoding="utf-8") for path in (root / "logs").glob("*.log"))
+            self.assertIn("Sources with failed authentication: 1", written)
+            self.assertIn("  javbus (", written)
 
     def test_only_not_found_counts_as_a_settled_source_verdict(self):
         # 本机配置问题（凭据没贴、桥没装）返回的是 unknown / unavailable 错误。把它当
@@ -1737,7 +1741,7 @@ class OperationalScriptTests(unittest.TestCase):
         self.assertIsNone(backfill.plan_update(
             typed, {"tag_types": {"a": "artist"}, "published_at": None}, None))
 
-        # 写入与续跑：写过的条目在 CSV 里记 `written=是`，下一趟 `--resume` 跳过它。
+        # 写入与续跑：写过的条目在 CSV 里记 `written=yes`，下一趟 `--resume` 跳过它。
         writer = sqlite3.connect(database)
         self.addCleanup(writer.close)
         backfill._apply(writer, [(2, plan)])
@@ -1746,6 +1750,10 @@ class OperationalScriptTests(unittest.TestCase):
         ).fetchone()
         self.assertEqual(tuple(row), ("2026-05-01T16:32:21Z", 60.054, "exact"))
         out = database.parent / "log.csv"
+        backfill.write_rows(out, backfill.FIELDS, [{"item_id": 2, "written": "yes"},
+                                          {"item_id": 1, "written": "no"}], fill_missing=True)
+        self.assertEqual(backfill.written_ids(out), {2})
+        # 旧版日志写的「是／否」照样认。
         backfill.write_rows(out, backfill.FIELDS, [{"item_id": 2, "written": "是"},
                                           {"item_id": 1, "written": "否"}], fill_missing=True)
         self.assertEqual(backfill.written_ids(out), {2})
@@ -1852,6 +1860,11 @@ class OperationalScriptTests(unittest.TestCase):
                                    "harry potter (harry potter)": "character"}})
         self.assertEqual(json.loads(rows[2]), {"tags": []})
         self.assertEqual(backfill.settled_ids(out), {1})
+        # 旧版日志写的中文取值照样认：写过的与「无需改动」的都算问定。
+        backfill.write_rows(out, backfill.FIELDS, [
+            {"item_id": 1, "result": "取得", "written": "是"}, {"item_id": 2, "result": "无需改动", "written": "否"},
+            {"item_id": 3, "result": "未取得", "written": "否"}], fill_missing=True)
+        self.assertEqual(backfill.settled_ids(out), {1, 2})
 
     def test_rule34_backfill_without_credentials_stops_before_the_backup(self):
         """分类与上传时间要问 dapi，dapi 要账号凭据；缺凭据就在备份与写入之前停。"""
@@ -1968,7 +1981,7 @@ class OperationalScriptTests(unittest.TestCase):
         with out.open(encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
         self.assertEqual({(row["external_id"], row["mode"], row["result"]) for row in rows},
-                         {("11", "归档", "取得"), ("21", "探测", "取得"), ("23", "探测", "取得")})
+                         {("11", "archive", "found"), ("21", "probe", "found"), ("23", "probe", "found")})
         self.assertTrue((root / "backup.db").exists())
 
         # 第二遍：全部已有尺寸，没有待补，也不再发请求。
@@ -2044,7 +2057,8 @@ class OperationalScriptTests(unittest.TestCase):
             if not path or not Path(path).exists():
                 continue
             probe = subprocess.run([path, "-c", "uname -s"],
-                                   capture_output=True, text=True, encoding="utf-8", check=False)
+                                   capture_output=True, text=True, encoding="utf-8",
+                                   errors="replace", check=False)
             if probe.returncode == 0 and (sys.platform != "win32" or "linux" not in probe.stdout.casefold()):
                 shells.append(path)
         self.assertTrue(shells)
@@ -2202,7 +2216,7 @@ class OperationalScriptTests(unittest.TestCase):
             plan, scanned = self.find_ads.find_candidates(db, min_group=3)
             self.assertEqual(scanned, 3)
             self.assertEqual(len(plan), 3)
-            self.assertTrue(all("等长重复x3" in row["hits"] for row in plan))
+            self.assertTrue(all("same-length-x3" in row["hits"] for row in plan))
             self.assertFalse((root / "ad-candidates.csv").exists())
 
     def test_ledger_paths_are_split_with_windows_semantics_on_any_host(self):
@@ -2243,9 +2257,9 @@ class OperationalScriptTests(unittest.TestCase):
             plan, scanned = self.find_ads.find_candidates(db, min_group=3)
             self.assertEqual(scanned, 3)
             by_id = {row["id"]: row for row in plan}
-            self.assertIn("推广目录", by_id[1]["hits"])
-            self.assertIn("推广目录", by_id[2]["hits"])
-            self.assertEqual(by_id[1]["confidence"], "确认")
+            self.assertIn("promo-dir", by_id[1]["hits"])
+            self.assertIn("promo-dir", by_id[2]["hits"])
+            self.assertEqual(by_id[1]["confidence"], "confirmed")
             self.assertNotIn(3, by_id)
 
     def test_filename_cleanup_is_conservative(self):
@@ -2521,7 +2535,7 @@ class OperationalScriptTests(unittest.TestCase):
                 self.assertEqual(self.rehome_unknown._direct_children(target), {})
 
     def test_media_batch_scripts_are_import_safe_and_keep_context_rules(self):
-        self.assertEqual(self.probe.context_fields(1920, 1080, 180), ("速食", "横屏", "2K"))
+        self.assertEqual(self.probe.context_fields(1920, 1080, 180), ("quick", "landscape", "1080P"))
         with tempfile.TemporaryDirectory() as tmp:
             output = self.sheets.output_path(Path(tmp), "local", "R:/media/one.mp4")
             self.assertFalse(output.exists())
@@ -2594,16 +2608,26 @@ class OperationalScriptTests(unittest.TestCase):
         responses = iter([HttpResponse(200, {}, gate, "https://brand.test/"),
                           HttpResponse(200, {}, inside, "https://brand.test/top")])
         evidence = []
-        found, final, _ = module.scan(lambda *args: next(responses), "https://brand.test/", 1,
-                                     evidence=evidence)
+        found, final, result, _ = module.scan(lambda *args: next(responses), "https://brand.test/", 1,
+                                             evidence=evidence)
         self.assertEqual(found, {"main_brand", "other_brand"})
+        self.assertEqual(result, "checked")
         self.assertEqual(final, "https://brand.test/top")
         self.assertEqual(len(evidence), 2)
         for response in (HttpResponse(403, {}, inside, "https://brand.test/"),
                          HttpResponse(200, {}, inside, "https://elsewhere.test/")):
-            found, _, note = module.scan(lambda *args, response=response: response, "https://brand.test/", 1)
-            self.assertEqual(found, set())
+            found, _, result, note = module.scan(lambda *args, response=response: response,
+                                                 "https://brand.test/", 1)
+            self.assertEqual((found, result), (set(), "missed"))
             self.assertIn("未取得", note)
+
+    def test_studio_social_resume_rechecks_missed_rows_from_old_and_new_progress_files(self):
+        module = load_script("find_studio_socials")
+        self.assertTrue(module.missed({"result": "missed", "note": ""}))
+        self.assertFalse(module.missed({"result": "checked", "note": "未取得：说明照本机语言写"}))
+        # 旧版进度文件没有 `result` 列，没取到的说明以「未取得」开头。
+        self.assertTrue(module.missed({"note": "未取得：HTTP 403"}))
+        self.assertFalse(module.missed({"note": "官网页面有社交链接"}))
 
     def test_studio_social_ledger_input_includes_existing_socials_and_only_official_sites(self):
         module = load_script("find_studio_socials")
@@ -3257,7 +3281,7 @@ class OperationalScriptTests(unittest.TestCase):
                                 for p in (root / "log").glob("sheets-*.log"))
         self.assertIn("18349", written)
         self.assertIn("duration_mismatch", written)
-        self.assertIn("失败原因：duration_mismatch 1", written)
+        self.assertIn("Failure reasons: duration_mismatch 1", written)
 
     def test_sheets_can_reshoot_one_named_asset_over_a_stale_product(self):
         """点名重抽是为了盖掉上一次的错结果，撞上已存在的产物就短路等于没修。"""
@@ -4149,7 +4173,7 @@ class OperationalScriptTests(unittest.TestCase):
             self.assertGreaterEqual(auto_apply_metadata(LedgerDatabase(db), candidate_root)["applied"], 1)
             with closing(sqlite3.connect(db)) as con:
                 self.assertEqual(set(con.execute("SELECT tag,source FROM asset_tag WHERE asset_id=1"
-                                                 " AND tag NOT LIKE '演员:%'")),
+                                                 " AND tag NOT LIKE 'performer:%'")),
                                  {("高跟", "javinizer:javdb:tag"), ("丝袜", "javinizer:javdb:tag")})
 
     def test_explicit_sources_ask_every_named_source_and_refuse_retired_names(self):
@@ -4900,8 +4924,10 @@ class R2ArtifactTransferTests(unittest.TestCase):
         path.write_bytes(b"test double; subprocess calls are mocked")
 
     def environment(self):
+        # 清空环境后补回运行器固定的语言，否则报错文字跟系统语言走，英文 CI 上对不上中文断言。
         return {"CI_PROJECT_ID": "123", "CI_PIPELINE_ID": "456", "CI_COMMIT_SHA": "a" * 40,
-                "CI_COMMIT_TAG": "v1.2.3", "CI_COMMIT_REF_PROTECTED": "true", "CI_JOB_ID": "789"}
+                "CI_COMMIT_TAG": "v1.2.3", "CI_COMMIT_REF_PROTECTED": "true", "CI_JOB_ID": "789",
+                "PEACH_LANGUAGE": "zh-CN"}
 
     def rclone_environment(self):
         return {"PEACH_RCLONE": "rclone", "PEACH_R2_BUCKET": "peach-releases"}
@@ -5207,6 +5233,31 @@ class R2ArtifactTransferTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {**rehearsal, "CI_COMMIT_REF_PROTECTED": "false"}, clear=True), \
                 self.assertRaises(ValueError):
             module.identity()
+
+
+class DownloadOnlySmokeCheckoutTests(unittest.TestCase):
+    def test_the_sparse_checkout_carries_every_module_the_smoke_host_imports(self):
+        """仅下载制品验收只稀疏检出几个目录，宿主是没装依赖的 Python。
+
+        0.58.0 的发布演练就断在这里：`build_amane_runtime` 开始读 `peach.interface_text`，检出里没有
+        `src/peach`，三个平台的验收都报 ModuleNotFoundError。按工作流里的清单拷目录，只用标准库导入。
+        """
+        text = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+        blocks = re.findall(r"sparse-checkout: \|\n((?:            \S.*\n)+)", text)
+        self.assertGreaterEqual(len(blocks), 2)
+        for block in blocks:
+            folders = [line.strip() for line in block.splitlines()]
+            with self.subTest(folders=folders), tempfile.TemporaryDirectory() as temporary:
+                source = Path(temporary) / "source"
+                for folder in folders:
+                    shutil.copytree(ROOT / folder, source / folder,
+                                    ignore=shutil.ignore_patterns("__pycache__", "node_modules", ".venv"))
+                completed = subprocess.run(
+                    [sys.executable, "-I", "-S", "-c",
+                     "import sys; sys.path.insert(0, sys.argv[1]); import smoke_desktop, build_amane_runtime",
+                     str(source / "scripts")],
+                    capture_output=True, text=True, encoding="utf-8", timeout=60)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
 
 
 class R2ReleaseTests(unittest.TestCase):
@@ -6545,7 +6596,7 @@ class Fc2SellerAndDescriptiveNameRepairTests(unittest.TestCase):
             con.execute("INSERT INTO asset_entity(asset_id,entity_id,role,source) VALUES(?,?,?,?)",
                         (asset_id, entity_id, role, source))
         con.execute("INSERT INTO asset_tag(asset_id,tag,confidence,source) VALUES(11,?,0.6,?)",
-                    ("演员:145cm色白お嬢様", "javinizer:javdb:performer"))
+                    ("performer:145cm色白お嬢様", "javinizer:javdb:performer"))
         con.execute("INSERT INTO entity_alias(entity_id,alias,normalized_alias,source,confidence)"
                     " VALUES(3,'色白お嬢様','色白お嬢様','test',1.0)")
         con.execute("INSERT INTO review_decision(category,item_key,status,reviewer,note,updated_at)"

@@ -375,7 +375,6 @@
   "feedCover": {
     "coverAction": "{{action}}: {{code}} cover",
     "fetching": "Fetching",
-    "fetchingCover": "Fetching cover",
     "prioritize": "Prioritize"
   },
   "folderRule": {
@@ -425,7 +424,6 @@
     "hostMissing": "Immersive mode isn't connected to a host (configureImmerse)",
     "loading": "Loading",
     "loadingContent": "Loading content",
-    "loadingMedia": "Loading media",
     "logClimax": "Log a climax",
     "markDisliked": "Dislike",
     "markWatched": "Mark as watched",
@@ -646,7 +644,7 @@
     "next": "Next image",
     "onlineImage": "Online image",
     "previous": "Previous image",
-    "reveal": "Show in file manager",
+    "reveal": "Show file location",
     "unknownStorage": "Unknown storage",
     "untitled": "Untitled image",
     "zoom": "Zoom",
@@ -1124,6 +1122,8 @@
     "hasMagnet": "Has magnet link",
     "importedOn": "Imported {{date}}",
     "itemUnit": "items",
+    "lastSearchError": "Search failed on {{date}}; will retry",
+    "lastSearchNone": "Nothing found on {{date}}",
     "loadFailed": "Couldn't load Wants",
     "loading": "Loading Wants",
     "magnetFilter": "Magnet link filter",
@@ -1142,6 +1142,7 @@
     "searchAgain": "Search again",
     "searchCount_one": "Searched {{count, number}} time",
     "searchCount_other": "Searched {{count, number}} times",
+    "searchingResources": "Searching for resources for Wants.",
     "sourcePage": "Source page",
     "tryOtherSearch": "Try a different code, actress, or title."
   }

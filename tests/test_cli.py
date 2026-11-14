@@ -68,7 +68,7 @@ class StatusCommandTests(unittest.TestCase):
             "creator,ctx_length) VALUES(?,?,?,?,?,?,?,?,?)",
             [
                 ("local", r"R:\media\a.mp4", "a.mp4", "video", 2 << 30, 1800.0,
-                 r"R:\snap\a.jpg", "Someone", "中"),
+                 r"R:\snap\a.jpg", "Someone", "medium"),
                 ("local", r"R:\media\b.mp4", "b.mp4", "video", 1 << 30, None, None,
                  None, None),
                 ("online", "https://example.test/x", "x", "account", None, None, None,
@@ -92,6 +92,8 @@ class StatusCommandTests(unittest.TestCase):
         # 在线资产不进「加工进度」的分母，否则百分比永远到不了 100。
         self.assertIn("有时长 (ffprobe)", output)
         self.assertIn("1 / 2", output)
+        # 情境层取值存的是 id，按命令行语言显示。
+        self.assertIn("中=1", output)
         self.assertIn("待应用 0 个", output)
         self.assertIn("同步：", output)
 
@@ -545,6 +547,14 @@ class ScanCommandTests(unittest.TestCase):
         code, _ = self._run(["scan", "local", str(self.media / "sub"), "--db", str(self.db)])
         self.assertEqual(code, 0)
         self.assertEqual(self._count(), 1)
+
+    def test_a_directory_outside_every_root_exits_with_a_readable_message(self):
+        """#591：不在任何已配置媒体目录下的目录给出提示后退出，不抛 IndexError。"""
+        (self.root / "outside").mkdir()
+        with self.assertRaises(SystemExit) as caught:
+            self._run(["scan", "local", str(self.root / "outside"), "--db", str(self.db)])
+        self.assertTrue(str(caught.exception).startswith("✗"), caught.exception)
+        self.assertEqual(self._count(), 0)
 
     def test_an_undeclared_source_is_refused_and_lists_the_known_ones(self):
         with self.assertRaises(SystemExit) as caught:

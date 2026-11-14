@@ -349,7 +349,6 @@
   "feedCover": {
     "coverAction": "{{action}} {{code}} 的封面",
     "fetching": "抓取中",
-    "fetchingCover": "正在取封面",
     "prioritize": "优先处理"
   },
   "folderRule": {
@@ -395,7 +394,6 @@
     "hostMissing": "沉浸模式还没有接上宿主（configureImmerse）",
     "loading": "加载中",
     "loadingContent": "加载内容",
-    "loadingMedia": "媒体加载中",
     "logClimax": "记一次高潮",
     "markDisliked": "标为不喜欢",
     "markWatched": "标为看过",
@@ -599,7 +597,7 @@
     "next": "下一张",
     "onlineImage": "在线图片",
     "previous": "上一张",
-    "reveal": "在资源管理器中显示",
+    "reveal": "查看文件位置",
     "unknownStorage": "来源未知",
     "untitled": "未命名图片",
     "zoom": "缩放",
@@ -1060,6 +1058,8 @@
     "hasMagnet": "有磁链",
     "importedOn": "入库于 {{date}}",
     "itemUnit": "条",
+    "lastSearchError": "{{date}} 查找失败，稍后重试",
+    "lastSearchNone": "{{date}} 没查到资源",
     "loadFailed": "想要清单读取失败",
     "loading": "正在读取想要",
     "magnetFilter": "待找磁链筛选",
@@ -1077,6 +1077,7 @@
     "removed": "已移除：{{name}}",
     "searchAgain": "重新查找",
     "searchCount": "查过 {{count, number}} 次",
+    "searchingResources": "正在给待找的作品查资源。",
     "sourcePage": "来源页",
     "tryOtherSearch": "试试其他番号、女优或标题。"
   }

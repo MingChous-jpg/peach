@@ -37,6 +37,8 @@ from .user_messages import UserFacingError, UserValueError
 
 LOGGER = logging.getLogger(__name__)
 CREDENTIAL = "jav-browser"
+#: 跟着账本走的设置键（`web_settings.SYNCED_SETTING_KEYS` 登记，ADR-0161）。
+WANT_ON_NO_MATCH = "javBrowserWantOnNoMatch"
 ACTIVE = {"queued", "searching"}
 #: 排队与搜索中的番号上限，也是共享进度列表里进行中与已结束两部分各自的上限；
 #: 结束的任务保留 10 分钟，供各窗口看到完成。
@@ -67,6 +69,9 @@ def paused_text(failure: str) -> dict:
 #: 不怪这个番号、过一会儿再交就可能成的下载失败，不等用户手点：放回队列自动重来。
 #: 渠道级失败（空间、额度、配置）跟着渠道暂停与试探走，不限次数；其余按这张表限次，免得死循环。
 AUTO_RETRY_LIMITS = {"not_accepted": 2, "network": 2}
+#: 磁力本身的问题（网盘拒收、链接无效、没人做种、内容不符、被网盘拦截）不等用户点「换一个磁力」：
+#: 跳过这个磁力重新搜索、交下一个候选，最多自动换这么多次；候选用完时照旧记为没有其他可用磁力。
+MAGNET_SWITCH_LIMIT = 3
 #: 浏览器添加的任务结束后一直留在列表里，直到用户在脚本里标为已读。键是「任务编号@结束时间」；
 #: 没有下载任务的结果（未找到资源、搜索失败）用「番号@结束时间」。
 ENDED_KEY = re.compile(r"^([1-9][0-9]{0,11}|[0-9A-Z][0-9A-Z-]{1,39})@[0-9T:+.\-]{19,32}$")
@@ -400,6 +405,7 @@ class JavBrowser:
             providers[0]["key"] if providers else "")
         return {"enabled": bool(config.get("token_hash")), "provider": selected,
                 "active_provider": preferred, "available": self.downloads.available, **catalog,
+                "want_on_no_match": self.want_on_no_match(),
                 "userscript": {"version": release["version"],
                                "minimum_version": release.get("bridge_min_version", release["version"]),
                                "install_url": release.get("install_url", "/integrations/peach-jav.user.js")},
@@ -536,6 +542,42 @@ class JavBrowser:
             self._save()
             self._wake.set()
         return self.status(code)
+
+    def want_state(self, value: object) -> dict:
+        """这个番号在不在「想要」里：`want` 为 null 是还没登记，否则带清单上的那一段（ADR-0161）。
+
+        字段一直给出，用户脚本据此知道这台 Peach 能从浏览器登记想要。
+        """
+        from datetime import date
+        from . import wants
+        with self.contract.database.read_connection() as connection:
+            row = wants.by_code_key(connection, code_key(value))
+        return {"want": {"phase": wants.phase(row, date.today())} if row else None}
+
+    def want_on_no_match(self) -> bool:
+        """账本设置 `javBrowserWantOnNoMatch`：没搜到资源时是否加入想要，没设置过按开启算。"""
+        from .profiles import read_settings
+        with self.contract.database.read_connection() as connection:
+            return read_settings(connection).get(WANT_ON_NO_MATCH) is not False
+
+    def _want_unmatched(self, code: str) -> None:
+        """没搜到资源时按设置把番号加入想要；已在库、已登记或写入失败都不影响队列本身。
+
+        只登记这一行：封面与资料的积压由新作的定时刷新顺带补上，不在队列线程里另起取资料任务。
+        这次没搜到也记一笔查找（`record_search`），定时查找从这一次起算间隔，不马上再查一遍。
+        """
+        from . import wants
+        try:
+            if not self.want_on_no_match():
+                return
+            with self.contract.database.write_transaction() as connection:
+                row = wants.add_code(connection, code)
+                wants.record_search(connection, row["id"], "none")
+            self.contract.cache_bust()
+        except UserValueError:
+            pass
+        except Exception as error:
+            LOGGER.warning("JAV browser want after no match failed: %s (%s)", code, type(error).__name__)
 
     def retry_postprocess(self, value: object) -> dict:
         """重试这个番号入库后失败的整理，与任务中心的「重试整理」同一入口。"""
@@ -677,8 +719,9 @@ class JavBrowser:
             return self.status(code)
 
     def _requeue_recoverable(self) -> None:
-        """把能自动重来的失败放回队列，原来的位置不变；换磁力、无资源这类仍等用户决定。
+        """把能自动重来的失败放回队列，原来的位置不变；无资源仍等用户决定，升级前没分清来源的无资源除外。
 
+        磁力本身的问题跳过这个磁力换下一个候选，最多 `MAGNET_SWITCH_LIMIT` 次，与用户点「换一个磁力」同一条路。
         覆盖升级前留下的失败：11-12 之前空间不足被记成 rejected，按原文认回来一并放回。
         队列里已入库的行也要逐条读任务，一分钟最多扫一遍。
         """
@@ -691,7 +734,19 @@ class JavBrowser:
             if row["state"] not in {"submitted", "failed"} or not row.get("task_id"):
                 continue
             task = self.downloads.store.get(row["task_id"])
-            if task is None or task.state not in RESUBMITTABLE_STATES or task.blocked_at:
+            if task is None or not (task.state in RESUBMITTABLE_STATES or task.blocked_at):
+                continue
+            if _failure_projection(task)["cause"] == "magnet":
+                switched = row.get("magnet_switches", 0)
+                if switched >= MAGNET_SWITCH_LIMIT or not task.info_hash:
+                    continue
+                skip = [*row.get("skip", ()), task.info_hash]
+                row["state"], row["skip"], row["magnet_switches"] = "queued", list(dict.fromkeys(skip))[-20:], switched + 1
+                for key in ("task_id", "message", "retry_at", "retry_attempt", "retry_limit", "retry_exhausted", "ended_at"):
+                    row.pop(key, None)
+                changed = True
+                continue
+            if task.blocked_at:
                 continue
             channel = task.failure in CHANNEL_FAILURES or storage_full(task.failure_detail)
             used = row.get("auto_retries", 0)
@@ -703,8 +758,28 @@ class JavBrowser:
             if not channel:
                 row["auto_retries"] = used + 1
             changed = True
+        if self._recheck_unverified_no_match():
+            changed = True
         if changed:
             self._save()
+
+    def _recheck_unverified_no_match(self) -> bool:
+        """升级前记下的无资源没分清来源有没有查成（JavDB 要求登录那几天大量误记），按现在的判据重查。
+
+        现在的无资源行带 `sources_complete`；没带的行在队列空闲时每次清扫重查一条，排到队尾，
+        不挤占用户新加的番号，也不一下子把几十个番号压给来源。
+        """
+        if any(row["state"] in ACTIVE for row in self.rows.values()) or self._submitting:
+            return False
+        code = next((key for key, row in self.rows.items() if row["state"] == "no_match"
+                     and not row.get("sources_complete") and not row.get("task_id")), None)
+        if code is None:
+            return False
+        row = self.rows.pop(code)
+        for key in ("message", "retry_at", "retry_attempt", "retry_limit", "retry_exhausted", "ended_at"):
+            row.pop(key, None)
+        self.rows[code] = {**row, "state": "queued"}
+        return True
 
     def _next_queued(self) -> str | None:
         """排在最前、到了时间的番号；暂停中的渠道到了试探时间才放一个过去，其余照旧排着。"""
@@ -783,6 +858,9 @@ class JavBrowser:
                     self._submitting.add(code)
                     should_submit = True
                 self._save()
+                unmatched = row["state"] == "no_match"
+            if unmatched:
+                self._want_unmatched(code)
             if should_submit:
                 try:
                     submitted = submit_offline_download(
@@ -806,31 +884,49 @@ class JavBrowser:
         return True
 
     def _empty_search_result(self, row: dict, result: dict) -> None:
-        """搜索没有正片磁力时，分别结算无命中、可恢复故障与永久故障。"""
+        """搜索没有正片磁力时，分别结算无命中、可恢复故障与永久故障。
+
+        有直连来源没查成（JavDB 要求登录、来源冷却、连接失败）时，这一轮的「没有」不算数：
+        即使后备索引器答复了，也按来源冷却排自动重试，重试用完记成来源未取得，不记无资源。
+        """
         failed = result.get('state') in {'error', 'unavailable'} or bool(result.get('error'))
         message = Said('labels.javBrowser.searchUnavailable' if failed
                        else NO_OTHER_MAGNET if row.get('skip') else MESSAGES['no_match'])
         after = result.get('retry_after')
-        if failed and type(after) in (int, float) and math.isfinite(after) and after >= 0:
+        timed = type(after) in (int, float) and math.isfinite(after) and after >= 0
+        unfetched = [str(value) for value in result.get('unfetched_sources') or () if value]
+        if failed and timed:
             self._schedule_retry(row, RetryableTaskError('errors.javBrowser.searchUnavailable', after=after))
             # 来源让稍后再试时，整条队列一起等，不让后面的番号各自撞一次、各自耗掉重试次数。
             now = self.downloads.clock()
             self._search_pause = {"failure": SEARCH_PAUSE, "since": iso(now),
                                   "retry_at": row.get('retry_at') or iso(now + after)}
+        elif not failed and unfetched:
+            # 只是部分来源没答复，别的番号照样可能在其余来源找到，不暂停整条队列。
+            self._schedule_retry(row, RetryableTaskError('errors.javBrowser.searchUnavailable',
+                                                         after=after if timed else 0),
+                                 sources=' / '.join(dict.fromkeys(unfetched)))
         else:
             row.update(state='failed' if failed else 'no_match', **_message(message), ended_at=iso(self.downloads.clock()))
+            if not failed:
+                row['sources_complete'] = True
 
-    def _schedule_retry(self, row: dict, error: Exception) -> None:
+    def _schedule_retry(self, row: dict, error: Exception, *, sources: str = '') -> None:
+        """排下一次自动重试；`sources` 是没查成的来源，等待与用完时的那句话点名它们。"""
         attempt = row.get('retry_attempt', 0)
         delay = retry_delay(error, attempt)
         if delay is None:
-            message = (Said('labels.javBrowser.retriesExhausted', attempts=attempt) if attempt == len(RETRY_DELAYS)
+            message = (Said('labels.javBrowser.sourcesExhausted', sources=sources, attempts=attempt)
+                       if sources and attempt == len(RETRY_DELAYS)
+                       else Said('labels.javBrowser.retriesExhausted', attempts=attempt) if attempt == len(RETRY_DELAYS)
                        else Said('labels.javBrowser.submitFailed'))
             row.update(state='failed', **_message(message), ended_at=iso(self.downloads.clock()))
             row['retry_exhausted'] = attempt == len(RETRY_DELAYS)
             return
+        waiting = Said('labels.javBrowser.sourcesWaiting', sources=sources) if sources \
+            else Said('labels.javBrowser.retryWaiting')
         row.update(state='queued', retry_attempt=attempt + 1, retry_limit=len(RETRY_DELAYS),
-                   retry_at=iso(self.downloads.clock() + delay), **_message(Said('labels.javBrowser.retryWaiting')))
+                   retry_at=iso(self.downloads.clock() + delay), **_message(waiting))
 
     def start(self):
         if not self.downloads.available or self._thread is not None:

@@ -321,7 +321,9 @@ def w_taste_refresh(contract: WebContract, body, *, progress=None, checkpoint=No
 def _refresh_warnings(results: list[dict]) -> dict:
     """没读成的来源各一条：`warnings` 是按 zh-CN 渲染好的原句，`warning_codes`、`warning_params` 与它一一对应。
     续跑时接上的旧结果没有 `error_code`，原因照原文放进参数。"""
-    params = [{"browser": row["browser"], "profile": row["profile"],
+    params = [{"browser": row["browser"],
+               "profile": taste_phrase(BOOKMARK_PROFILE_CODE, {"profile": row["profile"]}, fallback=row["profile"])
+               if row.get("kind") == "bookmarks" else row["profile"],
                "reason": taste_phrase(row["error_code"], row.get("error_params"), fallback=str(row["error"]))
                if row.get("error_code") else str(row["error"])}
               for row in results if row.get("status") == "failed"]
@@ -375,6 +377,8 @@ def w_search_history(contract: WebContract, body):
 #: 不在这里的来源代号原样显示。
 STORAGE_KINDS = ("system", "local", "115", "pikpak")
 REFRESH_WARNING_CODE = "taste.refreshWarning"
+#: 书签来源的资料名：「资料名 · 书签」，按界面语言写。
+BOOKMARK_PROFILE_CODE = "taste.bookmarkProfile"
 
 
 def _volume_label(kind: str, index: int | None = None) -> dict:
@@ -585,17 +589,15 @@ def _ledger_stats(contract: WebContract, libraries) -> dict:
         out["tag_source"] = [dict(r) for r in c.execute(
             "SELECT source k, count(*) n, count(DISTINCT asset_id) assets "
             "FROM asset_tag GROUP BY source ORDER BY n DESC")]
-        out["tag_cov"] = one("SELECT count(DISTINCT asset_id) FROM asset_tag "
-                             f"WHERE asset_id IN (SELECT id FROM asset WHERE {PRESENT}) "
-                             "AND source IN ('name','r18','vision','vision-creator',"
-                             "'vision_creator','vision_creator_review')")
+        # 内容标签与详情页同一口径：不按写入来源挑（刮削、批次、复核、手动都算），
+        # 只去掉演员名和用户隐藏的标签；覆盖与排行用同一判据。
+        content_tags = ("FROM asset_tag t JOIN asset a ON a.id=t.asset_id "
+                        f"WHERE a.medium='video' AND {PRESENT_A} "
+                        "AND " + tag_is_not_a_performer_name("peach_normalize(t.tag)") + " "
+                        "AND " + tag_not_hidden('t.asset_id', 'peach_normalize(t.tag)') + " ")
+        out["tag_cov"] = one("SELECT count(DISTINCT t.asset_id) " + content_tags)
         out["top_tags"] = [dict(r, cat=tag_cat(r["k"])) for r in c.execute(
-            "SELECT t.tag k, count(*) n FROM asset_tag t JOIN asset a ON a.id=t.asset_id "
-            f"WHERE a.medium='video' AND {PRESENT_A} AND t.source IN ('name','r18','vision','vision-creator',"
-            "'vision_creator','vision_creator_review') "
-            "AND " + tag_is_not_a_performer_name("peach_normalize(t.tag)") + " "
-            "AND " + tag_not_hidden('t.asset_id', 'peach_normalize(t.tag)') + ' ' +
-            "GROUP BY t.tag ORDER BY n DESC LIMIT 30")]
+            "SELECT t.tag k, count(*) n " + content_tags + "GROUP BY t.tag ORDER BY n DESC LIMIT 30")]
         tables = {row[0] for row in c.execute(
             "SELECT name FROM sqlite_schema WHERE type='table'"
         )}
