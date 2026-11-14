@@ -33,7 +33,7 @@ Removed / Fixed / Security。
 
 ## [0.58.0] - 2026-11-14
 
-> 这一版起 Peach 支持英文界面：设置里的「界面语言」默认跟随浏览器和系统语言，也可以手动切换；作品标题、人名和标签仍显示原文。Docker 镜像这一版没有发布，`latest` 标签、arm64 镜像与下面的 Docker 改动随下一版推送。
+> Peach now has a full English interface. It follows your browser language automatically; if you picked Chinese under Settings → Interface language before, switch it back to Auto or English. Titles, names and tags stay in their original language. Docker images were not published for 0.58.0; they ship with 0.58.1, including linux/arm64 and the `latest` tag.
 
 ### 新增
 
