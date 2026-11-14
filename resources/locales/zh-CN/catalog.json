@@ -1058,6 +1058,8 @@
     "hasMagnet": "有磁链",
     "importedOn": "入库于 {{date}}",
     "itemUnit": "条",
+    "lastSearchError": "{{date}} 查找失败，稍后重试",
+    "lastSearchNone": "{{date}} 没查到资源",
     "loadFailed": "想要清单读取失败",
     "loading": "正在读取想要",
     "magnetFilter": "待找磁链筛选",
@@ -1075,6 +1077,7 @@
     "removed": "已移除：{{name}}",
     "searchAgain": "重新查找",
     "searchCount": "查过 {{count, number}} 次",
+    "searchingResources": "正在给待找的作品查资源。",
     "sourcePage": "来源页",
     "tryOtherSearch": "试试其他番号、女优或标题。"
   }

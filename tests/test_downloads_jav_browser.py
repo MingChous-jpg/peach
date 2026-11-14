@@ -411,6 +411,10 @@ class BrowserTests(unittest.TestCase):
         self.add()
         self.service.process_one()
         self.assertEqual(self.wants(), [("ABC-123", "code", "wanted")])
+        # 这次没搜到记作一次查找，想要的定时查找从这里起算间隔。
+        with self.service.contract.database.read_connection() as connection:
+            self.assertEqual(tuple(connection.execute(
+                "SELECT last_search_outcome, last_search_at IS NOT NULL FROM want_item").fetchone()), ("none", 1))
         self.assertEqual(self.status().json()["want"], {"phase": "searching"})
         self.assertTrue(self.client.get("/api/configuration/jav-browser", headers=self.headers).json()["want_on_no_match"])
         # 关掉之后没搜到的只留在队列里；重试同一个番号也不会补登记。

@@ -212,7 +212,7 @@ it('过期的内存缓存随卡片进入视口重新查询', async () => {
 });
 
 it('已取得磁链更新清单筛选状态，ED2K 不计作磁链', async () => {
-  queryClient.setQueryData<WantsData>(WANTS_KEY, { items: [{ id: 1 } as Want], counts: {} as WantsData['counts'], scraping: false });
+  queryClient.setQueryData<WantsData>(WANTS_KEY, { items: [{ id: 1 } as Want], counts: {} as WantsData['counts'], scraping: false, searching: false });
   await open();
   expect(queryClient.getQueryData<WantsData>(WANTS_KEY)?.items[0]?.has_magnets).toBe(true);
   queryClient.removeQueries({ queryKey: ['want-magnets'] });

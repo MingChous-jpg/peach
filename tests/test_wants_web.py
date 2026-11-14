@@ -366,6 +366,77 @@ class WantListTests(WantWebFixture):
                          [(second, wants.SEARCHING, 0)])
 
 
+class ScheduledSearchTests(WantWebFixture):
+    """定时查资源：按到期挑条目，查到与否按浏览器添加的番号判据，逐条记账，来源连续失败就歇。"""
+
+    def wanted(self, *codes):
+        # 查询换成按番号回答的假查询；只在本类的用例里换，基类继承来的资源查询用例照常走真的。
+        self.results: dict[str, dict] = {}
+        factory = self.enterContext(patch('peach.wants_magnets.search_for'))
+        factory.return_value.query.side_effect = lambda code, refresh=False, released=None: self.results[code]
+        with self.contract.database.write_transaction() as connection:
+            return [wants.add_code(connection, code)['id'] for code in codes]
+
+    def answer(self, code, state='ready', names=(), **extra):
+        items = [{'protocol': 'magnet', 'uri': f'magnet:?xt=urn:btih:{index:040x}', 'name': name,
+                  'size': '4 GB', 'attributes': []} for index, name in enumerate(names, 1)]
+        self.results[code] = {'state': state, 'items': items, 'warnings': [], 'error': '',
+                              'checked_at': datetime.now(timezone.utc).isoformat(), **extra}
+
+    def run_round(self):
+        started = web_wants.start_search(self.contract)
+        thread = self.contract.want_search_job.thread
+        if thread is not None:
+            thread.join(10)
+            self.assertFalse(thread.is_alive())
+        return started
+
+    def outcomes(self):
+        with self.contract.database.read_connection() as connection:
+            return dict(connection.execute(
+                "SELECT code,last_search_outcome FROM want_item ORDER BY id").fetchall())
+
+    def test_a_round_records_found_none_and_source_errors(self):
+        self.wanted('DEMO-001', 'DEMO-002', 'DEMO-003')
+        self.answer('DEMO-001', names=['[HD] DEMO-001.mp4'])
+        self.answer('DEMO-002', names=['OTHER-999 完整版'])
+        self.answer('DEMO-003', state='error', error='来源连接失败')
+        self.assertIsNotNone(self.run_round())
+        self.assertEqual(self.outcomes(), {'DEMO-001': 'found', 'DEMO-002': 'none', 'DEMO-003': 'error'})
+        summary = self.contract.task_runs.query(task_key='want-search')[0].result_summary
+        self.assertEqual((summary['found'], summary['none'], summary['failed']), (1, 1, 1))
+        listed = {item['code']: item for item in self.get()['items']}
+        self.assertEqual(listed['DEMO-001']['last_search_outcome'], 'found')
+        self.assertFalse(self.get()['searching'])
+        self.assertIsNone(self.run_round())
+
+    def test_consecutive_source_failures_stop_the_round_and_pause_the_next(self):
+        self.wanted('DEMO-011', 'DEMO-012', 'DEMO-013', 'DEMO-014')
+        for code in ('DEMO-011', 'DEMO-012', 'DEMO-013', 'DEMO-014'):
+            self.answer(code, state='error')
+        self.run_round()
+        self.assertEqual(self.outcomes(), {'DEMO-011': 'error', 'DEMO-012': 'error', 'DEMO-013': 'error',
+                                           'DEMO-014': None})
+        self.assertIsNone(self.run_round())
+        self.contract.want_search_resume_at = 0
+        self.answer('DEMO-014')
+        self.run_round()
+        self.assertEqual(self.outcomes()['DEMO-014'], 'none')
+
+    def test_a_want_the_list_page_keeps_busy_is_left_for_the_next_round(self):
+        self.wanted('DEMO-021')
+        self.answer('DEMO-021', state='busy')
+        result = web_wants.search(self.contract, sleep=lambda seconds: None)
+        self.assertEqual((result['total'], result['none'], result['failed']), (1, 0, 0))
+        self.assertEqual(self.outcomes(), {'DEMO-021': None})
+
+    def test_the_scheduled_feed_tick_starts_the_search_even_without_due_sources(self):
+        from peach import web_feeds
+        with patch.object(web_wants, 'start_search') as start:
+            self.assertTrue(web_feeds.w_feed_check(self.contract, {'automatic': True})['idle'])
+            start.assert_called_once_with(self.contract)
+
+
 class FeedEntryTests(WantWebFixture):
     def wanted(self):
         return {item["id"]: item["wanted"] for item in self.get("/api/feeds/discoveries", state="all")["items"]}

@@ -470,7 +470,8 @@
     "timeline-thumbnails": "Video thumbnail fetch",
     "upgrade-library": "Metadata auto-repair",
     "upgrade-repairs": "Auto-repair",
-    "want-scrape": "Want metadata fetch"
+    "want-scrape": "Want metadata fetch",
+    "want-search": "Want resource search"
   },
   "taskRun": {
     "progress": {
@@ -2667,7 +2668,8 @@
       "unusableCandidate": "The candidate covers failed the checks: the image wasn't found, couldn't be decoded, or is narrower than 700px."
     },
     "webWants": {
-      "scrapeStopped": "Want metadata task stopped"
+      "scrapeStopped": "Want metadata task stopped",
+      "searchStopped": "Want resource search stopped"
     },
     "webFolders": {
       "rulesChanged": "The directory rules have changed. Open the settings again."

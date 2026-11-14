@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "1762f5b0-6b4c-4610-9ff6-f9961bc6db45", e._sentryDebugIdIdentifier = "sentry-dbid-1762f5b0-6b4c-4610-9ff6-f9961bc6db45");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "8450bd69-0fe5-459e-8ba7-3609ca62d336", e._sentryDebugIdIdentifier = "sentry-dbid-8450bd69-0fe5-459e-8ba7-3609ca62d336");
 	} catch {}
 })();
 import { Button as e, Bx as t, Chip as n, DataTableFooter as r, Disclosure as i, DownloadsPanel as a, EmptyState as o, Gg as s, HN as c, IssueRow as l, LinkButton as u, Lo as d, Ma as f, NameLink as p, Note as m, OV as h, Pf as g, ProcessingMode as _, RB as v, RUNNING_POLL_MS as y, Rk as b, Su as x, TASKS_KEY as S, TRIGGER_LABELS as C, TaskProgress as w, Xl as T, __toESM as E, activityKind as D, apiGet as O, apiSend as ee, busyProps as k, cardClass as te, codedText as A, confirmModal as ne, controlTask as re, cx as ie, elapsedText as j, errorMessage as M, fetchTasks as ae, fmtSize as oe, foldByKind as se, foldRoutine as ce, followupDetail as le, followupTally as N, groupFollowups as ue, hasResultProblems as P, i2 as F, interfaceLanguage as de, isActive as I, isRoutine as fe, latestOfKind as pe, momentText as L, notifyManager as me, oe as he, pollInterval as ge, problemDestination as _e, progressLabel as ve, progressText as ye, readableErrorHeadline as be, replaceEqualDeep as xe, require_jsx_runtime as Se, require_react as Ce, runError as R, setTaskSpeed as we, statusLabel as Te, summaryItems as Ee, t as z, taskIssues as De, taskName as B, taskSubject as Oe, um as ke, uo as Ae, useMutation as V, useQuery as H, useQueryClient as U, vl as je, withBackoff as Me } from "./peach-app.js";
@@ -268,7 +268,7 @@ var Ge = new Map([
 		"link-prune",
 		"source-check"
 	]],
-	[he, ["download-postprocess"]],
+	[he, ["download-postprocess", "want-search"]],
 	[d, ["taste-refresh"]],
 	[v, [
 		"upgrade-repairs",
@@ -823,4 +823,4 @@ function ct() {
 }
 export { ct as ActivityPage };
 
-//# debugId=1762f5b0-6b4c-4610-9ff6-f9961bc6db45
+//# debugId=8450bd69-0fe5-459e-8ba7-3609ca62d336
