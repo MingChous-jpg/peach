@@ -22,16 +22,18 @@ Removed / Fixed / Security。
 条目给使用者扫读：每条一句话，写在哪儿看到了什么变化，原因、实现和边界情况留在提交与 PR。
 同一功能的几处改动合成一条，每组里影响大的排前面。本文件任一版本有标签之后超过 80 字的条目，
 `release_tag.py` 都拒绝定版；Release 标题只写标签名，正文末尾附到上一版的完整变更链接。
+0.58.0 之后的条目句末带来源编号（#issue，没有 issue 就写 PR 编号；别的仓库写 `owner/repo#编号`），
+「未发布」段写进去时就要带，缺了测试与定版都会拒绝。
 
 ## [未发布]
 
 ### 新增
 
-- **采集**：「想要」清单定时给待找作品查资源，没查到的卡片注明日期，查到的链接直接列在卡片上。
+- **采集**：「想要」清单定时给待找作品查资源，没查到的卡片注明日期，查到的链接直接列在卡片上（#650）。
 
 ## [0.58.0] - 2026-11-14
 
-> 这一版起 Peach 支持英文界面：设置里的「界面语言」默认跟随浏览器和系统语言，也可以手动切换；作品标题、人名和标签仍显示原文。Docker 镜像这一版没有发布，`latest` 标签、arm64 镜像与下面的 Docker 改动随下一版推送。
+> Peach now has a full English interface. It follows your browser language automatically; if you picked Chinese under Settings → Interface language before, switch it back to Auto or English. Titles, names and tags stay in their original language. Docker images were not published for 0.58.0; they ship with 0.58.1, including linux/arm64 and the `latest` tag.
 
 ### 新增
 
