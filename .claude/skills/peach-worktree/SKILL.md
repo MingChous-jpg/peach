@@ -26,6 +26,7 @@ description: Peach 代码任务开工，以及创建、提交、集成或回收�
 6. 协调者执行 `integrate --branch <分支>`；入口核对开放 PR 的提交与工作者 HEAD、目标分支一致。等成功退出并核对主线提交，再做适用重启和运行核验。锁忙交入口等待；排队期间主线前进时，入口在锁内 rebase、补验并推送工作者分支后合入，同文件重叠、冲突或补验失败照旧停下。不手工 merge 绕过，不把分支交接当成验收完成。
 
 主检出 master 的直接提交与手工 merge 由 hook 拒收。发布先完成 `docs/TESTING.md`「每次发版检查」的依赖升级批次，再通过 `scripts/release_tag.py` 定版、打标签与发布；更新清单不代表升级完成。发布时机采用 `release_due.py` 及集成入口的同一判据，不额外重复检查。
+minor 定版前由智能体按 `release_notices.py` 的规则逐条审阅公告与更新日志，写 `build/release-notice-review.json`，不交用户判断；没有有效审阅 `--bump` 拒绝。
 
 推送后核对分支头 SHA 与工作流运行，使用 `gh run watch --exit-status` 等待结果并继续已授权的合入；不拿旧 PR 状态或 Release 成功代替 Test。失败先取日志和制品，同提交本地通过只能说明尚未复现，重试只限失败作业并保留首败原因；不同失败反复出现时先定位，不循环重试到绿。
 
