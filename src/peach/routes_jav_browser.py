@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from . import interface_text
 from .config import PROJECT_ROOT
-from .jav_browser import code_key, identify_source, page_edition
+from .jav_browser import code_key, identify_source, page_edition, whole_release
 from .routes_auth import require_auth
 from .user_messages import error_detail, message_fields
 
@@ -52,7 +52,8 @@ def active(service=Depends(browser_client)):
 
 def identify(source_url: str, code: str = "", service=Depends(browser_client)):
     try:
-        status = service.status(identify_source(source_url, code))
+        # 分段发售的商品页（`sora00613a`）按整片番号查状态与添加。
+        status = service.status(whole_release(identify_source(source_url, code), source_url, service.edition_probe))
         # 作品同时有特典版与通常版时带回来源页是哪一版，用户脚本据此给出两个添加按钮。
         edition = page_edition(source_url, service.edition_probe)
         return JSONResponse({**status, **service.want_state(status["code"]), **({"edition": edition} if edition else {})},

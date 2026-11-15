@@ -31,7 +31,7 @@ from .task_retry import RETRY_DELAYS, RetryableTaskError, retry_delay
 from .follow_secrets import CredentialError
 from .feeds import scan_code
 from .fsutil import atomic_write_text
-from .sources.dmm import code_from_cid
+from .sources.dmm import code_from_cid, guessed_cid
 from .jav_editions import bonus_cid
 from .user_messages import UserFacingError, UserValueError
 
@@ -220,6 +220,19 @@ def identify_source(value: object, hint: str = "") -> str:
     return code
 
 
+def whole_release(code: str, page: object, probe) -> str:
+    """分段发售的作品按整片番号算：DMM 上 `SORA-613A` 的整片 `sora00613` 也在售时返回 `SORA-613`。
+
+    商品号先取来源页地址里的，没有时按番号猜；与这个番号对不上、问不到 DMM 或整片不在售时原样返回。
+    """
+    whole_cid = getattr(probe, "whole", None)
+    cid = dmm_cid(page) or guessed_cid(code)
+    if whole_cid is None or not cid or code_key(code_from_cid(cid)) != code:
+        return code
+    whole = whole_cid(cid)
+    return code_key(code_from_cid(whole)) if whole else code
+
+
 #: 种子名、磁力显示名或文件名里标明特典版的写法。
 _BONUS_MARK = re.compile(BONUS_EDITION, re.IGNORECASE)
 
@@ -295,6 +308,11 @@ def _download_projection(task) -> dict:
             "postprocess_state": task.postprocess_state,
             "postprocess_label": task.postprocess_label,
             "updated_at": task.updated_at}
+
+
+def _failed(item: dict) -> bool:
+    """共享列表里的一项算不算失败：搜索或下载失败、未找到资源，或入库后整理失败；与用户脚本的失败计数同一口径。"""
+    return item.get("state") in {"failed", "no_match"} or (item.get("download") or {}).get("postprocess_state") == "failed"
 
 
 def _postprocess_retry_status(task) -> dict:
@@ -378,13 +396,22 @@ class JavBrowser:
         return ended
 
     def dismiss(self, body: dict) -> dict:
-        """确认已结束的任务：`all` 确认到此刻为止结束的全部，`keys` 逐条确认 `active()` 给出的键。"""
+        """确认已结束的任务：`keys` 逐条确认 `active()` 给出的键；`all` 确认到此刻为止结束的全部，失败项除外。
+
+        失败（含未找到资源与整理失败）要用户决定重试还是放弃，只能逐条确认。`all` 把分界点放到最早那条
+        未确认的失败上，分界点之后已完成的逐条记下。
+        """
         keys = body.get("keys", [])
         if body.get("all") not in (None, False, True) or not isinstance(keys, list) or len(keys) > ACTIVE_LIMIT \
                 or not all(isinstance(key, str) and ENDED_KEY.match(key) for key in keys):
             raise UserValueError("errors.javBrowser.invalidDismiss")
+        failed: list[str] = []
+        if body.get("all") is True:
+            ended = [item for item in self.active()["items"] if item.get("ended_key") and not item.get("dismissed")]
+            failed = [item["ended_key"].split("@", 1)[1] for item in ended if _failed(item)]
+            keys = [*keys, *(item["ended_key"] for item in ended if not _failed(item))]
         with self._lock:
-            since = iso(time.time()) if body.get("all") is True else self.ended["since"]
+            since = min([iso(time.time()), *failed]) if body.get("all") is True else self.ended["since"]
             dismissed = [key for key in dict.fromkeys([*self.ended["dismissed"], *keys])
                          if key.split("@", 1)[1] >= since]
             self.ended = {"since": since, "dismissed": dismissed[-ENDED_DISMISSED_LIMIT:]}
@@ -685,12 +712,16 @@ class JavBrowser:
             page = ""
         else:
             page = source_page(body.get("source_url"))
+        # 分段发售的按整片添加；之前按分段番号记下、已经结束的那一行由整片这一行接替。
+        whole = whole_release(code, page, self.edition_probe)
+        part, code = (code if whole != code else ""), whole
         with self._lock:
             config = self._config()
             if not config.get("token_hash"):
                 raise UserValueError("errors.javBrowser.notEnabled")
             status = self.status(code)
             if status["state"] in ACTIVE | {"owned", "submitted", "ingested"}:
+                self._drop_part(part)
                 return status
             if body.get("switch") not in (None, False, True):
                 raise UserValueError("errors.javBrowser.invalidSwitch")
@@ -714,9 +745,17 @@ class JavBrowser:
                 "bonus" if bonus_cid(dmm_cid(page)) else "")
             self.rows[code] = {"state": "queued", "provider": config["provider"], "source_url": page,
                                **({"skip": skip[-20:]} if skip else {}), **({"edition": edition} if edition else {})}
+            self._drop_part(part)
             self._save()
             self._wake.set()
             return self.status(code)
+
+    def _drop_part(self, part: str) -> None:
+        """整片接手后撤掉按分段番号记下、没生成下载任务就结束的那一行（失败或无资源）。调用方持锁。"""
+        row = self.rows.get(part) if part else None
+        if row and row["state"] in {"failed", "no_match"} and not row.get("task_id"):
+            del self.rows[part]
+            self._save()
 
     def _requeue_recoverable(self) -> None:
         """把能自动重来的失败放回队列，原来的位置不变；无资源仍等用户决定，升级前没分清来源的无资源除外。

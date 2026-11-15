@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import logging
 import re
 import sqlite3
 import subprocess
@@ -71,6 +72,7 @@ def translate_ledger_path(raw):
     return resolve(raw) or _local_ledger_path(raw)
 
 
+LOGGER = logging.getLogger(__name__)
 FIELDS = ('item_key', 'code', 'query', 'asset_id', 'asset_path', 'field', 'field_label', 'current_value',
           'candidates_json', 'source_count', 'source_profile', 'policy_version', 'status',
           'size_gb', 'videos', 'fetched_at')
@@ -2096,9 +2098,44 @@ def _apply_finished_candidates(database, candidate_root, active, asset_ids=None,
     from .metadata_auto_apply import auto_apply_metadata
     # 快照目录是企划名义解析的证据来源（ADR-0038）。路径只有 `DEFAULT_METADATA_ROOT`
     # 一份定义，这里传它而不是再拼一次：两处各拼一份，改 Peach 数据目录时会有一处留在原地。
-    return auto_apply_metadata(database, Path(candidate_root), active=active,
-                               snapshot_root=DEFAULT_METADATA_ROOT, asset_ids=asset_ids,
-                               candidate_rows=candidate_rows)
+    summary = auto_apply_metadata(database, Path(candidate_root), active=active,
+                                  snapshot_root=DEFAULT_METADATA_ROOT, asset_ids=asset_ids,
+                                  candidate_rows=candidate_rows)
+    if active():
+        _land_fc2_sellers(database, DEFAULT_METADATA_ROOT, asset_ids)
+        _inherit_code_siblings(database, asset_ids)
+    return summary
+
+
+def _inherit_code_siblings(database, asset_ids) -> None:
+    """这批里仍缺演员或创作者的视频，从同番号已有归属的那一份补上（`code_siblings.inherit`）。
+
+    放在卖家挂接之后：同番号那一份刚挂上的卖家也算。没给资产就不做——整库补一次是升级补修的事。
+    """
+    if not asset_ids:
+        return
+    from . import code_siblings
+    try:
+        with database.write_transaction() as connection:
+            code_siblings.inherit(connection, asset_ids)
+    except Exception:
+        LOGGER.exception('Code sibling identity inheritance failed')
+
+
+def _land_fc2_sellers(database, metadata_root, asset_ids) -> None:
+    """刚落库的这批里，来源快照写明了卖家的 FC2 作品挂上卖家账号（`fc2_sellers.land`）。
+
+    卖家归属此前只有一次性脚本，之后入库的 FC2 作品和后来才认出番号的副本都拿不到。
+    计划与账本对不上时这一批不写，等下一轮；出错只记日志，不挡资料落库。
+    """
+    from . import fc2_sellers
+    try:
+        with database.write_transaction() as connection:
+            fc2_sellers.land(connection, Path(metadata_root), asset_ids=asset_ids)
+    except ValueError:
+        LOGGER.info('FC2 seller landing skipped: plan no longer matches the ledger', exc_info=True)
+    except Exception:
+        LOGGER.exception('FC2 seller landing failed')
 
 
 def _enrich_finished_performers(database, groups, config, candidate_root, remote, active,
@@ -2824,6 +2861,16 @@ def _checkpoint_key(row):
     return f"{row['id']}:{row['path']}"
 
 
+def _newly_coded_assets(database, db_path) -> set[str]:
+    """账本里没番号、按现行内置规则能从文件名认出番号的影片 id；处理时会补上番号再采资料。"""
+    from .repository import LedgerDatabase
+    ledger = database if database is not None else LedgerDatabase(db_path)
+    with ledger.read_connection() as connection:
+        rows = connection.execute(
+            "SELECT id,name FROM asset WHERE medium='video' AND COALESCE(code,'')=''").fetchall()
+    return {str(row[0]) for row in rows if release_code_from_filename(row[1] or '')}
+
+
 class _LibraryCheckpoints:
     """只有预览登记或候选落盘成功才提交影片检查点。"""
 
@@ -2850,6 +2897,12 @@ class _LibraryCheckpoints:
             self.completed['completed_metadata'] = {
                 key for key in self.completed['completed_metadata'] if key.partition(':')[0] not in missing}
         state['fc2_metadata_rule'] = upgrade_rules.FC2_METADATA
+        if (previous.get('filename_code_rule') != upgrade_rules.FILENAME_CODES
+                and self.completed['completed_metadata']):
+            newly_coded = _newly_coded_assets(database, db_path)
+            self.completed['completed_metadata'] = {
+                key for key in self.completed['completed_metadata'] if key.partition(':')[0] not in newly_coded}
+        state['filename_code_rule'] = upgrade_rules.FILENAME_CODES
         self.pending_metadata = set()
         self.entity_watermark = previous.get('entity_watermark')
         if self.entity_watermark is None:

@@ -105,6 +105,27 @@ describe('检查更新', () => {
     expect([...host.querySelectorAll('a')].some((a) => a.textContent === '完整安装包')).toBe(false);
   });
 
+  it('下载内容只在安装包有新版时出现：源码、容器和已是最新都不列', async () => {
+    const withPackage = { ...release, latest_version: '1.0.0', package_kind: 'update', asset_size: 12 * 1048576 } as const;
+    for (const initial of [
+      { ...withPackage, state: 'current', latest_version: '0.9.0' },
+      { ...withPackage, state: 'available', installation_code: 'source' },
+      { ...withPackage, state: 'available', installation_code: 'docker' },
+    ]) {
+      const host = await mount(<ReleaseUpdates initial={initial as ReleaseState} />);
+      expect(host.textContent).not.toContain('应用更新包');
+      expect(host.textContent).not.toContain('另行下载所需工具包');
+    }
+  });
+
+  it('下载内容的说明和其他说明一样放在带留白的段落里，不贴着上一行', async () => {
+    const host = await mount(<ReleaseUpdates initial={{ ...release, state: 'available', latest_version: '1.0.0',
+      package_kind: 'update', asset_size: 12 * 1048576 }} />);
+    const help = [...host.querySelectorAll('p')].find((p) => p.textContent?.includes('另行下载所需工具包'));
+    expect(help?.parentElement?.tagName).toBe('DIV');
+    expect(help?.parentElement?.className).toContain('py-4');
+  });
+
   it('尚未检查的状态只显示一次，最新版本保持未取得', async () => {
     vi.stubGlobal('fetch', fetchMock(200, { state: 'idle', progress: 0 }));
     const host = await mount(<ReleaseUpdates initial={release} />);
