@@ -16,7 +16,7 @@ A local-first video metadata scraper and media manager.
 
 ## Screenshots
 
-[![Video library with search, filters and posters](https://peach.video/assets/screenshots/home-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/home-wide-20261025-2.png)
+[![Video library with search, filters and posters](https://peach.video/assets/screenshots/home-wide-20261118-2-en-1280.webp)](https://peach.video/assets/screenshots/home-wide-20261118-2-en.png)
 
 Movie demo data; see [asset credits and licenses](https://peach.video/en/credits/).
 
@@ -25,19 +25,19 @@ Movie demo data; see [asset credits and licenses](https://peach.video/en/credits
 
 **People and works**
 
-[![Charlie Chaplin's profile and films](https://peach.video/assets/screenshots/profile-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/profile-wide-20261025-2.png)
+[![Charlie Chaplin's profile and films](https://peach.video/assets/screenshots/profile-wide-20261118-2-en-1280.webp)](https://peach.video/assets/screenshots/profile-wide-20261118-2-en.png)
 
 **Creator updates**
 
-[![Creator follows and new works](https://peach.video/assets/screenshots/follow-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/follow-wide-20261025-2.png)
+[![Creator follows and new works](https://peach.video/assets/screenshots/follow-wide-20261118-2-en-1280.webp)](https://peach.video/assets/screenshots/follow-wide-20261118-2-en.png)
 
 **Library statistics**
 
-[![Library, storage and viewing statistics](https://peach.video/assets/screenshots/stats-wide-20261025-3-1280.webp)](https://peach.video/assets/screenshots/stats-wide-20261025-3.png)
+[![Library, storage and viewing statistics](https://peach.video/assets/screenshots/stats-wide-20261118-2-en-1280.webp)](https://peach.video/assets/screenshots/stats-wide-20261118-2-en.png)
 
 **Player**
 
-[![Big Buck Bunny player](https://peach.video/assets/screenshots/play-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/play-wide-20261025-2.png)
+[![Big Buck Bunny player](https://peach.video/assets/screenshots/play-wide-20261118-2-en-1280.webp)](https://peach.video/assets/screenshots/play-wide-20261118-2-en.png)
 
 </details>
 
@@ -47,7 +47,7 @@ Movie demo data; see [asset credits and licenses](https://peach.video/en/credits
 - **Local and cloud libraries**: browse local drives, SMB, mounted cloud storage and PikPak libraries together.
 - **Playback and history**: web and external players, subtitles, playback speed, rotation, resume and timeline previews.
 - **Follows and discovery**: track performer and creator updates, discover titles and manage a want list.
-- **Cloud download**: search by video code or submit a magnet link, then organize completed downloads into your library.
+- **Cloud and local download**: search by video code or submit a magnet link to 115, PikPak or qBittorrent, then organize completed downloads into your library.
 - **Library management**: manage tags, duplicates, versions and parts; permanently delete videos by performer while keeping profiles and photos. Metadata and watch history are stored locally.
 - **Task center**: pause, resume or cancel local background tasks and view their CPU, GPU and download activity where available.
 
@@ -55,8 +55,8 @@ Movie demo data; see [asset credits and licenses](https://peach.video/en/credits
 
 | Method | Get started |
 | --- | --- |
-| Windows x64 | [Installer](https://github.com/peach-mitao/peach/releases/download/v0.57.0/Peach-0.57.0-windows-x64-setup.exe) · [Portable](https://github.com/peach-mitao/peach/releases/download/v0.57.0/Peach-0.57.0-windows-x64.zip) |
-| macOS | [Apple Silicon / ARM64](https://github.com/peach-mitao/peach/releases/download/v0.57.0/Peach-0.57.0-macos-arm64.dmg) · [Intel / x86_64](https://github.com/peach-mitao/peach/releases/download/v0.57.0/Peach-0.57.0-macos-x86_64.dmg) |
+| Windows x64 | [Installer](https://github.com/peach-mitao/peach/releases/download/v0.62.0/Peach-0.62.0-windows-x64-setup.exe) · [Portable](https://github.com/peach-mitao/peach/releases/download/v0.62.0/Peach-0.62.0-windows-x64.zip) |
+| macOS | [Apple Silicon / ARM64](https://github.com/peach-mitao/peach/releases/download/v0.62.0/Peach-0.62.0-macos-arm64.dmg) · [Intel / x86_64](https://github.com/peach-mitao/peach/releases/download/v0.62.0/Peach-0.62.0-macos-x86_64.dmg) |
 | Docker / NAS | [Deployment guide](docs/DOCKER.md) |
 | Source | [Setup instructions](docs/OPERATIONS.md#从源码运行windowsmacos); requires Git, uv and Python 3.14+ |
 
@@ -64,7 +64,7 @@ Choose your media folders after installation, then scan to start browsing and pl
 
 ## Documentation
 
-[Operations](docs/OPERATIONS.md) · [Sources](docs/SOURCING.md) · [External players](docs/EXTERNAL_PLAYERS.md) · [Diagnostics and data sharing](docs/DIAGNOSTICS.md) · [Changelog](CHANGELOG.md)
+[Operations](docs/OPERATIONS.md) · [Sources](docs/SOURCING.md) · [Local download](docs/LOCAL_DOWNLOAD.md) · [External players](docs/EXTERNAL_PLAYERS.md) · [Diagnostics and data sharing](docs/DIAGNOSTICS.md) · [Changelog](CHANGELOG.md)
 
 Development: [Contributing](CONTRIBUTING.md) · [Development guide](AGENTS.md) · [Testing](docs/TESTING.md)
 

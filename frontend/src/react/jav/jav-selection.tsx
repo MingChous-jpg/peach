@@ -1,30 +1,34 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/base/buttons/button';
-import { JAV_SELECTION_EVENT } from '../../jav-controls';
+import { JAV_SELECTION_EVENT, takeJavSelection } from '../../jav-controls';
 import { selectRange, selectionSummary } from '../../selection';
 import { errorMessage } from '../../api';
 import { SelectionDock } from '../components/selection-dock';
-import { addWant, invalidateWants } from '../wants/wants';
-import { busyProps, useAction } from '../settings/use-action';
+import { useDense } from '../components/use-dense';
+import { addWant, invalidateWants, removeWants } from '../wants/wants';
+import type { BulkAction, Receipt } from '../components/bulk-action';
 import { JavBatchResources } from './jav-batch-resources';
 import type { Discovery } from './jav';
 import { t } from '../../i18n';
+import { useRectangleSelection } from '../components/rectangle-selection';
 
-function subscribeDensity(notify: () => void) {
-  const observer = new MutationObserver(notify);
-  observer.observe(document.body, { attributes: true, attributeFilter: ['data-density'] });
-  return () => observer.disconnect();
-}
-const denseDensity = () => document.body.dataset.density === 'dense';
 interface Selection {
   dense: boolean; mode: boolean; selected: Set<string>;
   toggle(item: Discovery, range?: boolean): void;
   visible(items: Discovery[]): void;
   selectPage(): void;
+  selectRectangle(keys: string[], add: boolean): void;
+  /** 退出多选：Esc、浮条上的「退出」与右上角开关都走它。 */
+  close(): void;
   all: boolean; mixed: boolean;
 }
 const Context = createContext<Selection | null>(null);
 export const useJavSelection = () => useContext(Context);
+
+export function useJavRectangle(enabled: boolean) {
+  const selection = useJavSelection();
+  return useRectangleSelection(enabled && selection?.mode ? selection.selectRectangle : undefined);
+}
 
 /** 当前页提供展示顺序；跨页选择保留作品本身，不能把来源 ID 当馆藏 ID。 */
 export function useVisibleJavWorks(items: Discovery[]) {
@@ -33,16 +37,18 @@ export function useVisibleJavWorks(items: Discovery[]) {
   useEffect(() => { visible?.(items) }, [items, visible]);
 }
 
-export function JavSelectionProvider({ children, readOnly, receipt }: {
-  children: ReactNode; readOnly: boolean; receipt(message: string): void;
+export function JavSelectionProvider({ children, readOnly, receipt, dock = true }: {
+  children: ReactNode; readOnly: boolean; receipt: Receipt;
+  /** 「想要」页签自己画浮条（它的条目是想要清单，不是作品卡），这里只管多选开关。 */
+  dock?: boolean;
 }) {
-  const dense = useSyncExternalStore(subscribeDensity, denseDensity, () => false);
+  const dense = useDense();
   const [mode, setMode] = useState(false);
   const [picked, setPicked] = useState<Map<string, Discovery>>(new Map());
   const [page, setPage] = useState<Discovery[]>([]);
   const [resources, setResources] = useState<Discovery[] | null>(null);
   const anchor = useRef<string | null>(null);
-  const action = useAction();
+  const owner = useRef(new URLSearchParams(location.search).get('tab') || '');
   const selected = new Set(picked.keys());
   const summary = selectionSummary(selected, page.map(item => item.code));
   const visible = useCallback((items: Discovery[]) => {
@@ -52,18 +58,31 @@ export function JavSelectionProvider({ children, readOnly, receipt }: {
       return changed.length ? new Map([...current, ...changed.map(item => [item.code, item] as const)]) : current;
     });
   }, []);
-  const cancel = action.cancel;
-  const close = useCallback(() => { cancel(); setMode(false); setPicked(new Map()); anchor.current = null }, [cancel]);
+
+  const close = useCallback(() => { setMode(false); setPicked(new Map()); anchor.current = null }, []);
   const selectPage = () => setPicked(current => {
     const next = new Map(current);
     page.forEach(item => summary.all ? next.delete(item.code) : next.set(item.code, item));
     return next;
   });
+  const selectRectangle = (keys: string[], add: boolean) => {
+    const codes = new Set(keys);
+    anchor.current = keys.at(-1) ?? null;
+    setPicked(current => new Map([...(add ? current : []), ...page
+      .filter(item => codes.has(item.code)).map(item => [item.code, item] as const)]));
+  };
   useEffect(() => {
-    const toggle = () => { if (mode) close(); else setMode(true) };
+    const toggle = (event: Event) => {
+      if (event instanceof CustomEvent && event.detail !== owner.current) return;
+      event.preventDefault();
+      if (mode) close(); else setMode(true);
+    };
     window.addEventListener(JAV_SELECTION_EVENT, toggle);
     return () => window.removeEventListener(JAV_SELECTION_EVENT, toggle);
   }, [mode, close]);
+  useEffect(() => {
+    if (takeJavSelection(location.search)) setMode(true);
+  }, []);
   useEffect(() => {
     if (!mode) { setPicked(new Map()); anchor.current = null }
     document.getElementById('selectMode')?.setAttribute('aria-pressed', String(mode));
@@ -72,7 +91,7 @@ export function JavSelectionProvider({ children, readOnly, receipt }: {
   useEffect(() => {
     if (!mode) return;
     const keydown = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement).closest('input,textarea,[contenteditable]:not([contenteditable="false"]),[role="dialog"]')) return;
+      if ((event.target as HTMLElement).closest('input,textarea,[contenteditable]:not([contenteditable="false"]),dialog,[role="dialog"]')) return;
       if (event.key === 'Escape') { event.preventDefault(); close() }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
         event.preventDefault();
@@ -94,30 +113,44 @@ export function JavSelectionProvider({ children, readOnly, receipt }: {
     });
   };
   const eligible = [...picked.values()].filter(item => !item.wanted && !item.asset_id);
-  const want = () => { void action.run('want', async signal => {
-    let completed = 0;
-    try {
-      for (const item of eligible) {
-        signal.throwIfAborted();
-        try { await addWant({ code: item.code }, signal) }
-        catch (error) { throw Error(t('catalog:javSelection.wantPartialFailed', { count: completed, code: item.code, error: errorMessage(error) })) }
-        signal.throwIfAborted();
-        completed++;
-        setPicked(current => { const next = new Map(current); next.delete(item.code); return next });
-      }
-      return completed;
-    } finally { void invalidateWants() }
-  }, count => receipt(t('catalog:javSelection.wantAdded', { count }))) };
-  return <Context.Provider value={{ dense, mode, selected, toggle, visible, selectPage, all: summary.all, mixed: summary.mixed }}>
+  /* 加入想要：逐条加。半路失败时弹窗留着、原因写在正文下面，加上的那几条移出选择，重试只发剩下的；
+     回执的撤销把这一批新加的那几条移出想要（原本就在想要里的不动）。 */
+  const wantAction = (): BulkAction<Discovery> => {
+    const done = new Set<string>();
+    const created: number[] = [];
+    return {
+      key: 'want', label: t('catalog:javSelection.addToWants'), reversal: 'undo',
+      confirm: (items) => ({ title: t('catalog:javSelection.addToWants'), body: t('catalog:javSelection.wantConfirm', { count: items.length }) }),
+      run: async (items) => {
+        try {
+          for (const item of items) {
+            if (done.has(item.code)) continue;
+            try {
+              const result = await addWant({ code: item.code });
+              if (result?.created) created.push(result.want.id);
+            } catch (error) {
+              throw Error(t('catalog:javSelection.wantPartialFailed', { count: done.size, code: item.code, error: errorMessage(error) }));
+            }
+            done.add(item.code);
+            setPicked(current => { const next = new Map(current); next.delete(item.code); return next });
+          }
+        } finally { void invalidateWants() }
+        return async () => { if (created.length) await removeWants(created); await invalidateWants() };
+      },
+      receipt: () => t('catalog:javSelection.wantAdded', { count: done.size }),
+    };
+  };
+  const want = wantAction();
+  const host = { receipt };
+  return <Context.Provider value={{ dense, mode, selected, toggle, visible, selectPage, selectRectangle, close, all: summary.all, mixed: summary.mixed }}>
     <div data-jav-selection="" data-select-mode={mode ? '' : undefined} className="flex min-w-0 flex-col gap-4">
       {children}
     </div>
-    <SelectionDock visible={mode} count={t('catalog:javSelection.selectedCount', { count: picked.size })} label={t('catalog:javSelection.dockLabel')}>
-      {action.error ? <p role="alert" className="w-full px-2 text-caption-1-regular text-text-error-primary">{action.error}</p> : null}
-      <Button size="small" variant="secondary" disabled={!page.length || !!action.busy} onClick={selectPage}>
-        <span data-copy-key={`jav.selection.page.${summary.all ? 'clear' : 'all'}`}>{summary.all ? t('catalog:javSelection.deselectPage') : t('catalog:javSelection.selectPage')}</span></Button>
-      <Button size="small" variant="secondary" disabled={readOnly || !eligible.length} {...busyProps(action.busy === 'want')} onClick={want}>{t('catalog:javSelection.addToWants')}</Button>
-      <Button size="small" variant="secondary" disabled={!picked.size || !!action.busy} onClick={() => setResources([...picked.values()])}>{t('catalog:shared.searchTorrents')}</Button>
+    <SelectionDock visible={dock && mode} count={t('catalog:javSelection.selectedCount', { count: picked.size })} label={t('catalog:javSelection.dockLabel')}
+      actions={[{ action: want, items: eligible, host, disabled: readOnly }]}
+      leading={<Button size="small" variant="secondary" disabled={!page.length} onClick={selectPage}>
+        <span data-copy-key={`jav.selection.page.${summary.all ? 'clear' : 'all'}`}>{summary.all ? t('catalog:javSelection.deselectPage') : t('catalog:javSelection.selectPage')}</span></Button>}>
+      <Button size="small" variant="secondary" disabled={!picked.size} onClick={() => setResources([...picked.values()])}>{t('catalog:shared.searchTorrents')}</Button>
       <Button size="small" variant="ghost" onClick={close}>{t('catalog:javSelection.exit')}</Button>
     </SelectionDock>
     <JavBatchResources items={resources} close={() => setResources(null)} readOnly={readOnly} receipt={receipt} />

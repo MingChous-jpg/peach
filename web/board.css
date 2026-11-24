@@ -95,7 +95,7 @@
   background-size:200% 200%,200% 200%,auto;background-repeat:no-repeat,no-repeat,repeat;
   background-position:50% 20%,80% 70%,0 0;
   animation:glassdriftx calc(41s * var(--glow-drift-scale)) linear infinite,glassdrifty calc(67s * var(--glow-drift-scale)) linear infinite;
-  animation-play-state:var(--glow-drift-play);
+  animation-play-state:var(--glow-idle-play,var(--glow-drift-play));
   backdrop-filter:var(--glass-optic,blur(22px)) saturate(160%) var(--glass-lume);-webkit-backdrop-filter:var(--glass-optic,blur(22px)) saturate(160%) var(--glass-lume);
   border:0;box-shadow:inset 0 1px 0 var(--glass-rim),inset 1px 0 0 var(--glass-low),inset -1px 0 0 var(--glass-low),inset 0 -1px 0 var(--glass-low),var(--glass-shadow);
 }
@@ -121,9 +121,9 @@
 :is(.board-filter-frame,.entitycollectionhead,.top .search,.top>.ib,[data-glass-pane])>[data-glass-drift]{
   display:block;position:absolute;inset:0;z-index:-3;overflow:hidden;border-radius:inherit;pointer-events:none}
 [data-glass-drift]>span{position:absolute;left:0;top:0;width:200%;height:200%;
-  animation:calc(41s * var(--glow-drift-scale)) linear infinite;animation-play-state:var(--glow-drift-play)}
+  animation:calc(41s * var(--glow-drift-scale)) linear infinite;animation-play-state:var(--glow-idle-play,var(--glow-drift-play))}
 [data-glass-drift]>span>span{position:absolute;inset:0;
-  animation:calc(67s * var(--glow-drift-scale)) linear infinite;animation-play-state:var(--glow-drift-play)}
+  animation:calc(67s * var(--glow-drift-scale)) linear infinite;animation-play-state:var(--glow-idle-play,var(--glow-drift-play))}
 /* 静止位置就是原来的 `background-position:50% 20%,80% 70%`：减少动效时动画撤掉，停在这里。 */
 [data-glass-drift]>[data-drift="a"]{transform:translateX(-25%);animation-name:drift-k1-x}
 [data-glass-drift]>[data-drift="a"]>span{transform:translateY(-10%);animation-name:drift-k3-y;background:var(--glass-drift-a)}
@@ -145,8 +145,8 @@ html[data-theme-snapshot] :is(.board-filter-frame,.entitycollectionhead,.search,
    路上的颜色就会闪，所以上面那条规则自己把过渡关掉。 */
 .board-filter-frame.board-filter-frame,.entitycollectionhead.entitycollectionhead,.board-library-menu.board-library-menu,.board-glow-menu.board-glow-menu{
   transition:background-color .28s ease,backdrop-filter .28s ease,-webkit-backdrop-filter .28s ease}
-.board-filter-frame.board-filter-frame{border-radius:22px;isolation:isolate;color:var(--glass-text);overflow:visible}
-.entitycollectionhead.entitycollectionhead.entitycollectionhead{border-radius:22px;color:var(--glass-text)}
+.board-filter-frame.board-filter-frame{border-radius:16px;isolation:isolate;color:var(--glass-text);overflow:visible}
+.entitycollectionhead.entitycollectionhead.entitycollectionhead{border-radius:16px;color:var(--glass-text)}
 /* 浮层材质与吸顶归外框，槽位只负责排列内容。 */
 .board-filter-frame.board-filter-frame.board-filter-frame.board-filter-frame>[data-filter-row]{position:relative;top:auto;left:auto;
   width:auto;margin:0;min-width:0;z-index:auto;border:0;box-shadow:none;background:none;
@@ -162,8 +162,8 @@ html[data-theme-snapshot] :is(.board-filter-frame,.entitycollectionhead,.search,
 .board-filter-frame.board-filter-frame .iconswitch>label:hover,
 .board-filter-frame.board-filter-frame .iconswitch>label:has(input:checked){color:var(--glass-text)}
 .board-filter-frame.board-is-stuck::before,.board-filter-frame.board-is-stuck::after{display:none}
-.board-filter-frame.board-filter-frame .tagbar{border-radius:22px 22px 0 0}
-.board-filter-frame.board-filter-frame .count{border-radius:0 0 22px 22px}
+.board-filter-frame.board-filter-frame .tagbar{border-radius:16px 16px 0 0}
+.board-filter-frame.board-filter-frame .count{border-radius:0 0 16px 16px}
 .board-filter-frame.board-filter-frame .pill{color:var(--glass-text)}
 .board-filter-frame.board-filter-frame .tagbar .pill:is([data-tag],[data-follow-tag],[data-follow-provider]):not([aria-pressed="true"]){border-color:var(--glass-low)}
 /* 四枚视图之间只有一块玻璃在移动，不是四块各自亮灭：Apple 把同一层里的玻璃先合成
@@ -325,7 +325,7 @@ body #stats [data-section-items]>[aria-selected]:focus-visible{outline:2px solid
    上面这 22px 改不动（两处都是别的页面共用的），所以自己不再加，下面照同一个数写。 */
 .board-filter-frame{position:sticky;top:calc(var(--topH) + 8px);z-index:60;border:0;border-radius:16px;background:var(--ground);margin:0 0 22px;box-shadow:0 2px 14px light-dark(#00000014,#00000066)}
 @media(max-width:760px){.board-filter-frame.board-filter-frame[data-filter-free]{top:var(--filter-free-top)}}
-/* 首页那块住在 `body` 底下，两侧没有任何东西给它留白，22px 的圆角直接切在屏幕边沿上；
+/* 首页那块住在 `body` 底下，两侧没有任何东西给它留白，圆角直接切在屏幕边沿上；
    资料页那块在 `#index` 里，`main` 的 16px 已经把它让开了。这里补的就是那 16px，取的
    也是 `main` 自己的那个数，所以两页的浮层和底下的网格对在同一条竖线上。 */
 body>.board-filter-frame{margin-inline:16px}
@@ -404,7 +404,7 @@ body>.board-filter-frame{margin-inline:16px}
 .srctools button{border-radius:8px;background:var(--surface)}
 .configfieldset,.cleanupfieldset,.resourcesyncbox{border-color:var(--line);border-radius:var(--surface-radius);background:var(--ground);overflow:clip}
 .geist-fieldset-footer,.configfieldset>.geist-fieldset-footer{background:var(--surface);border-top:1px solid var(--line-soft)}
-.geist-input,.gselectfield{background:var(--surface);border-color:var(--line);border-radius:10px}
+.geist-input{background:var(--surface);border-color:var(--line);border-radius:10px}
 .iconswitch{padding:3px;background:var(--surface);border:1px solid var(--line-soft);border-radius:10px}
 .iconswitch label{border-radius:8px}
 .iconswitch label:has(input:checked){background:var(--ground);box-shadow:0 1px 3px light-dark(#0002,#0009)}
@@ -584,8 +584,8 @@ button,input,select,textarea{font-family:inherit}
    套到一枚三十像素高的标签上，圆角会吃掉两端的字。改这一个 token 就够了——卡片、详情
    面板、筛选条、交集条和标签骨架都从它取值，一处改完五处一起走。 */
 :root{--tag-radius:8px}
-body,.disp{font-family:var(--board-font);letter-spacing:0}body{font:var(--board-body)}button,input,textarea,select{font-family:var(--board-font)}
-.listtitle,.index .ihead h2,.indexheading{font:var(--board-title);letter-spacing:0}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3{font:var(--board-heading);letter-spacing:0}.board-library-rows button{font:var(--board-body)}
+body,.disp{font-family:var(--board-font)}body{letter-spacing:0}body{font:var(--board-body)}button,input,textarea,select{font-family:var(--board-font)}
+.listtitle,.index .ihead h2,.indexheading{font:var(--board-title)}.configfieldset h2,.configfieldset h3,.cleanupfieldset h3{font:var(--board-heading);letter-spacing:0}.board-library-rows button{font:var(--board-body)}
 .geist-button{background-color:var(--color-background-primary-default);border-color:var(--color-border-button-default);color:var(--color-text-primary);transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 /* 悬停只抬填充，那圈线一步不动：按钮静止态已经带一圈 1px，悬停再把它加深，
    鼠标扫过一排次级键就是一排边框忽明忽暗，而键本身并没有变化。 */
@@ -609,30 +609,6 @@ body[data-density="dense"] .catalog-skeleton .skeletoncard{padding-top:7px}
 body[data-density="dense"] .postercard-skeleton .skeletoncard b{height:1.35em}
 body[data-density="dense"] .postercard-skeleton .skeletoncard em{height:1.35em}
 body[data-density="dense"] .postercard-skeleton .skeletoncard u{height:30px}
-body:is([data-surface="/junk-files"],[data-surface="/trash"]) .catalog-skeleton>div{grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:20px}
-body:is([data-surface="/junk-files"],[data-surface="/trash"]) .catalog-skeleton .skeletoncard{border:1px solid var(--line-soft);border-radius:var(--surface-radius);overflow:hidden;background:var(--ground);padding-bottom:20px}
-/* 回收站卡照 `media-card.css` 里回收站那几条排：面色同真卡，元信息区四周 10px 12px 12px，
-   头像列 38px 加左边距 12px，标题两行 2.7em、署名一行 20px，再预留标签和归入原因行。 */
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard{grid-template-columns:50px minmax(0,1fr);gap:3px 10px;padding:0 0 12px;background:var(--color-background-primary-default)}
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard s{grid-row:2/span 2;margin:9px 0 0 12px}
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard b{width:auto;height:2.7em;margin:7px 12px 0 0}
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard em{height:20px}
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard u{display:block;position:relative;height:calc(1.45em + var(--tag-pad-y) * 2 + 2px + 23px);background:transparent}
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard u::before,
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard u::after{content:"";position:absolute;left:0;border-radius:var(--control-radius);background:var(--hover)}
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard u::before{top:0;width:100%;height:calc(100% - 23px)}
-body[data-surface="/trash"] .catalog-skeleton .skeletoncard u::after{bottom:0;width:60%;height:20px}
-/* 垃圾卡照 `junk-queue.css` 排：面色同真卡，预览格贴边，元信息区四周 20px、文件名与事实两行各 20px、
-   行间 6px，键行是一条沉一档底色、顶上压一条发丝线的 61px 横条（12px 内边距夹一排 36px 的键）。 */
-body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard{grid-template-columns:minmax(0,1fr);gap:0;padding:0;background:var(--color-background-primary-default)}
-body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard s{display:none}
-body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard :is(i,b,em,u){grid-column:1}
-body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard b{width:62%;height:20px;margin:20px 20px 0}
-body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard em{width:40%;height:20px;margin:6px 20px 20px}
-body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard u{display:block;box-sizing:border-box;width:auto;height:61px;margin:0;border-radius:0;border-top:1px solid var(--line-soft);background:var(--color-background-secondary-default)}
-body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard u::after{content:none}
-/* 手机上真卡的键升到 44px，键行跟着高 8px。 */
-@media(max-width:760px){body[data-surface="/junk-files"] .catalog-skeleton .skeletoncard u{height:69px}}
 .skeleton,.skeletoncard i,.skeletoncard b,.skeletoncard em,.skeletoncard s,.skeletoncard u{background:var(--color-background-tertiary-default);border-radius:8px}.skeletoncard i{border-radius:12px}.postercard-skeleton .skeletoncard{gap:6px 12px}.postercard-skeleton .skeletoncard s{border-radius:50%}.cleanup-skeleton .skeletoncard{border:0;border-radius:16px}.cleanup-skeleton .skeletoncard i,.review-skeleton .skeletoncard i{border-radius:8px}.index-skeleton .icell .ring{border-radius:50%}.entityskeletontext .skeleton{height:20px;border-radius:8px}.entityportrait.skeleton{border-radius:16px}.follow-content-skeleton .skeletoncard{padding-bottom:16px}
 
 /* Board secondary：实体细边框、轻阴影和统一的三档控件尺寸。
@@ -699,14 +675,14 @@ body .vjs-peach-speed-range::-moz-range-thumb{width:18px;height:18px;border:1px 
 body .vjs-peach-speed-range::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--color-accent-400) var(--board-range-value,var(--peach-speed-percent,0%)),var(--color-background-tertiary-default) 0);box-shadow:inset 0 1px 1px #0000000f}
 body .vjs-peach-speed-range::-webkit-slider-thumb{margin-top:-7px}
 body .vjs-peach-speed-range::-moz-range-track{height:6px;border-radius:999px;background:linear-gradient(90deg,var(--color-accent-400) var(--board-range-value,var(--peach-speed-percent,0%)),var(--color-background-tertiary-default) 0)}
-body :is(.popmenu,.gselectmenu){box-sizing:border-box;padding:10px;border:1px solid var(--color-border-button-default);border-radius:16px;background:var(--color-background-primary-default);color:var(--color-text-primary);box-shadow:var(--elevation-dropdown)}
+body .popmenu{box-sizing:border-box;padding:10px;border:1px solid var(--color-border-button-default);border-radius:16px;background:var(--color-background-primary-default);color:var(--color-text-primary);box-shadow:var(--elevation-dropdown)}
 /* 每一项都在这里定死成「左起一行」，位置和形状写在同一条里。浮层看着浮在页面上方，
    DOM 却长在触发它的那张卡里，于是页面分区给自家 button 写的本地外观照样命中它：整理卡
    的 `.cleanupfieldset button` 带 `justify-content:center`，来源下拉每一项的站标就被推到
    行正中，和触发器里那一枚不在同一列。这里只写形状不写位置的话，那个属性在菜单这一侧
    无人竞争，页面那条就成了唯一声明者。 */
-body :is(.popmenu,.gselectmenu)>:is(button,[role=option],[role=menuitem]){display:flex;align-items:center;justify-content:flex-start;width:100%;min-height:36px;padding:8px;gap:8px;border:0;border-radius:10px;background:transparent;color:var(--color-text-secondary);font:var(--board-body);text-align:left;box-shadow:none}
-body :is(.popmenu,.gselectmenu)>:is(button,[role=option],[role=menuitem]):is(:hover,:focus-visible,[aria-selected=true]){background:var(--color-background-primary-hover);color:var(--color-text-primary)}
+body .popmenu>:is(button,[role=option],[role=menuitem]){display:flex;align-items:center;justify-content:flex-start;width:100%;min-height:36px;padding:8px;gap:8px;border:0;border-radius:10px;background:transparent;color:var(--color-text-secondary);font:var(--board-body);text-align:left;box-shadow:none}
+body .popmenu>:is(button,[role=option],[role=menuitem]):is(:hover,:focus-visible,[aria-selected=true]){background:var(--color-background-primary-hover);color:var(--color-text-primary)}
 /* 这一条只管「一句话就是一个链接」的那种外链：一行蓝字，没有边、没有底、不占按钮的位置。
    资料页那排外链不在此列——它是一圈药丸，边、底和 4px 内边距都是它自己的，被这里的
    `padding:0` 和 `border:0` 抹平之后那一排就只剩十个光秃秃的图标。
@@ -723,7 +699,7 @@ body a[target=_blank]:not(:has([data-link-icon])):not(.cardlink):where(:not([dat
 [data-button-group]>button:focus-visible{position:relative;z-index:1;outline:2px solid var(--color-border-focus-ring);outline-offset:-2px}
 @media(max-width:1000px){.resourcesyncbox[data-cleanup-task]{grid-template-columns:1fr}}
 .metricstrip>button[aria-selected=true]{background:var(--color-background-primary-default);box-shadow:none}.metricstrip>button[aria-selected=true]::after{box-sizing:border-box}
-body .gselectmenu [role=option][aria-selected=true],body .popmenu [aria-checked=true]{background:color-mix(in srgb,var(--color-text-primary) 10%,var(--color-background-primary-default));color:var(--color-text-primary)}
+body .popmenu [aria-checked=true]{background:color-mix(in srgb,var(--color-text-primary) 10%,var(--color-background-primary-default));color:var(--color-text-primary)}
 .insightswitch{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--color-background-primary-default);box-shadow:var(--elevation-xs)}.insightswitch label>span{display:flex;align-items:center;min-height:28px;padding:4px 10px;border-radius:7px;color:var(--color-text-secondary);font:var(--board-body-medium)}.insightswitch label:has(input:checked)>span{background:var(--color-background-primary-hover);color:var(--color-text-primary);box-shadow:var(--elevation-xs)}
 [data-board-tabs]{position:relative!important}
 /* Split Button 照 Geist 实测（`vercel-geist-split-button.md`「悬停」）：两半各是一颗
@@ -759,14 +735,13 @@ body [data-follow-status=seen],body [data-follow-status=ignored]{background:colo
 /* 玻璃面这一层料只有一份：漂移的两团、那道斜光、底色、内嵌的四条边和落影。认 `data-glass-pane`
    的元素全都拿它，各块自己只留几何、`backdrop-filter` 的饱和度和文字色——那三样本来就一块一个数。
    高对比与 `prefers-reduced-transparency` 的回退在下面同一个属性选择器上，不必各自再写一遍。 */
-[data-glass-pane]{border:0;background:var(--glass-drift-a),var(--glass-drift-b),linear-gradient(125deg,var(--glass-sheen),transparent 42%,var(--glass-low)),var(--glass-fill);background-size:200% 200%,200% 200%,auto;background-repeat:no-repeat,no-repeat,repeat;background-position:50% 20%,80% 70%,0 0;animation:glassdriftx calc(41s * var(--glow-drift-scale)) linear infinite,glassdrifty calc(67s * var(--glow-drift-scale)) linear infinite;animation-play-state:var(--glow-drift-play);box-shadow:inset 0 1px 0 var(--glass-rim),inset 1px 0 0 var(--glass-low),inset -1px 0 0 var(--glass-low),inset 0 -1px 0 var(--glass-low),var(--glass-shadow)}
+[data-glass-pane]{border:0;background:var(--glass-drift-a),var(--glass-drift-b),linear-gradient(125deg,var(--glass-sheen),transparent 42%,var(--glass-low)),var(--glass-fill);background-size:200% 200%,200% 200%,auto;background-repeat:no-repeat,no-repeat,repeat;background-position:50% 20%,80% 70%,0 0;animation:glassdriftx calc(41s * var(--glow-drift-scale)) linear infinite,glassdrifty calc(67s * var(--glow-drift-scale)) linear infinite;animation-play-state:var(--glow-idle-play,var(--glow-drift-play));box-shadow:inset 0 1px 0 var(--glass-rim),inset 1px 0 0 var(--glass-low),inset -1px 0 0 var(--glass-low),inset 0 -1px 0 var(--glass-low),var(--glass-shadow)}
 /* React 产物会按构建目标把标准属性折成 `-webkit-backdrop-filter`，当前 Chromium 不认后者。
    标准属性留在不经转换的共享样式表里，数值逐项对齐首页上下两块玻璃。 */
 body .peach-react :is([data-review-filter],[data-filter-glass]){backdrop-filter:var(--glass-optic,blur(22px)) saturate(160%) var(--glass-lume)}
 body .peach-react [data-selection-dock]{backdrop-filter:var(--glass-optic,blur(22px)) saturate(145%)}
-/* 浮层上提亮的那一小块不由滑动玻璃给的几处：动作键悬停（`GlassPill`），垃圾文件分类条上换视图那一枚
-   与首屏骨架里的当前分类（`junk-queue.css`）。提亮同 `[data-view-glide]`。 */
-body .peach-react :is([data-glass-pill]:hover:not([aria-busy]),:is([data-junk-view-link],[data-junk-count-skeleton] [data-junk-kind-link])[aria-current="page"]){backdrop-filter:var(--glass-pick)}
+/* 垃圾分类条的当前视图与首屏骨架分类使用 `[data-view-glide]` 的提亮。 */
+body .peach-react :is([data-junk-view-link],[data-junk-count-skeleton] [data-junk-kind-link])[aria-current="page"]{backdrop-filter:var(--glass-pick)}
 /* 设置面板左栏（`settings-panel.css`）与它那块滑动玻璃。高对比与减弱透明照全站玻璃一起退成实底；
    主题切换拍快照的那一帧不采样背后。 */
 body [data-settings-nav]{backdrop-filter:var(--glass-optic,blur(22px)) saturate(160%) var(--glass-lume)}

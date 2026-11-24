@@ -9,6 +9,7 @@ import { act, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { NavigateFunction } from 'react-router';
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+import { CONFIGURATION_URL } from '../../src/configuration-endpoints';
 
 import type {
   ConfigurationProps, DataCleanupProps, DuplicatesProps, FollowManageProps, QualityGoalsProps, ReviewProps,
@@ -320,7 +321,7 @@ it('配置页打开返回的那一刻，页签条已经在容器里，选中的�
   await mount(r);
   r.connectManagedRoutes(Promise.resolve(r.prefetchManagedRoute));
   vi.stubGlobal('fetch', vi.fn(async (url: string) => ({ ok: true, status: 200, json: async () => {
-    if (url === '/api/configuration') return configuration;
+    if (url.split('?')[0] === CONFIGURATION_URL) return configuration;
     if (url === '/api/configuration/indexers') return { indexers: [], max_indexers: 4 };
     if (url === '/api/follow/credentials') return { root: '', providers: [] };
     if (url === '/api/follow/schedule') return { enabled: false, available: true, interval_minutes: 60 };
@@ -407,7 +408,7 @@ it('数据管理页：复核、高清版与重复文件走 go，垃圾文件与�
   props.toast('做完了', { warning: true });
   props.toast('做完了');
   expect(vi.mocked(actions.toast).mock.calls).toEqual([[{ text: '做完了' }, { sound: 'warning' }]]);
-  expect(vi.mocked(actions.receipt).mock.calls).toEqual([['做完了']]);
+  expect(vi.mocked(actions.receipt).mock.calls).toEqual([['做完了', {}]]);
 });
 
 it('复核页与关注管理页把地址写回壳，不重开', async () => {
@@ -459,7 +460,7 @@ it('回执、打开作品与资料页都交回壳：都走过去时回执', asyn
   expect(vi.mocked(actions.failure).mock.calls).toEqual([['删除', 'boom']]);
   expect(actions.toast).not.toHaveBeenCalled();
   expect(vi.mocked(actions.receipt).mock.calls).toEqual([
-    ['已提交离线下载'], ['已删除', { undo }], ['已保留', {}], ['已保存配置'], ['已判定'], ['已添加 1 个关注来源'], ['已导入'],
+    ['已提交离线下载'], ['已删除', { undo }], ['已保留', {}], ['已保存配置'], ['已判定', {}], ['已添加 1 个关注来源', {}], ['已导入'],
   ]);
 });
 

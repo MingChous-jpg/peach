@@ -13,14 +13,14 @@ import sys
 import tempfile
 import tomllib
 import unittest
-from contextlib import closing, redirect_stderr, redirect_stdout
+from contextlib import closing, contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from unittest import mock
 
 from datetime import datetime, timezone
 
-from peach import follow_image_dims, scripting
+from peach import follow_backfill, follow_image_dims, scripting
 from peach.follow_sources import FollowCandidate, SourceFetch
 from peach.follow_store import FollowStore
 from peach.http import HttpResponse
@@ -1699,10 +1699,12 @@ class OperationalScriptTests(unittest.TestCase):
     def test_rule34_detail_backfill_reuses_the_connector_and_is_resumable(self):
         """标签类型、上传时间要另问 dapi，视频时长在原文件头里，存量行靠常规检查补不到。
 
-        抓取判据不重写，直接复用连接器的 `_detail` 与 `_video_seconds`；备份先做、
+        判据与「修复与迁移」的后台项共用 `follow_backfill` 一份；备份先做、
         分批提交，续跑只跳过上一趟真正写入的条目。
         """
         backfill = load_script("backfill_rule34_details")
+        self.assertIs(backfill.post_pending, follow_backfill.post_pending)
+        self.assertIs(backfill.write_update, follow_backfill.write_update)
         # 连接与备份走共享的 `open_for_write`／`open_readonly`，WAL 正确性由
         # `scripting` 那条回归测试守住；这里只钉「用的是那一份」。断言源码里有没有
         # `reader.backup(writer)` 这串字符的话，脚本一改成调用共享实现就会红——
@@ -1732,13 +1734,13 @@ class OperationalScriptTests(unittest.TestCase):
         # 只补不抹：已有的类型与时长不覆盖，帖子页没给上传时间就不动它。
         typed, untyped = pending
         detail = {"tag_types": {"a": "artist"}, "published_at": "2026-05-01T16:32:21Z"}
-        self.assertEqual(backfill.plan_update(typed, detail, 60.054),
+        self.assertEqual(follow_backfill.plan_update(typed, detail, 60.054),
                          {"published_at": "2026-05-01T16:32:21Z"})
-        plan = backfill.plan_update(untyped, detail, 60.054)
+        plan = follow_backfill.plan_update(untyped, detail, 60.054)
         self.assertEqual((plan["published_at"], plan["duration"]),
                          ("2026-05-01T16:32:21Z", 60.054))
         self.assertEqual(json.loads(plan["metadata_json"]), {"tag_types": {"a": "artist"}})
-        self.assertIsNone(backfill.plan_update(
+        self.assertIsNone(follow_backfill.plan_update(
             typed, {"tag_types": {"a": "artist"}, "published_at": None}, None))
 
         # 写入与续跑：写过的条目在 CSV 里记 `written=yes`，下一趟 `--resume` 跳过它。
@@ -1803,6 +1805,7 @@ class OperationalScriptTests(unittest.TestCase):
         """存量行只把站方 Characters 组里的名字改记 character，别的类型与列一格不动。"""
         backfill = load_script("backfill_rule34video_characters")
         self.assertIs(backfill.open_for_write, scripting.open_for_write)
+        self.assertIs(backfill.inspect_video, follow_backfill.inspect_video)
         root = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, root, True)
         database = root / "ledger.db"
@@ -1833,7 +1836,7 @@ class OperationalScriptTests(unittest.TestCase):
         asked = []
 
         class Connector:
-            def _get(self, url, headers=None):
+            def probe(self, url, headers=None):
                 asked.append(url)
                 return HttpResponse(200, {}, detail)
 
@@ -2000,7 +2003,7 @@ class OperationalScriptTests(unittest.TestCase):
         posix = (ROOT / "scripts" / "test.sh").read_text(encoding="utf-8")
         self.assertIn("rev-parse --git-common-dir", posix)
         self.assertIn("peach.__file__", posix)
-        self.assertIn("full|auto|follow|catalog|media|sync|metadata|tooling|web|checks|core|packaging)", posix)
+        self.assertIn("full|auto|follow|catalog|media|sync|metadata|tooling|delivery|web|checks|core|packaging)", posix)
         # 文档里可以「提到」裸命令来说明它为什么不可信，但绝不能让它单独出现成为一条可照抄的指令。
         # 判据因此不是黑名单，而是：凡出现该命令的行，必须在同一行指向某个正式入口。
         for relative in ("AGENTS.md", "docs/TESTING.md"):
@@ -2104,7 +2107,7 @@ class OperationalScriptTests(unittest.TestCase):
         self.assertEqual(listed.getvalue().split(), ["full", "auto", *runner.SCOPES])
 
     def test_every_test_file_is_registered_in_a_scope(self):
-        """新测试文件必须登记进 `scripts/test_runner.py` 的域，否则只有 `full` 才跑到它。"""
+        """新测试文件必须登记进 `scripts/scope_registry.toml` 的域，否则只有 `full` 才跑到它。"""
         runner = load_script("test_runner")
         patterns = (*runner.COMMON_PATTERNS,
                     *(pattern for scopes in runner.SCOPES.values() for pattern in scopes))
@@ -2113,7 +2116,7 @@ class OperationalScriptTests(unittest.TestCase):
             if not any(path.match(pattern) for pattern in patterns))
         self.assertEqual(
             orphans, [],
-            "这些测试文件不属于任何域，把它们登记进 scripts/test_runner.py 的 SCOPES"
+            "这些测试文件不属于任何域，把它们登记进 scripts/scope_registry.toml 的 [scopes]"
             "（或 COMMON_PATTERNS），否则只有 full 才跑到它们：\n  " + "\n  ".join(orphans))
 
     def test_auto_scope_maps_changed_files_and_falls_back_to_full(self):
@@ -4910,6 +4913,50 @@ class ScriptingConventionTests(unittest.TestCase):
         limiter.wait("https://www.x.com/b")
         self.assertEqual(slept, [2.0], "同一主机的第二次请求必须等一个间隔")
 
+    def test_a_shared_slot_keeps_two_processes_apart_by_each_ones_interval(self):
+        """服务与采集脚本各自限速时合起来会超速；共用一个节拍文件后每次至少比上一次晚自己的间隔。"""
+        now = [1000.0]
+        slept: list[float] = []
+
+        def sleeper(seconds):
+            slept.append(seconds)
+            now[0] += seconds
+        with tempfile.TemporaryDirectory() as tmp:
+            path = scripting.shared_slot_path(Path(tmp), "javdb.com")
+            script = scripting.SharedSlot(path, clock=lambda: now[0], sleeper=sleeper)
+            service = scripting.SharedSlot(path, clock=lambda: now[0], sleeper=sleeper)
+            script.take(5.0)
+            service.take(3.0)
+            script.take(5.0)
+            self.assertEqual(slept, [3.0, 3.0], "后来的那一方等满自己的间隔，不叠加对方的")
+            # 坏值、钟回拨留下的远未来时刻都只封顶在自己的间隔内。
+            path.write_text("not a number", encoding="utf-8")
+            service.take(3.0)
+            self.assertEqual(slept, [3.0, 3.0])
+            path.write_text(repr(now[0] + 10_000), encoding="utf-8")
+            service.take(3.0)
+            self.assertEqual(slept[-1], 3.0)
+            # 写不了（路径被目录占了）就只按进程内限速，不挡取页。
+            blocked = Path(tmp) / "blocked"
+            blocked.mkdir()
+            scripting.SharedSlot(blocked, clock=lambda: now[0], sleeper=sleeper).take(3.0)
+
+    def test_host_limiter_waits_for_another_process_on_a_shared_host_only(self):
+        import time
+        slept: list[float] = []
+        with tempfile.TemporaryDirectory() as tmp:
+            path = scripting.shared_slot_path(Path(tmp), "javdb.com")
+            limiter = scripting.HostLimiter({"javdb.com": 3.0, "x.com": 3.0}, sleeper=slept.append)
+            limiter.share("javdb.com", path)
+            path.parent.mkdir(parents=True)
+            path.write_text(repr(time.time() + 2.0), encoding="utf-8")
+            limiter.wait("https://x.com/a")
+            self.assertEqual(slept, [], "没共用的主机不看别的进程")
+            limiter.wait("https://javdb.com/actors/1")
+            self.assertEqual(len(slept), 1)
+            self.assertGreater(slept[0], 1.0, "脚本刚发过一页，服务这一页要等它的间隔")
+            self.assertGreater(float(path.read_text(encoding="utf-8")), time.time() + 2.0)
+
     def test_host_under_rejects_a_domain_that_merely_ends_with_the_key(self):
         self.assertTrue(scripting.host_under("x.com", ("x.com",)))
         self.assertTrue(scripting.host_under("mobile.X.com", ("x.com",)))
@@ -5595,6 +5642,95 @@ class GitGudPackageMirrorTests(unittest.TestCase):
             self.assertIn('https://downloads.example/v1.2.3/',
                           (root / 'RELEASE_NOTES.md').read_text(encoding='utf-8'))
 
+    def test_gitgud_backup_stores_signed_sums_unchanged_and_links_packages(self):
+        from scripts import publish_gitlab_release as module
+        sha = '1' * 40
+        asset = {'name': 'app.zip', 'size': 3, 'sha256': 'a' * 64}
+        link = {'name': 'app.zip · GitGud', 'url': 'https://gitgud.io/package/app.zip',
+                'link_type': 'package', 'direct_asset_path': '/gitgud/app.zip'}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / 'RELEASE_NOTES.md').write_text('### Added\n\n- Backup.\n', encoding='utf-8')
+            signed = [root / 'SHA256SUMS.txt', root / 'SHA256SUMS.txt.sig']
+            signed[0].write_bytes(b'a' * 64 + b'  app.zip\n')
+            signed[1].write_bytes(b'signature bytes')
+            with mock.patch.dict(os.environ, {'CI_COMMIT_TAG': 'v1.2.3', 'CI_COMMIT_SHA': sha,
+                    'CI_PROJECT_URL': 'https://gitgud.io/owner/repo', 'PEACH_DOWNLOAD_BACKEND': 'gitgud'}), \
+                    mock.patch.object(module.subprocess, 'check_output', return_value=sha), \
+                    mock.patch.object(module.subprocess, 'run') as run, \
+                    mock.patch('scripts.release_r2.inventory', return_value=[asset]), \
+                    mock.patch('scripts.release_r2.release_sums', return_value=signed) as sums, \
+                    mock.patch.object(module, 'gitgud_package_links', return_value=[link]) as mirror:
+                module.publish(root)
+            sums.assert_called_once_with(root, [asset], root)
+            mirrored = mirror.call_args.args[1]['assets']
+            self.assertEqual([item['name'] for item in mirrored], ['app.zip', 'SHA256SUMS.txt', 'SHA256SUMS.txt.sig'])
+            self.assertEqual(mirrored[2]['sha256'], hashlib.sha256(b'signature bytes').hexdigest())
+            command = run.call_args.args[0]
+            self.assertEqual(json.loads(command[command.index('--assets-links') + 1]), [link])
+            self.assertNotIn('--use-package-registry', command)
+
+    @staticmethod
+    def github_release(files):
+        assets = [{'name': name, 'size': len(body), 'browser_download_url': 'https://github.example/' + name,
+                   'digest': 'sha256:' + hashlib.sha256(body).hexdigest()} for name, body in files.items()]
+        bodies = {asset['browser_download_url']: body for asset, body in zip(assets, files.values())}
+
+        @contextmanager
+        def client(**_options):
+            session = mock.MagicMock()
+
+            @contextmanager
+            def stream(_method, url, headers=None):
+                response = mock.MagicMock()
+                response.iter_bytes.return_value = [bodies[url]]
+                yield response
+            session.stream.side_effect = stream
+            yield session
+        return json.dumps({'assets': assets}).encode(), client
+
+    def test_github_release_download_keeps_artifacts_and_signed_sums_checked_against_github_digests(self):
+        from scripts import publish_gitlab_release as module
+        files = {'app.zip': b'zip', 'Setup.exe': b'exe', 'SHA256SUMS.txt': b'sums', 'SHA256SUMS.txt.sig': b'sig',
+                 'appcast.xml': b'feed'}
+        listing, client = self.github_release(files)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with mock.patch.object(module, 'read_url', return_value=listing), \
+                    mock.patch.object(module, 'http_client', client):
+                names = module.download_github_release('v1.2.3', root)
+            self.assertEqual(names, ['app.zip', 'Setup.exe', 'SHA256SUMS.txt', 'SHA256SUMS.txt.sig'])
+            self.assertEqual((root / 'SHA256SUMS.txt.sig').read_bytes(), b'sig')
+            self.assertFalse((root / 'appcast.xml').exists())
+
+    def test_github_release_download_stops_when_bytes_differ_from_the_github_digest(self):
+        from scripts import publish_gitlab_release as module
+        listing, client = self.github_release({'app.zip': b'zip'})
+        tampered = json.loads(listing)
+        tampered['assets'][0]['digest'] = 'sha256:' + '0' * 64
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(module, 'read_url', return_value=json.dumps(tampered).encode()), \
+                    mock.patch.object(module, 'http_client', client), self.assertRaises(ValueError):
+                module.download_github_release('v1.2.3', Path(directory))
+
+    def test_backup_from_github_publishes_the_downloaded_tag_through_the_gitgud_backend(self):
+        from scripts import publish_gitlab_release as module
+        sha = '2' * 40
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, {}, clear=False):
+            root = Path(directory)
+            with mock.patch.object(module, 'download_github_release') as download, \
+                    mock.patch.object(module.subprocess, 'run') as run, \
+                    mock.patch.object(module.subprocess, 'check_output', return_value=sha + '\n'), \
+                    mock.patch.object(module, 'publish') as publish:
+                module.backup_from_github('v1.2.3', root)
+                environment = {key: os.environ[key] for key in ('CI_COMMIT_TAG', 'CI_COMMIT_SHA', 'PEACH_DOWNLOAD_BACKEND')}
+            download.assert_called_once_with('v1.2.3', root)
+            self.assertEqual(run.call_args.args[0][1:], ['scripts/changelog.py', '--notes', '1.2.3',
+                                                         '--to', str(root / 'RELEASE_NOTES.md')])
+            self.assertEqual(environment, {'CI_COMMIT_TAG': 'v1.2.3', 'CI_COMMIT_SHA': sha,
+                                           'PEACH_DOWNLOAD_BACKEND': 'gitgud'})
+            publish.assert_called_once_with(root)
+
 
 class MainlineScopeTests(unittest.TestCase):
     """主线推送只跑改动域与平台敏感用例；基线取不稳就退回全量（ADR-0119）。"""
@@ -5872,6 +6008,9 @@ class ReleaseTagTests(unittest.TestCase):
         notice = mock.patch.object(self.release, "require_release_notice")
         notice.start()
         self.addCleanup(notice.stop)
+        readme = mock.patch.object(self.release.version_bump, "readme_link_problems", return_value=[])
+        self.readme_checks = readme.start()
+        self.addCleanup(readme.stop)
 
     def test_dependency_audit_covers_both_npm_projects_and_names_the_failing_one(self):
         """标签流水线第一步就是这两份 npm 审计；有一份不干净就不能定版或打标签。"""
@@ -6009,6 +6148,25 @@ class ReleaseTagTests(unittest.TestCase):
             self.release.prepare("owner/repo", "auto", apply=True)
         write.assert_not_called()
         promote.assert_not_called()
+
+    def test_stale_readme_keeps_version_files_untouched(self):
+        self.readme_checks.return_value = ["README.zh-CN.md: 下载直链仍指向 0.7.13"]
+        with self._shell(), mock.patch.object(self.release, "api", return_value=[]), \
+                mock.patch.object(self.release.version_bump, "plan_bump", return_value=self._planned_bump()), \
+                mock.patch.object(self.release.version_bump, "write_version") as write, \
+                mock.patch.object(self.release.changelog, "release") as promote, \
+                self.assertRaisesRegex(ValueError, r"README\.zh-CN\.md"):
+            self.release.prepare("owner/repo", "auto", apply=True)
+        self.readme_checks.assert_called_once_with(self.release.ROOT, version="0.7.14", revision=None)
+        write.assert_not_called()
+        promote.assert_not_called()
+
+    def test_first_release_has_no_existing_readme_version_to_check(self):
+        planned = {**self._planned_bump(), "range": "HEAD"}
+        with self._shell(), mock.patch.object(self.release, "api", return_value=[]), \
+                mock.patch.object(self.release.version_bump, "plan_bump", return_value=planned):
+            self.release.prepare("owner/repo", "auto", apply=False)
+        self.readme_checks.assert_not_called()
 
     def test_a_bump_stops_when_the_target_tag_already_exists(self):
         with self._shell(), \
@@ -6152,7 +6310,8 @@ class ShipTests(unittest.TestCase):
         audit = mock.patch.object(self.release, "require_clean_dependencies")
         self.audit = audit.start()
         self.addCleanup(audit.stop)
-        readme = mock.patch.object(self.release, "point_readme", return_value={"readme": ["README.md"]})
+        readme = mock.patch.object(self.release, "point_readme",
+                                   return_value={"readme": ["README.md"], "readme_sha": "def"})
         self.point_readme = readme.start()
         self.addCleanup(readme.stop)
 
@@ -6348,6 +6507,17 @@ class PointReadmeTests(unittest.TestCase):
         root.start()
         self.addCleanup(root.stop)
 
+        def committed_readme(_root, verb, target):
+            self.assertEqual(verb, "show")
+            revision, name = target.split(":", 1)
+            if revision == "def":
+                return (self.root / name).read_text(encoding="utf-8")
+            return self.OLD
+
+        history = mock.patch.object(self.release.version_bump, "git", side_effect=committed_readme)
+        self.readme_history = history.start()
+        self.addCleanup(history.stop)
+
     def _shell(self, *, status="", subject=SUBJECT):
         answers = {("git", "branch", "--show-current"): "master",
                    ("git", "status", "--porcelain"): status,
@@ -6356,14 +6526,15 @@ class PointReadmeTests(unittest.TestCase):
         return mock.patch.object(self.release, "command",
                                  side_effect=lambda *args, **_: answers.get(args, ""))
 
-    def _api(self, uploads, remote="abc"):
+    def _api(self, uploads, remote="abc", after_push="def"):
         """`uploads` 依次是每次查询时已上传完的制品；用完后停在最后一份。"""
         seen = iter(uploads)
         last = [()]
+        master = iter((remote, after_push))
 
         def answer(_repo, endpoint):
             if endpoint == "git/ref/heads/master":
-                return {"object": {"sha": remote}}
+                return {"object": {"sha": next(master, after_push)}}
             if endpoint == "releases/tags/v0.8.0":
                 last[0] = next(seen, last[0])
                 return {"draft": False, "assets": [{"name": name, "state": "uploaded"}
@@ -6384,6 +6555,9 @@ class PointReadmeTests(unittest.TestCase):
         new = self.OLD.replace("v0.7.9/Peach-0.7.9-", "v0.8.0/Peach-0.8.0-")
         self.assertEqual(self._readmes(), dict.fromkeys(self.release.version_bump.README_FILES, new))
         self.assertEqual(result["readme"], list(self.release.version_bump.README_FILES))
+        self.assertEqual(result["readme_sha"], "def")
+        self.assertEqual([call.args[2] for call in self.readme_history.call_args_list],
+                         ["def:README.md", "def:README.zh-CN.md"])
         self.assertEqual(ShipTests._writes(command), [
             ("git", "add", *self.release.version_bump.README_FILES),
             ("git", "-c", "peach.masterWriter=release", "commit", "-m", self.SUBJECT),
@@ -6411,9 +6585,12 @@ class PointReadmeTests(unittest.TestCase):
     def test_someone_elses_commit_on_top_is_not_pushed_on_their_behalf(self):
         for name in self.release.version_bump.README_FILES:
             (self.root / name).write_text(self.OLD.replace("0.7.9", "0.8.0"), encoding="utf-8")
-        with self._shell(subject="Merge branch 'agent/x'") as command, self._api([self.ASSETS]):
+        with self._shell(subject="Merge branch 'agent/x'") as command, self._api([self.ASSETS]), \
+                self.assertRaisesRegex(ValueError, r"README\.zh-CN\.md"):
             self.release.point_readme("owner/repo", apply=True, sleep=lambda _: None)
         self.assertEqual(ShipTests._writes(command), [])
+        command.assert_any_call("git", "fetch", "--no-tags", "--no-write-fetch-head",
+                                "https://github.com/owner/repo.git", "abc")
 
     def test_unrelated_changes_block_the_readme_commit(self):
         with self._shell(status=" M README.md\n M src/peach/api.py") as command, \

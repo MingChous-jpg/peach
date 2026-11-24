@@ -30,7 +30,7 @@ import { createPortal, flushSync } from 'react-dom';
 import { growCollapse, popBadges, setCollapseOpen } from '@peach/legacy/ui';
 
 import { useViewGlide } from '../components/use-view-glide';
-import { Icon } from '../settings-panel/icon';
+import { Icon, RemixIcon } from '../settings-panel/icon';
 import type {
   SidebarApi, SidebarChip, SidebarContent, SidebarDot, SidebarFacets, SidebarHost, SidebarProps,
 } from './sidebar-api';
@@ -39,13 +39,14 @@ import { useSidebarReorder } from './use-sidebar-reorder';
 import { resetSidebarOrder } from '../../sidebar';
 import { NavigationOrderMenu } from '../components/navigation-order';
 import { t } from '../../i18n';
+import { SidebarWidth } from './sidebar-width';
+import { Duration } from './duration-filter';
+import { openMediaDirectory } from '../catalog-folders/media-directory-navigation';
 
 /* 首页那一项的键是空串；空串写进 dataTransfer 等于没写，给它一个占位。 */
 const HOME = '__home__';
 /* 「展开全部」之前每组先露多少条。 */
 const LIMITS = { creator: 26, tag: 30, tech: 16 } as const;
-/* 时长拉条的量程（分钟）：右端拉到头是「不限」。 */
-const DURATION_MAX = 180;
 
 let host: SidebarHost | null = null;
 /* store 里的一份：壳推来的 props 与导航按下态的代次（壳说「重读一遍」时加一，玻璃按新的按下项落位）。
@@ -57,7 +58,6 @@ function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => { listeners.delete(listener) };
 }
-
 function notify(): void {
   for (const listener of [...listeners]) listener();
 }
@@ -89,6 +89,7 @@ function Sidebar({ host: at, props: view, epoch }: { host: SidebarHost; props: S
   return (
     <>
       <div data-sidebar-head="" />
+      {at.scroll.parentElement ? <SidebarWidth drawer={at.scroll.parentElement} openDrawer={at.openDrawer} /> : null}
       <Navigation host={at} epoch={epoch} version={version} />
       {view.content ? <Groups host={at} content={view.content} filters={view.filters} latest={view.latest} /> : null}
     </>
@@ -164,6 +165,7 @@ interface GroupSpec {
   kind: string;
   body: ReactNode;
   active: boolean;
+  action?: ReactNode;
 }
 
 const selectedValues = (filters: SidebarProps['filters'], key: string) =>
@@ -193,7 +195,7 @@ function Groups({ host: at, content, filters, latest }: {
     : followGroups(at, content, filters);
   let index = 0;
   return groups.map((group) => group && (
-    <Group key={group.title} title={group.title} kind={group.kind} active={group.active} index={index++} epoch={key}>
+    <Group key={group.title} title={group.title} kind={group.kind} active={group.active} index={index++} epoch={key} action={group.action}>
       {group.body}
     </Group>
   ));
@@ -221,7 +223,11 @@ function catalogGroups(
     };
   };
   return [
-    spec(t('navigation:sidebarFilters.storage'), 'src', facets.locations, 'loc', true),
+    { title: t('navigation:sidebarFilters.storage'), kind: 'src',
+      active: facets.locations.some(row => selectedValues(filters, 'loc').includes(row.value)),
+      action: <button type="button" data-sidebar-directory="" aria-label={t('shell:mediaDirectory.title')}
+        title={t('shell:mediaDirectory.title')} onClick={() => openMediaDirectory()}><RemixIcon name="ri-folder-3-line" /></button>,
+      body: chips(facets.locations, 'loc', true) },
     facets.duration
       ? { title: t('navigation:sidebarFilters.duration'), kind: 'meta', active: false, body: <Duration host={at} filters={filters} /> }
       : null,
@@ -271,8 +277,8 @@ function wantOpen(title: string, active: boolean): boolean {
   return saved !== null ? saved === 'open' : active;
 }
 
-function Group({ title, kind, active, index, epoch, children }: {
-  title: string; kind: string; active: boolean; index: number; epoch: string; children: ReactNode;
+function Group({ title, kind, active, index, epoch, children, action }: {
+  title: string; kind: string; active: boolean; index: number; epoch: string; children: ReactNode; action?: ReactNode;
 }) {
   const details = useRef<HTMLDetailsElement | null>(null);
   const body = useRef<HTMLDivElement | null>(null);
@@ -300,7 +306,7 @@ function Group({ title, kind, active, index, epoch, children }: {
     try { sessionStorage.setItem(`peach.sidebar.group.${title}`, next ? 'open' : 'closed') } catch { /* 只是不记住 */ }
   };
   const collapseId = `sidebar-collapse-${index}`;
-  return (
+  const group = (
     <details ref={details} data-sidebar-group={title} data-sidebar-kind={kind}>
       <summary role="button" data-sidebar-toggle="" aria-expanded={open} aria-controls={collapseId} onClick={toggle}>
         <Icon name="chevron-right" /><span>{title}</span>
@@ -314,6 +320,7 @@ function Group({ title, kind, active, index, epoch, children }: {
       </div>
     </details>
   );
+  return action ? <div data-sidebar-tool-group="">{group}{action}</div> : group;
 }
 
 /* 名单末尾那枚「收起」收的是整组：组的开合在 `Group` 手里，经这一层递下去。 */
@@ -422,90 +429,6 @@ function FollowChips({ rows, host: at, selected, badges }: {
           </span>
         </button>
       ))}
-    </div>
-  );
-}
-
-/* ── 时长 ──
-   时长只有一处读数：手柄上方那枚气泡。另起一行写「不限 — 不限」是同一件事说第二遍，而且滑块不动时
-   它永远是那句话。两端都常显：这里是唯一报数的地方，藏起来的话不碰滑块就看不出当前筛的是哪一段。 */
-
-const minutesOf = (seconds: unknown, fallback: number) =>
-  seconds ? Math.min(DURATION_MAX, Number(seconds) / 60) : fallback;
-
-function Duration({ host: at, filters, commit: onCommit = at.setDuration }: {
-  host: SidebarHost; filters: SidebarProps['filters'];
-  /** 松手时回给谁：缺省是目录筛选，关注页换成它自己的。 */
-  commit?: SidebarHost['setDuration'];
-}) {
-  const source = `${filters.dur_min ?? ''}:${filters.dur_max ?? ''}`;
-  const [seen, setSeen] = useState(source);
-  const [range, setRange] = useState(() => [minutesOf(filters.dur_min, 0), minutesOf(filters.dur_max, DURATION_MAX)]);
-  /* 刚动过的那枚压在上面：两端拖到一起时它们会叠，底下那枚报的是自己停下的位置。 */
-  const [active, setActive] = useState<'min' | 'max'>('max');
-  if (seen !== source) {
-    setSeen(source);
-    setRange([minutesOf(filters.dur_min, 0), minutesOf(filters.dur_max, DURATION_MAX)]);
-  }
-  const [lo, hi] = range;
-  const group = useRef<HTMLDivElement | null>(null);
-  const minInput = useRef<HTMLInputElement | null>(null);
-  const maxInput = useRef<HTMLInputElement | null>(null);
-  const latest = useRef(range);
-  latest.current = range;
-
-  const move = (end: 'min' | 'max', value: number) => {
-    let [nextLo, nextHi] = end === 'min' ? [value, hi] : [lo, value];
-    if (nextLo > nextHi) { if (end === 'min') nextHi = nextLo; else nextLo = nextHi }
-    setActive(end);
-    setRange([nextLo, nextHi]);
-    return [nextLo, nextHi];
-  };
-
-  /* 拖动只改读数，松手（`change`）才提交：React 的 onChange 接的是每一步 input。 */
-  useEffect(() => {
-    const commit = () => onCommit(latest.current[0], latest.current[1]);
-    const inputs = [minInput.current, maxInput.current];
-    inputs.forEach((input) => input?.addEventListener('change', commit));
-    return () => inputs.forEach((input) => input?.removeEventListener('change', commit));
-  }, [onCommit]);
-
-  /* 已选那一截与两枚气泡的位置写在样式变量与 `left` 上。气泡对着手柄居中，伸出轨道的那一截按实测
-     溢出量收回来：侧栏只比轨道宽出一点点，越界的半截被侧栏裁掉，读数就只剩一半。量之前先把上一次的
-     位移清掉，否则量到的是已经收过一次的位置，越拖越偏。 */
-  useLayoutEffect(() => {
-    const node = group.current;
-    if (!node) return;
-    node.style.setProperty('--lo', `${lo / DURATION_MAX * 100}%`);
-    node.style.setProperty('--hi', `${hi / DURATION_MAX * 100}%`);
-    const bounds = node.getBoundingClientRect();
-    node.querySelectorAll<HTMLElement>('[data-sidebar-range-tip]').forEach((tip) => {
-      const value = tip.dataset.rangeEnd === 'max' ? hi : lo;
-      tip.style.left = `${value / DURATION_MAX * 100}%`;
-      tip.style.setProperty('--range-tip-shift', '0px');
-      const box = tip.getBoundingClientRect();
-      const shift = box.right > bounds.right ? bounds.right - box.right : box.left < bounds.left ? bounds.left - box.left : 0;
-      if (shift) tip.style.setProperty('--range-tip-shift', `${Math.round(shift)}px`);
-    });
-  }, [lo, hi]);
-
-  const tip = (end: 'min' | 'max', value: number) => (
-    <output data-sidebar-range-tip="" data-range-end={end} data-range-active={active === end ? '' : undefined} aria-hidden="true">
-      {end === 'max' && value >= DURATION_MAX ? t('navigation:durationFilter.noLimit') : t('navigation:durationFilter.minutes', { count: value })}
-    </output>
-  );
-  return (
-    <div data-sidebar-duration="">
-      <div data-sidebar-range="" id="durationRange" ref={group}>
-        <span data-sidebar-range-base="" />
-        <span data-sidebar-range-fill="" />
-        <input id="durMin" type="range" min="0" max={DURATION_MAX} step="5" value={lo} aria-label={t('navigation:durationFilter.minimum')}
-          ref={minInput} onChange={(event) => move('min', Number(event.currentTarget.value))} />
-        <input id="durMax" type="range" min="0" max={DURATION_MAX} step="5" value={hi} aria-label={t('navigation:durationFilter.maximum')}
-          ref={maxInput} onChange={(event) => move('max', Number(event.currentTarget.value))} />
-        {tip('min', lo)}
-        {tip('max', hi)}
-      </div>
     </div>
   );
 }

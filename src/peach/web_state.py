@@ -97,6 +97,9 @@ CACHE_TTL = 90
 SETTLE_SECONDS = 2
 SETTLE_TTL = 1.0
 
+#: 封面目录里参与索引判定的边车后缀，和 `.jpg` 一起在一次 `os.scandir` 里收齐时间与大小。
+_COVER_SIDECAR_SUFFIXES = (".face.json", jav_poster_crop.SIDECAR_SUFFIX, ".scraping.json")
+
 #: `cached()` 的聚合缓存最多留这么多个键，最久没用的先淘汰。
 CACHE_KEYS = 192
 
@@ -200,6 +203,8 @@ class WebContract:
         self.cache_lock = threading.Lock()
         #: 按资产取键的读缓存，LRU 限界。键空间不封闭的场景走这里，见 `cached_lru()`。
         self.keyed_cache: OrderedDict[str, tuple[float, object, object]] = OrderedDict()
+        #: 封面索引的单档缓存：casefold(归一番号) → (文件时间与大小戳, 索引项或 None)。
+        self._cover_entries: dict[str, tuple[tuple, dict | None]] = {}
         #: 每次 cache_bust 递增。在途计算据此判断自己出发后缓存是否失效过。
         self.cache_generation = 0
         self.revision_cache_keys: set[str] = set()
@@ -383,7 +388,8 @@ class WebContract:
             return None
         if not tables:
             return sum(revisions.values())
-        return sum(revisions.get(table, 0) for table in set(tables))
+        return sum(revisions.get(table, revisions.get('asset', 0) if table == 'asset_catalog' else 0)
+                   for table in set(tables))
 
     def ledger_tables_except(self, excluded) -> tuple[str, ...]:
         """登记了版本的账本表，去掉 `excluded`：聚合读的表太多、列不全时，按「除这几张以外」声明依赖。
@@ -583,10 +589,11 @@ class WebContract:
         读文件；封面目录一次 scandir 就覆盖全部番号。`/cover` 端点仍走 `cover_path()`
         直读，取图不受索引影响。
 
-        索引只认封面目录的修改时间，不随账本提交失效，也不按时间过期：重建要读两千多份
-        边车，约一秒。封面与边车的写入方（`cover_artwork.install_cover`、
-        `jav_poster_crop.write_sidecar`）都先写临时文件再换名，新增、替换、删除都会改
-        目录时间。目录不存在时退回 `CACHE_TTL`。刚写过的目录见 `_directory_index`。
+        索引只认封面目录的修改时间，不随账本提交失效，也不按时间过期；单档缓存按封面与各
+        边车的修改时间和大小复用未变条目，重扫只读变动的封面。封面与边车的写入方
+        （`cover_artwork.install_cover`、`jav_poster_crop.write_sidecar`）都先写临时文件
+        再换名，新增、替换、删除都会改目录时间。目录不存在时退回 `CACHE_TTL`。刚写过的目录
+        见 `_directory_index`。
         """
         return self._directory_index("cover-index", self.cover_root, self._scan_cover_root,
                                      ttl=math.inf)
@@ -615,31 +622,132 @@ class WebContract:
             return self.cached(key, scan, ttl=SETTLE_TTL if settling else ttl,
                                version=(version, settling))
 
-    def _scan_cover_root(self) -> dict[str, dict]:
-        """一次目录扫描同时收集封面存在性和两份 sidecar。目录不存在就是空索引。"""
-        scanned: dict[str, dict] = {}
+    def _cover_root_snapshot(self) -> tuple[list[tuple[str, str, tuple[int, int]]],
+                                            dict[str, tuple[int, int]],
+                                            dict[str, tuple[int, int]],
+                                            dict[str, tuple[int, int]],
+                                            dict[str, tuple[int, int]]]:
+        """一次目录扫描收齐封面与边车的 `(mtime_ns, size)`，连同竖版正封子目录。
+
+        边车与竖版正封同时保留精确实名与 casefold 映射：大小写敏感的文件系统优先命中精确
+        名称，大小写不敏感的文件系统在名称大小写不同时仍能识别变动。
+        """
+        covers: list[tuple[str, str, tuple[int, int]]] = []
+        sidecars_exact: dict[str, tuple[int, int]] = {}
+        sidecars_folded: dict[str, tuple[int, int]] = {}
+        with os.scandir(self.cover_root) as entries:
+            for entry in entries:
+                name = entry.name
+                is_jpg = name.endswith(".jpg")
+                lower = name.casefold()
+                if not is_jpg and not lower.endswith(_COVER_SIDECAR_SUFFIXES):
+                    continue
+                try:
+                    stat = entry.stat()
+                except OSError:
+                    continue
+                stamp = (stat.st_mtime_ns, stat.st_size)
+                if is_jpg:
+                    covers.append((name, entry.path, stamp))
+                else:
+                    sidecars_exact[name] = stamp
+                    sidecars_folded[lower] = stamp
+        front_exact: dict[str, tuple[int, int]] = {}
+        front_folded: dict[str, tuple[int, int]] = {}
         try:
-            with os.scandir(self.cover_root) as entries:
+            with os.scandir(self.cover_root / jav_poster_crop.FRONT_DIRECTORY) as entries:
                 for entry in entries:
-                    if not entry.name.endswith(".jpg"):
+                    lower = entry.name.casefold()
+                    if not lower.endswith(".jpg"):
                         continue
-                    from .cover_artwork import has_javdb_source
-                    if has_javdb_source(Path(entry.path)):
+                    try:
+                        if not entry.is_file():
+                            continue
+                        stat = entry.stat()
+                    except OSError:
                         continue
-                    stem = entry.path[:-len(".jpg")]
-                    scanned[entry.name[:-len(".jpg")].casefold()] = {
-                        "frame": self._cover_focus(stem + ".face.json"),
-                        "poster": self._poster_box(
-                            stem + jav_poster_crop.SIDECAR_SUFFIX),
-                        "version": f"{entry.stat().st_mtime_ns:x}",
-                    }
+                    stamp = (stat.st_mtime_ns, stat.st_size)
+                    front_exact[entry.name] = stamp
+                    front_folded[lower] = stamp
         except OSError:
+            pass
+        return covers, sidecars_exact, sidecars_folded, front_exact, front_folded
+
+    def _read_cover_entry(self, cover: Path, stem: str, mtime_ns: int, *,
+                          has_scraping: bool, has_poster: bool, has_face: bool,
+                          has_front: bool | None) -> dict | None:
+        """读取单张封面的来源判定、人脸取景与正封框；应跳过的 JavDB 印证图返回 None。"""
+        if has_scraping:
+            from .cover_artwork import has_javdb_source
+            if has_javdb_source(cover):
+                return None
+        record = self._poster_record(stem + jav_poster_crop.SIDECAR_SUFFIX) if has_poster else None
+        focus = self._cover_focus(stem + ".face.json") if has_face else None
+        return {
+            "frame": self._with_poster_layout(focus, record, cover, has_front=has_front),
+            "poster": jav_poster_crop.projection(record),
+            "version": f"{mtime_ns:x}",
+        }
+
+    def _scan_cover_root(self) -> dict[str, dict]:
+        """按单档修改时间与大小增量扫描封面目录；目录不存在就是空索引。
+
+        未变动且各关联文件的修改时间均已稳定超过 `SETTLE_SECONDS` 的封面直接复用单档缓存
+        （含被 `has_javdb_source` 跳过的 `None`）。任一关联文件的修改时间落在 `SETTLE_SECONDS`
+        窗口内时当场重读且不写入单档缓存，避免同一时钟刻度里的连续改写命中过期内容。
+        """
+        try:
+            covers, sidecars_exact, sidecars_folded, front_exact, front_folded = self._cover_root_snapshot()
+        except OSError:
+            self._cover_entries = {}
             return {}
+        now_ns = time.time_ns()
+        settle_ns = SETTLE_SECONDS * 1_000_000_000
+        previous = self._cover_entries
+        next_entries: dict[str, tuple[tuple, dict | None]] = {}
+        scanned: dict[str, dict] = {}
+        algorithm = jav_poster_crop.ALGORITHM_VERSION
+        for name, path, jpg_stamp in covers:
+            base = name[:-len(".jpg")]
+            key = base.casefold()
+            scraping_stamp = (sidecars_exact.get(f"{base}.scraping.json")
+                              or sidecars_folded.get(f"{key}.scraping.json"))
+            poster_stamp = (sidecars_exact.get(f"{base}{jav_poster_crop.SIDECAR_SUFFIX}")
+                            or sidecars_folded.get(f"{key}{jav_poster_crop.SIDECAR_SUFFIX}"))
+            face_stamp = sidecars_exact.get(f"{base}.face.json") or sidecars_folded.get(f"{key}.face.json")
+            exact_front = front_exact.get(name)
+            if exact_front is not None:
+                front_stamp, has_front = exact_front, True
+            else:
+                front_stamp = front_folded.get(name.casefold())
+                has_front = None if front_stamp is not None else False
+            file_stamps = (jpg_stamp, scraping_stamp, poster_stamp, face_stamp, front_stamp)
+            stamp = (name, *file_stamps, algorithm)
+            settling = any(file_stamp is not None and now_ns - file_stamp[0] < settle_ns
+                           for file_stamp in file_stamps)
+            cached = None if settling else previous.get(key)
+            if cached is not None and cached[0] == stamp:
+                value = cached[1]
+            else:
+                value = self._read_cover_entry(
+                    Path(path), path[:-len(".jpg")], jpg_stamp[0],
+                    has_scraping=scraping_stamp is not None,
+                    has_poster=poster_stamp is not None,
+                    has_face=face_stamp is not None,
+                    has_front=has_front,
+                )
+            if settling:
+                next_entries.pop(key, None)
+            else:
+                next_entries[key] = (stamp, value)
+            if value is not None:
+                scanned[key] = value
+        self._cover_entries = next_entries
         return scanned
 
     @staticmethod
     def _cover_focus(sidecar: str) -> dict | None:
-        """sidecar 里的人脸中心与整幅画面标记。缺少坐标时页面退回固定取景。
+        """sidecar 里的人脸中心（整幅画面有更大的主体部位时用它）与整幅画面标记。缺少坐标时页面退回固定取景。
 
         两个轴都给出去：哪个轴生效由容器和图片的宽高比决定，不由这里判断。
         缺哪个键就不带哪个键，前端各自回落，不要拿另一个轴的值顶替。
@@ -653,22 +761,44 @@ class WebContract:
         except (OSError, ValueError):
             return None
         focus = {'layout': 'still'} if record.get('layout') == 'still' else {}
+        # 整幅画面上比主脸还大的部位（`cover_artwork.face_record` 的 `subject`）：卡片按它取景。
+        subject = record.get("subject")
+        if focus and isinstance(subject, dict):
+            face = subject
         if isinstance(face, dict):
             focus.update({axis: face[axis] for axis in ("cx", "cy") if axis in face})
         return focus or None
 
     @staticmethod
-    def _poster_box(sidecar: str) -> dict | None:
-        """sidecar 里那个正封框。算法版本落后、判定为不裁、读不出都是 None。
-
-        校验和形状判据都在 `jav_poster_crop.projection` 一处，这里只负责把文件读
-        进来：页面拿到的框必须和算它的那份代码是同一套判据。
-        """
+    def _poster_record(sidecar: str) -> dict | None:
+        """正封边车原文；读不出是 None。框由 `jav_poster_crop.projection` 校验后才给页面：
+        页面拿到的框必须和算它的那份代码是同一套判据。"""
         try:
             with open(sidecar, encoding="utf-8") as handle:
-                return jav_poster_crop.projection(json.load(handle))
+                record = json.load(handle)
         except (OSError, ValueError):
             return None
+        return record if isinstance(record, dict) else None
+
+    @staticmethod
+    def _with_poster_layout(frame: dict | None, record: dict | None, cover: Path, *,
+                            has_front: bool | None = None) -> dict | None:
+        """正封边车判定的整幅画面与装好的竖版正封，并进卡片的取景提示。
+
+        两样都是正封边车的结论：竖版图证明横图不是封套时，人脸边车不一定在（人脸模型可选），
+        页面却必须知道这张不能按右缘切、大图位改用竖版正封。版本落后的边车不算数；竖版正封
+        文件不在就不给，页面照旧用横图，不去取一张 404。只有记了竖版正封的才多 stat 一次。
+        """
+        if not isinstance(record, dict) or (
+                not jav_poster_crop.is_manual(record) and record.get("version") != jav_poster_crop.ALGORITHM_VERSION):
+            return frame
+        extra = {}
+        if record.get("layout") == "still":
+            extra["layout"] = "still"
+        front_present = jav_poster_crop.front_path(cover).is_file() if has_front is None else has_front
+        if jav_poster_crop.front_size(record) and front_present:
+            extra["front"] = True
+        return {**(frame or {}), **extra} if extra else frame
 
     def has_cover(self, code: str | None) -> bool:
         key = normalise_code_key(code)

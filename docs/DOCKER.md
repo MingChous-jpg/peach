@@ -2,7 +2,7 @@
 
 Peach 的 Docker 镜像用于单人 VPS 与 NAS，通过浏览器管理，镜像仓库为 [longmeidao/peach](https://hub.docker.com/r/longmeidao/peach)，同一镜像也发布到 [ghcr.io/peach-mitao/peach](https://github.com/peach-mitao/peach/pkgs/container/peach)，拉取受 Docker Hub 频率限制时可以改用后者；配置页的检查更新与 Watchtower 一键更新仍以 Docker Hub 为准。每次发布推送版本号标签，并把 `edge` 与 `latest` 更新为同一镜像；版本号标签对应发布提交。NAS 容器面板和不写标签的 `docker pull` 只认 `latest`，在 `.env` 写 `PEACH_VERSION=latest` 后面板能提示新版本，一键更新同样可用。镜像同时提供 `linux/amd64` 与 `linux/arm64`，Docker 按宿主机架构自动选择。2026-10-15 在 WSL 的独立 Docker Engine 中，用正式锁定依赖通过空数据卷初始化、非 root、鉴权、配置保存、合成视频扫描、HTTP Range、配置重载与重启持久化验收。
 
-Docker 不使用桌面托盘。在网页配置中添加媒体目录时，只需填写容器内实际目录，例如 `/media`；Peach 自动保存所需的路径配置。Windows 安装包、macOS 源码运行和 Docker 的入口分别见 [README](../README.md#下载与使用)。
+Docker 不使用桌面托盘。在网页配置中添加媒体目录时，只需填写容器内实际目录，例如 `/media`；Peach 自动保存所需的路径配置。Windows 安装包、macOS 源码运行和 Docker 的入口分别见 [下载与使用](../README.zh-CN.md#下载与使用)。
 
 ## NAS 快速开始
 
@@ -140,7 +140,7 @@ local = '/media'
 
 需要复用另一台 Peach 的数据库时，在配置文件的 `[media.locations]` 中填写与该数据库影片路径匹配的目录前缀，在 `[media.mounts]` 中填写这台容器能读取的目录，例如 `/media/115`；已有部署保留自身的对应关系。Compose 必须已挂入这些目录。CloudDrive2 是媒体来源之一，本地目录也可直接挂入 Peach。
 
-容器中的服务固定监听 `0.0.0.0:8900`，宿主机访问地址和端口使用 Compose 的 `PEACH_BIND`、`PEACH_PORT`；`[server]` 的 `host`、`port` 用于直接运行 `peach serve`。独立 Docker 部署保持 `[replication] enabled = false`，无需配置桌面托盘或 SMB 复制。
+容器中的服务固定在 8900 端口以双栈监听，宿主机访问地址和端口使用 Compose 的 `PEACH_BIND`、`PEACH_PORT`。`PEACH_BIND` 写 IPv6 地址时加方括号，例如 `[fd00::10]`；写 `0.0.0.0` 时 Docker 在宿主机的 IPv4 和 IPv6 地址上都发布端口。默认网络没有 IPv6，Docker 把宿主机 IPv6 端口转给容器的 IPv4 地址，容器看到的来源是 Docker 网关。要让容器看到客户端的 IPv6 地址，需要为网络开启 IPv6，并在 `PEACH_LAN_IPV6_PREFIXES` 里列出宿主机局域网的 IPv6 前缀，多个前缀用逗号分隔，例如 `2001:db8:1:2::/64`；不在这些前缀、ULA 或链路本地范围内的 IPv6 来源会收到 403。`[server]` 的 `host`、`port` 用于直接运行 `peach serve`。独立 Docker 部署保持 `[replication] enabled = false`，无需配置桌面托盘或 SMB 复制。
 
 ## 硬件转码（AMD / Intel VAAPI）
 
@@ -268,11 +268,11 @@ NAS 部署的文件位于服务器上。首启设置、媒体目录设置和整�
 
 ## 镜像发布
 
-构建使用官方 Python `3.14.8-slim-trixie` 与 uv `0.13.1`，应用依赖与 amane 独立依赖分别由各自的 `uv.lock` 锁定。应用以非 editable 包安装，包含 Web 与迁移资源。镜像默认以 UID/GID 1000 运行，可通过 `PEACH_UID`/`PEACH_GID` 覆盖；内置 FFmpeg、FFprobe、OpenSSL 和 amane 独立环境。uv 与 Git 只用于构建阶段。构建上下文只允许代码与资源，不包含工作树、媒体、真实 Peach 数据库或凭据。
+Python 基础镜像和 uv 版本由 [Dockerfile](../Dockerfile) 固定。应用与 amane 独立环境分别使用各自的 `uv.lock`。应用以非 editable 包安装，包含 Web 与迁移资源。镜像默认以 UID/GID 1000 运行，可通过 `PEACH_UID`/`PEACH_GID` 覆盖；内置 FFmpeg、FFprobe、OpenSSL 和 amane 独立环境。uv 与 Git 只用于构建阶段。构建上下文只允许代码与资源，不包含工作树、媒体、真实 Peach 数据库或凭据。
 
 GitHub Actions 的 `Docker` 工作流在拉取请求和主线上分别于 amd64 与 arm64 原生 runner 构建并运行临时卷验收，只验收不发布。版本提交的 `Release` 演练用同样方式构建两个架构的候选镜像并保存；标签流水线在 GitHub Release 成功后核对两个候选的 image ID，推送 `<版本>-amd64`、`<版本>-arm64`，再合成一个多架构 index，版本号、`edge` 与 `latest` 都指向它（[ADR-0121](adr/0121-release-rehearsal-and-atomic-publication.md)）。仓库变量 `DOCKERHUB_USERNAME` 和机密 `DOCKERHUB_TOKEN` 用于 Docker Hub 发布；机密只保存在 GitHub，不进入项目文件。未配置发布身份时仍执行构建验收。
 
-Docker Hub 页面以英文为主，概览正文取自 [docs/dockerhub/README.md](dockerhub/README.md)，链接回 GitHub 的源码、本文和中文 README。简介填写 `Local-first video metadata scraper and media manager. Self-hosted web UI for VPS and NAS.`。发布流水线只推送镜像，概览与简介需要在 Docker Hub 仓库设置中手动更新；镜像、端口、目录或 Compose 示例变化时同批修改该文件。
+Docker Hub 概览正文取自 [docs/dockerhub/README.md](dockerhub/README.md)。镜像、端口、目录或 Compose 示例变化时，同批修改该文件。合入主线后，[Docker Hub 概览同步](../.github/workflows/dockerhub-readme.yml)更新正文和简介，并从公开接口回读核对。需要补同步时，可在主线手动运行该工作流。工作流使用 `DOCKERHUB_USERNAME`，优先读取概览专用机密 `DOCKERHUB_DESCRIPTION_TOKEN`，未配置时使用现有 `DOCKERHUB_TOKEN`。若 Docker Hub 拒绝更新，核对专用令牌是否有描述编辑权限。
 
 ## 安装后检查资料源与封面连接
 
@@ -285,6 +285,6 @@ python -m peach check-sources
 python -m peach check-sources --source dmm --source javdb --json
 ```
 
-检查在 NAS 容器内发起，使用该实例已有的来源网络设置、Cookie 与冷却记录。最多四个来源并发，每个来源限制请求次数、读取量与时间预算；只读取来源页面和 DMM 图片 CDN 样本，不读取影片、不启动桌面浏览器。结果保留到现有采集设置的来源连接记录；限流或拒绝访问沿用现有冷却机制，不自动关闭来源或修改代理。
+检查在 NAS 容器内发起，使用该实例已有的来源网络设置、Cookie 与冷却记录。最多四个来源并发，每个来源限制请求次数、读取量与时间预算；只读取来源页面，以及 DMM、r18.dev、JavDB、JavBus、MGStage 各自图片主机上一张样图的前 64 KB（其余来源没有固定图片主机，图片一项标「未检查」），不读取影片、不启动桌面浏览器。结果保留到现有采集设置的来源连接记录；限流或拒绝访问沿用现有冷却机制，不自动关闭来源或修改代理。
 
 网页与命令行的报告使用同一口径，逐项区分可连接、登录或人机验证、HTTP 错误、冷却与网络失败。正在冷却的来源直接报冷却，不再发请求。页面能连接仅说明检查地址可达，不代表全部作品资料、封面或登录会话可用；片商官网需要番号时标记为未检查，不计为连接失败。命令行在其余目标未通过时退出码为 1。更换 NAS 出口或代理后可再次检查；`--source` 可重复指定，仅重查关心的来源。

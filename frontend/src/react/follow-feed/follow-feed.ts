@@ -16,7 +16,7 @@ import { keepPreviousData, type InfiniteData, type QueryKey } from '@tanstack/re
 import { seededRank } from '@peach/legacy/core';
 
 import { apiGet } from '../../api';
-import { FOLLOW_CREDENTIALS_URL, type CheckResult } from '../follow-manage/follow-manage';
+import { FOLLOW_CREDENTIALS_URL, type AuthorSource, type CheckResult } from '../follow-manage/follow-manage';
 import { queryClient } from '../query';
 import type { FollowJobView } from '../../jobs';
 import { t } from '../../i18n';
@@ -135,7 +135,7 @@ export interface FollowGroup {
 }
 
 /** 一个关注来源。 */
-export interface FollowSource {
+export interface FollowSource extends AuthorSource {
   id: number;
   provider: string;
   provider_label?: string;
@@ -478,6 +478,7 @@ export interface FollowFeedActions {
   openAuthor(name: string): void;
   /** 多选里的一张：`range` 是 Shift 连选。 */
   toggleSelection(id: number, range: boolean): void;
+  selectRectangle?(ids: number[], add: boolean): void;
   /** 照片墙「仅显示图片」与图片布局两样偏好，壳存起来再推回。 */
   setImagesOnly(on: boolean): void;
   setPhotoLayout(layout: FollowPhotoLayout): void;

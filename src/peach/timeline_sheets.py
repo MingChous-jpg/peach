@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import shutil
 import sqlite3
+import stat
 import tempfile
 import time
 from pathlib import Path
@@ -23,7 +24,8 @@ from .frame_capture import capture_with_retry, tile_frames
 from .fsutil import atomic_path
 from .coded_text import Said
 from .jobs import DiskSpaceDenied
-from .media import resolve_case_insensitive
+from .media_io import file_stat, resolve_case_insensitive
+from .migrations import readonly_uri
 
 #: 两档密度，值就是秒数。名字进接口也进设置页，改这里就是改契约。
 INTERVALS = {"precise": 10, "coarse": 30}
@@ -201,7 +203,7 @@ def pending(db_path: Path | str, interval: int, *, limit: int = 0) -> list[tuple
     if limit:
         sql += " LIMIT ?"
         parameters += (int(limit),)
-    connection = sqlite3.connect(f"file:{Path(db_path)}?mode=ro", uri=True)
+    connection = sqlite3.connect(readonly_uri(db_path), uri=True)
     try:
         return connection.execute(sql, parameters).fetchall()
     finally:
@@ -252,9 +254,14 @@ def generate_library(db_path: Path | str, root: Path, interval: int, *, ffmpeg: 
             report(**state)
             continue
         # 账本路径是 Windows 形态，而挂载层可能是大小写敏感的：这一步同时管翻译和
-        # 大小写救回，和抽帧脚本走的是同一份判据。
-        source = Path(resolve_case_insensitive(path))
-        if not source.is_file():
+        # 大小写救回，和抽帧脚本走的是同一份判据。两步都在带期限的读取子进程里做，
+        # 挂死的盘只让这一部记失败。
+        try:
+            source = Path(resolve_case_insensitive(path))
+            regular = stat.S_ISREG(file_stat(source).st_mode)
+        except OSError:
+            regular = False
+        if not regular:
             state["failed"] += 1
             report(**state)
             continue

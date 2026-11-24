@@ -5,7 +5,7 @@
  * 862 KB，面板于是显示「— · 0 请求」。HLS 是另一回事，每个分片都是一次独立完成的请求，VHS
  * 自己也报 bandwidth，resource timing 那套口径只对它成立。
  * 渐进源改看缓冲前沿的推进：每秒新推进的秒数 × 平均码率就是字节速率。码率要有文件大小才算得
- * 出来，关注条目的大小由 `/follow-qualities` 回源 HEAD 带回；连上游都不给 content-length 时没有
+ * 出来，关注条目的大小由 `/follow-qualities` 优先读取完整本地缓存，缺少时回源 HEAD；两者都未取得时没有
  * 任何办法把秒换成字节，角标改报还能往前放多久。缓冲吃满后浏览器停拉，增量归零，此时保留上一次
  * 读数而不是跳回 0——那不是速度掉了，是没有在下载。 */
 import { esc, icon, realDuration } from '@peach/legacy/core';
@@ -105,7 +105,34 @@ export function playerStatsPlot(samples: number[], kind: 'speed' | 'activity' | 
 export function playerStatsOverlayHtml(): string {
   return `<button data-player-stats-button="" id="playerStatsBtn" aria-label="${t('catalog:playerMenu.stats')}" title="${t('catalog:playerMenu.stats')}" aria-pressed="false" hidden>${icon('chart')}</button>
        <div data-player-net="" id="playerNet" role="status" aria-live="polite" hidden></div>
-       <div data-player-stats="" id="playerStats" role="status" hidden></div>`;
+       <div data-player-stats="" id="playerStats" role="region" aria-label="${esc(t('catalog:playerMenu.stats'))}" tabindex="0" hidden>
+         <div data-player-stats-values></div>
+         <section data-player-waterfall aria-labelledby="playerWaterfallHeading">
+           <h3 id="playerWaterfallHeading">${esc(t('catalog:playerStats.requestWaterfall'))}</h3>
+           <div data-player-waterfall-rows></div>
+         </section>
+       </div>`;
+}
+
+export function playerRequestWaterfall(entries: PerformanceResourceTiming[]): string {
+  const recent = entries.filter(entry => Number.isFinite(entry.startTime) && Number.isFinite(entry.duration)
+    && entry.startTime >= 0 && entry.duration >= 0 && new URL(entry.name).origin === location.origin)
+    .sort((left, right) => left.startTime - right.startTime).slice(-8);
+  const start = recent[0]?.startTime;
+  if (start === undefined) return `<p>${esc(t('catalog:playerStats.noCompletedRequests'))}</p>`;
+  const span = Math.max(1, ...recent.map(entry => entry.startTime + entry.duration - start));
+  const millis = (ms: number) => Number(ms.toFixed(1));
+  return `<ol>${recent.map(entry => {
+    const pathname = new URL(entry.name).pathname;
+    const name = pathname.split('/').pop() || pathname;
+    const offset = entry.startTime - start;
+    const status = entry.responseStatus > 0 ? ` · HTTP ${entry.responseStatus}` : '';
+    return `<li>
+      <span title="${esc(pathname)}">${esc(name)}${status}</span>
+      <span data-request-track aria-hidden="true"><i style="inset-inline-start:${100 * offset / span}%;width:${100 * entry.duration / span}%"></i></span>
+      <span>${esc(t('catalog:playerStats.requestTiming', { start: millis(offset), duration: millis(entry.duration) }))}</span>
+    </li>`;
+  }).join('')}</ol>`;
 }
 
 export function streamEntries(id: number, session = ''): PerformanceResourceTiming[] {

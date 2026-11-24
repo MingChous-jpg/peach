@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { Browser } from 'playwright-core';
-import { configurationBody, expectBody, layout, settle, visit, VIEWPORTS } from './harness.ts';
+import { CONFIGURATION_ROUTE, configurationBody, expectBody, layout, settle, visit, VIEWPORTS } from './harness.ts';
 import { followCredential, installDesignBrowser, openActivity, openFollowManage, settledRun } from './design-fixture.ts';
 import { openHome, openPanel, PANEL } from './settings-fixture.ts';
 
@@ -127,10 +127,8 @@ describe('设计决定：配置控件', () => {
         assert.equal(await original.evaluate((node) => node.isConnected), true);
         assert.match(await surface.evaluate((node) => getComputedStyle(node).transitionDuration), /0.3s/);
         await tabs.getByRole('tab', { name: '添加关注', exact: true }).press('ArrowRight');
-        await tabs.getByRole('tab', { name: '标签管理', selected: true }).waitFor();
-        await tabs.getByRole('tab', { name: '标签管理', exact: true }).press('ArrowRight');
         await tabs.getByRole('tab', { name: '关注列表', selected: true }).waitFor();
-        assert.equal(await tabs.getByRole('tab').count(), 3);
+        assert.equal(await tabs.getByRole('tab').count(), 2);
         assert.equal(await surface.count(), 1);
         await page.emulateMedia({ reducedMotion: 'reduce' });
         assert.equal(await surface.evaluate((node) => getComputedStyle(node).transitionDuration), '0s');
@@ -269,7 +267,7 @@ describe('设计决定：配置控件', () => {
       const opened = await visit(browser, '/settings/library', viewport);
       try {
         const page = opened.page;
-        await page.route('**/api/configuration', async (route) => {
+        await page.route(CONFIGURATION_ROUTE, async (route) => {
           const data = await (await route.fetch()).json();
           const paths = ['R:\\media', 'B:\\', 'A:\\'];
           await route.fulfill({ json: { ...data, editable: true, windows: true, media_dirs: paths, media_sources: paths.map((path, index) => ({

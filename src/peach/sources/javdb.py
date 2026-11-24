@@ -1,6 +1,7 @@
 """javdb 的作品页。
 
-搜索页 `/search?q=<番号>&f=all` 的结果卡片带番号，只在对应唯一来源 ID 时进详情页；详情页
+搜索页 `/search?q=<番号>&f=all` 的结果卡片带番号。唯一来源 ID 直接读详情，FANZA 生写真特典与
+通常版须核对两份详情再收通常版。详情页
 `?locale=zh` 下面板字段是 `番號`、`日期`、`片商`、`發行`、`系列`、`導演`、`演員`，
 演员里女优带 `actor-female`，类别保留链接里的原词。它按出口 IP 计配额，限速与封禁的处理在 `scraping_access`
 和调用方的主机间隔里，这里只管取页与解析。几家的值常有出入：ABW-358 在 javdb 上发行日期是
@@ -25,11 +26,14 @@ from bs4 import BeautifulSoup
 from ..catalog_rules import same_release_code
 from ..javdb import LOGIN, clean
 from ..javdb_genres import page_genres
-from ..javdb_identity import RULE
-from ..javdb_public import actor_gender, public_image_url
+from ..javdb_identity import RULE, fanza_regular_id
+from ..javdb_public import actor_gender, public_image_url, verified_fanza_regular
 from ..metadata import relay_args
+from ..coded_text import Said, parallel
+from ..user_messages import nested_message
 from ..catalog_vocabulary import RESOURCE_COMMENT_SOURCE
-from ..source_page_words import JAVDB_FIELDS
+from ..scripting import HostLimiter
+from ..source_page_words import JAVDB_FIELDS, JAVDB_NO_MAGNETS
 from .base import FailureReason, Page, Session, SiteConfig, SiteRecord, SiteSource, SourceFailure
 
 #: 主机间隔由用户定（2026-09-22 定为 3 秒，每分钟 20 页）。参照面：每分钟 40～50 页会招来 3～7 天
@@ -37,6 +41,10 @@ from .base import FailureReason, Page, Session, SiteConfig, SiteRecord, SiteSour
 JAVDB = SiteConfig(name="javdb", label="javdb", provider="javdb-page",
                    base_url="https://javdb.com", domains=("javdb.com", "jdbstatic.com", "jdbimgs.com"),
                    stage="community", interval=3.0, cookie=True)
+#: 搜索页另有更严的额度：2026-11-16 实测同一出口连着搜几次就回空白 403，详情页与首页照常。
+#: 整个进程的 javdb 搜索（刮削、库外详情、磁链查找）共用这一份间隔，叠在主机间隔之上。
+SEARCH_INTERVAL = 12.0
+SEARCH_LIMITER = HostLimiter({"javdb.com": SEARCH_INTERVAL})
 #: 刮削那一问的配置。来源名、域名与 Cookie 仍是 `javdb` 这一站的（视频预览照旧读详情页，
 #: 冷却按这个名字记）；解析器名另起，候选与账本证据分得清是哪一种取法。接口自己的间隔、冷却与
 #: 请求预算在 `peach.javdb_public`，这一问不经会话的传输。
@@ -46,7 +54,6 @@ PUBLIC_REQUESTS = 7
 #: 会话没有动作截止时刻时，一问最多等这么久。
 PUBLIC_SECONDS = 90.0
 
-_BOX = re.compile(r'<a href="(/v/[A-Za-z0-9]+)" class="box" title="[^"]*">.*?<strong>([^<]+)</strong>', re.S)
 _PANEL = re.compile(r'<div class="panel-block[^"]*">\s*<strong>([^<:：]+)[:：]</strong>\s*(?:&nbsp;)?\s*'
                     r'<span class="value">(.*?)</span>', re.S)
 #: 详情页那张封面。认标签、再从标签里取 `src`，不把属性挨着写死：站上 `class` 与 `src` 的先后
@@ -166,10 +173,14 @@ def page_reader(secrets_root, *, seconds: float = 30.0):
                                                      max_seconds=seconds), JAVDB.interval, limiter=SOURCE_LIMITER)
     session = Session(transport, deadline=time.monotonic() + seconds)
     source = JavDBSource(JAVDB)
+    pages = {}
 
     def read(path: str) -> str:
+        if path in pages:
+            return pages[path]
         with source.holding(session):
-            return source._page(JAVDB.base_url + path, session=session).text
+            pages[path] = source._page(JAVDB.base_url + path, session=session).text
+        return pages[path]
 
     try:
         yield read
@@ -184,6 +195,8 @@ class JavDBSource(SiteSource):
         return f"{self.config.base_url}/search?q={urllib.parse.quote(code)}&f=all"
 
     def _page(self, url: str, *, session: Session) -> Page:
+        if urllib.parse.urlsplit(url).path == "/search":
+            SEARCH_LIMITER.wait(url)
         page = session.get(url, config=self.config)
         if LOGIN.search(page.text):
             raise SourceFailure(FailureReason.AUTH_REQUIRED, "errors.javdb.loginRequired")
@@ -191,17 +204,34 @@ class JavDBSource(SiteSource):
 
     def fetch(self, code: str, *, session: Session) -> Page:
         search = self._page(self.search_url(code), session=session)
-        paths = list(dict.fromkeys(path for path, shown in _BOX.findall(search.text)
-                                  if same_release_code(code, clean(shown))))
-        if not paths:
+        rows = {row['id']: row for row in page_search_rows(search.text)
+                if same_release_code(code, row['number'])}
+        if not rows:
             raise SourceFailure(FailureReason.NOT_FOUND, _MISSING)
-        if len(paths) > 1:
-            raise SourceFailure(FailureReason.PARSE_ERROR, "errors.javdb.identityAmbiguous",
-                                {"identities": '、'.join(paths)}, detail='identity_ambiguous')
-        path = paths[0]
-        detail = self._page(self.config.base_url + path + "?locale=zh", session=session)
+        if len(rows) == 1:
+            return self._detail_page(next(iter(rows)), session=session)
+        regular = fanza_regular_id(list(rows.values()))
+        if regular is not None:
+            page = self._verified_regular_page(code, rows, regular, session=session)
+            if page is not None:
+                return page
+        raise SourceFailure(FailureReason.PARSE_ERROR, "errors.javdb.identityAmbiguous",
+                            {"identities": '、'.join(f'/v/{identity}' for identity in rows)},
+                            detail='identity_ambiguous')
+
+    def _detail_page(self, identity: str, *, session: Session) -> Page:
+        url = f'{self.config.base_url}/v/{identity}'
+        detail = self._page(url + "?locale=zh", session=session)
         # `source_url` 记不带界面语言参数的详情页地址。
-        return Page(self.config.base_url + path, detail.body)
+        return Page(url, detail.body)
+
+    def _verified_regular_page(self, code, rows, regular, *, session: Session) -> Page | None:
+        pages = {identity: self._detail_page(identity, session=session) for identity in rows}
+        movies = [page_movie(page.text, identity) for identity, page in pages.items()]
+        if all(same_release_code(code, movie['number']) for movie in movies):
+            if verified_fanza_regular(movies, regular, series_field='series_name') is not None:
+                return pages[regular]
+        return None
 
     def parse(self, page: Page, code: str) -> SiteRecord:
         fields = _detail(page.text)
@@ -291,6 +321,104 @@ class JavDBPublicSource(JavDBSource):
             except PublicSourceUnavailable:
                 raise _PublicDown() from None
             return public_record(movie)
+
+
+def parse_magnets(page: Page) -> list[dict]:
+    """作品页磁链区的资源条目，保留种子名、大小、日期及属性。"""
+    from ..downloads import parse_magnet
+    from ..catalog_vocabulary import resource_item
+
+    container = BeautifulSoup(page.text, 'html.parser').select_one('#magnets-content')
+    if container is None:
+        raise SourceFailure(FailureReason.PARSE_ERROR, 'errors.javdbPublic.unrecognizedFormat')
+    found = {}
+    for row in container.select('.item'):
+        link = row.select_one('a[href^="magnet:"]')
+        if link is None:
+            continue
+        try:
+            magnet = parse_magnet(str(link.get('href') or ''))
+        except ValueError:
+            continue
+        def text(selector, row=row):
+            node = row.select_one(selector)
+            return node.get_text(' ', strip=True) if node else ''
+        meta = re.split(r'[,，]', text('.meta'), maxsplit=1)
+        found.setdefault(magnet.info_hash, resource_item({
+            'id': 'magnet:' + magnet.info_hash, 'protocol': 'magnet', 'info_hash': magnet.info_hash,
+            'uri': magnet.uri, 'name': text('.name') or magnet.name or magnet.info_hash,
+            'size': meta[0].strip(), 'files': meta[1].strip() if len(meta) > 1 else '',
+            'date': text('.time') or text('.date'),
+            'attributes': list(dict.fromkeys(tag.get_text(' ', strip=True) for tag in row.select('.tag'))),
+            'source': 'JavDB', 'source_url': page.url, 'origins': [page.url],
+        }))
+    if not found and JAVDB_NO_MAGNETS not in container.get_text():
+        raise SourceFailure(FailureReason.PARSE_ERROR, 'errors.javdbPublic.unrecognizedFormat')
+    return list(found.values())
+
+
+def parse_comment_links(page: Page) -> list[dict]:
+    """只取评论正文的资源链接，保留原评论定位。"""
+    found = []
+    for row in BeautifulSoup(page.text, 'html.parser').select('.review-item'):
+        content = row.select_one('.content')
+        if content is None:
+            continue
+        links = [str(link.get('href') or '') for link in content.select('a[href]')]
+        links.extend(_COMMENT_LINK.findall(content.get_text(' ', strip=True)))
+        date = row.select_one('.time')
+        origin = page.url + ('#' + str(row['id']) if row.get('id') else '')
+        found.extend(comment_resources(links, origin, date.get_text(' ', strip=True) if date else ''))
+    return merge_resources(found)
+
+
+def page_resources(code: str, movie: dict, read, *, review_pages: int) -> dict:
+    """接口要求登录时从已核对的作品页读取磁链和有界评论。"""
+    source_url = JAVDB.base_url + '/v/' + movie['id']
+    page = Page(source_url, read('/v/' + movie['id'] + '?locale=zh').encode('utf-8'))
+    current = page_movie(page.text, movie['id'])
+    if not same_release_code(current['number'], code):
+        raise SourceFailure(FailureReason.PARSE_ERROR, 'errors.javdbPublic.identityMismatch')
+    warnings, items = [], []
+    magnet_failed = comments_failed = False
+    try:
+        items.extend(parse_magnets(page))
+    except SourceFailure as error:
+        magnet_failed = True
+        warnings.append(Said('labels.javdbPublic.magnetsUnfetched', error=nested_message(error)))
+    body = BeautifulSoup(page.text, 'html.parser')
+    items.extend(parse_comment_links(page))
+    entry = body.select_one('.review-tab[data-url]')
+    next_url = str(entry.get('data-url') or '') if entry else ''
+    seen = set()
+    if current.get('comments_count'):
+        try:
+            if not next_url:
+                raise SourceFailure(FailureReason.PARSE_ERROR, 'errors.javdbPublic.unrecognizedFormat')
+            for _ in range(review_pages):
+                if not next_url:
+                    break
+                url = urllib.parse.urljoin(source_url, next_url)
+                parts = urllib.parse.urlsplit(url)
+                if (parts.scheme != 'https' or parts.netloc != urllib.parse.urlsplit(source_url).netloc
+                        or not parts.path.startswith('/v/' + movie['id'] + '/reviews/') or url in seen):
+                    raise SourceFailure(FailureReason.PARSE_ERROR, 'errors.javdbPublic.unrecognizedFormat')
+                seen.add(url)
+                comments = Page(url, read(parts.path + ('?' + parts.query if parts.query else '')).encode('utf-8'))
+                body = BeautifulSoup(comments.text, 'html.parser')
+                if body.select_one('.review-items') is None:
+                    raise SourceFailure(FailureReason.PARSE_ERROR, 'errors.javdbPublic.unrecognizedFormat')
+                items.extend(parse_comment_links(comments))
+                following = body.select_one('a[rel="next"], .pagination-next:not([disabled])')
+                next_url = str(following.get('href') or '') if following else ''
+            else:
+                if next_url:
+                    warnings.append(Said('labels.javdbPublic.reviewPagesQueried', pages=review_pages))
+        except SourceFailure as error:
+            comments_failed = True
+            warnings.append(Said('labels.javdbPublic.commentsUnfetched', error=nested_message(error)))
+    return {'items': merge_resources(items), 'warnings': warnings, **parallel('warning', warnings),
+            'source_url': source_url, 'magnet_failed': magnet_failed, 'comments_failed': comments_failed}
 
 
 _COMMENT_LINK = re.compile(r"(?:magnet:\?[^\s<>\"']+|ed2k://\|file\|[^\r\n<>]+?\|/|https?://[^\s<>\"']+)", re.I)

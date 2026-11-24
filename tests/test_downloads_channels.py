@@ -105,6 +105,12 @@ class LibraryChannelTests(unittest.TestCase):
         self.assertFalse(channel["can_cancel"])
         self.assertEqual(channel["cloud_root"], "/duck/Movies")
 
+    def test_a_token_limited_below_the_library_prefix_lands_in_its_root(self):
+        self.client.token_info.return_value.rootDir = "/duck/Movies/Peach"
+        channel = self.catalog()["providers"][0]
+        self.assertEqual((channel["target"], channel["cloud_root"]), ("/duck/Movies/Peach", "/duck/Movies"))
+        self.client.folder.assert_any_call("/duck/Movies/Peach")
+
     def test_capability_cache_expires_and_credential_changes_invalidate_it(self):
         self.catalog()
         self.catalog()
@@ -158,6 +164,28 @@ class LibraryChannelTests(unittest.TestCase):
         landing.channel_catalog = self.catalog
         task = DownloadTask(1, None, channel["key"], "", "SSIS-519.mkv", channel["target"], REMOTE_DONE)
         self.assertEqual(landing.ledger_path(task, self.service.config), ("guangya", "G:\\Movies\\SSIS-519.mkv"))
+
+    def test_qbittorrent_channel_uses_the_declared_local_root_and_save_path(self):
+        from peach.downloads import DownloadConfig
+        self.service.config = DownloadConfig(
+            qbittorrent_address="http://192.0.2.10:8085",
+            qbittorrent_save_path="/vol1/media/Peach",
+            qbittorrent_media_root="R:\\media")
+        self.service.landing.declared_roots = {"local": ("R:\\media",)}
+        self.names["R:\\media"] = "本地库"
+
+        def load(provider):
+            if provider == "download-qbittorrent":
+                return SimpleNamespace(values={"username": "admin", "password": "test-only"})
+            return SimpleNamespace(values={"token": "test-only-token"})
+
+        self.credentials.load.side_effect = load
+        result = self.catalog()
+        channel = next(row for row in result["providers"] if row["key"] == "qbittorrent")
+        self.assertEqual((channel["kind"], channel["local_root"], channel["root"], channel["target"]),
+                         ("local", "/vol1/media/Peach", "R:\\media",
+                          "/vol1/media/Peach"))
+        self.assertEqual(channel["label"], "本地库 · qBittorrent")
 
     def test_checks_skip_provider_specific_work_without_its_media_source(self):
         from peach.downloads_clouddrive import _inspect, empty_report

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { it } from 'node:test';
 import { chromium, type Browser } from 'playwright-core';
-import { launch, requiredEnv } from './harness.ts';
+import { launch, requiredEnv, visit, VIEWPORTS } from './harness.ts';
 
 async function disabledFeatures(browser: Browser): Promise<Set<string>> {
   const session = await browser.newBrowserCDPSession();
@@ -27,4 +27,48 @@ it('隔离 E2E 浏览器保留 Playwright 的全部默认禁用特性，其中�
   const browser = await launch();
   try { assert.deepEqual(await disabledFeatures(browser), expected); }
   finally { await browser.close(); }
+});
+
+it('撤除页面桩期间的新请求仍被关闭流程中止', async t => {
+  const browser = await launch();
+  try {
+    const opened = await visit(browser, '/healthz', VIEWPORTS[0]!, async page => {
+      await page.route('**/healthz?close-probe=1', route => route.fulfill({ json: { ok: true } }));
+    });
+    const page = opened.page;
+    const unrouteAll = page.unrouteAll.bind(page);
+    let blocked = false;
+    t.mock.method(page, 'unrouteAll', async (options: Parameters<typeof page.unrouteAll>[0]) => {
+      await unrouteAll(options);
+      blocked = await page.evaluate(async () => {
+        try {
+          await fetch('/healthz?close-probe=1');
+          return false;
+        } catch { return true; }
+      });
+    });
+    await opened.close();
+    assert.equal(blocked, true, '撤桩和关闭上下文之间的请求必须被拦截');
+  } finally { await browser.close(); }
+});
+
+it('关上下文与关浏览器时页面先离开站点，关闭期间不再向服务发请求', async () => {
+  const origin = requiredEnv('PEACH_E2E_ORIGIN');
+  const browser = await launch();
+  const left: string[] = [];
+  try {
+    const open = async () => {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      await page.route('**/healthz?tick=*', route => route.fulfill({ json: { ok: true } }));
+      await page.goto(origin + '/healthz');
+      // 关闭时页面还在发请求：模拟详情页收尾时才去取的来源图片。
+      await page.evaluate(() => { setInterval(() => { void fetch(`/healthz?tick=${Date.now()}`).catch(() => {}) }, 1) });
+      page.on('close', () => left.push(page.url()));
+      return context;
+    };
+    await (await open()).close();
+    await open();
+  } finally { await browser.close(); }
+  assert.deepEqual(left, ['about:blank', 'about:blank'], '关闭时页面还停在站点上，在途与新发的请求会漏到服务');
 });

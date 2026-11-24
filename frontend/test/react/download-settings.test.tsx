@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest';
 
 import { DownloadSettings } from '../../src/react/settings/download-settings';
 import type { DownloadCheckReport, DownloadSettingsState } from '../../src/react/bundle';
-import { actionOrder, buttonNamed, click, fetchMock, mount, pending, section, sentBody, settle, submit, type } from './render';
+import { actionOrder, buttonNamed, click, fetchMock, mount, mountRoot, pending, section, sentBody, settle, submit, type } from './render';
 
 vi.mock('../../src/react/settings/jav-browser-settings', () => ({ JavBrowserSettings: () => null }));
 
@@ -16,6 +16,8 @@ const state = (patch: Partial<DownloadSettingsState> = {}): DownloadSettingsStat
   pikpak: { logged_in: false, username: '', remember: false, method: 'password' },
   pikpak_browser: { available: true, state: 'idle', message: '' },
   pikpak_roots: ['P:\\'],
+  local_roots: [],
+  qbittorrent: { address: '', save_path: '', media_root: '', username: '', password_set: false },
   providers: [{ key: '115', label: '115' }, { key: 'pikpak', label: 'PikPak' }],
   max_wait_hours: 1440,
   ...patch,
@@ -24,6 +26,22 @@ const state = (patch: Partial<DownloadSettingsState> = {}): DownloadSettingsStat
 const report = (patch: Partial<DownloadCheckReport> = {}): DownloadCheckReport => ({
   ok: true, address: 'http://127.0.0.1:19798', permissions: [], missing: [], root: '/', folder: null,
   quota: null, suggested_target: null, suggested_pikpak_root: '', problems: [], ...patch,
+});
+
+it('下载分区首次可见时才发出连接检查', async () => {
+  const fetcher = fetchMock(200, report());
+  vi.stubGlobal('fetch', fetcher);
+  const initial = state({ token_set: true });
+  const receipt = vi.fn();
+  const view = (active: boolean) => <DownloadSettings initial={initial} receipt={receipt} active={active} />;
+  const root = await mountRoot(view(false));
+  expect(fetcher).not.toHaveBeenCalled();
+  await root.rerender(view(true));
+  await settle();
+  expect(fetcher.mock.calls.map(call => call[0])).toEqual(['/api/configuration/downloads/check']);
+  await root.rerender(view(false));
+  await root.rerender(view(true));
+  expect(fetcher).toHaveBeenCalledTimes(1);
 });
 
 it('无效的已保存地址保留在表单中，修正保存后清除配置提示', async () => {
@@ -58,6 +76,25 @@ const unfilled = () => state({
 const field = (host: HTMLElement, label: string) =>
   [...host.querySelectorAll('label')].find((node) => node.textContent?.trim() === label)
     ?.closest('[data-input-size]')?.querySelector('input') ?? null;
+
+it('五种下载版本默认显示为馆藏徽章，保存顺序后可以恢复默认排序', async () => {
+  const order = ['chinese-subtitles', 'uncensored', 'uncensored-crack', 'uncensored-leak', 'censored'];
+  const fetcher = fetchMock(200, state({ config: { ...state().config, edition_preferences: order } }));
+  vi.stubGlobal('fetch', fetcher);
+  const host = await mount(<DownloadSettings initial={state()} receipt={vi.fn()} />);
+  const versions = host.querySelector('[aria-label="优先下载的版本"]')!;
+  expect([...versions.querySelectorAll('.javedition')].map((badge) => badge.textContent))
+    .toEqual(['中字', '无码', '无码流出', '无码破解', '有码']);
+  expect(versions.querySelector('.javedition.cracked')?.textContent).toBe('无码破解');
+  await click(versions.querySelector('button[aria-label="上移 无码破解"]'));
+  await submit(section(host, '云下载'));
+  await settle();
+  expect(sentBody(fetcher).edition_preferences).toEqual(order);
+  await click(buttonNamed('恢复默认排序', versions));
+  await submit(section(host, '云下载'));
+  await settle();
+  expect(sentBody(fetcher, 1).edition_preferences).toEqual([]);
+});
 
 it('空检查报告不保留分隔区，只有错误时直接显示原因', async () => {
   const fetcher = fetchMock(200, report());
@@ -209,6 +246,20 @@ it('在账号框里填了 PikPak 账号或已登录时，检查才问 PikPak 根
   await click(buttonNamed('检查连接', signedIn));
   await settle();
   expect(sentBody(fetcher, 1)).toMatchObject({ pikpak_account: true });
+});
+
+it('PikPak 没登录、也没填账号时根目录变灰，填了账号或已登录就能选；目标目录始终可填', async () => {
+  vi.stubGlobal('fetch', fetchMock(200, report()));
+  const root = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('button[aria-haspopup="listbox"][aria-label*="PikPak"]');
+  const disabled = (button: HTMLButtonElement | null) => !!button && (button.disabled || button.hasAttribute('data-disabled'));
+  const host = await mount(<DownloadSettings initial={state()} receipt={vi.fn()} />);
+  expect(disabled(root(host))).toBe(true);
+  expect(field(host, 'PikPak 目标目录')?.disabled).toBe(false);
+  await type(field(host, '账号'), 'me@example.com');
+  expect(disabled(root(host))).toBe(false);
+  const signedIn = await mount(<DownloadSettings receipt={vi.fn()}
+    initial={state({ pikpak: { logged_in: true, username: 'me@example.com', remember: false, method: 'password' } })} />);
+  expect(disabled(root(signedIn))).toBe(false);
 });
 
 it('推出的目录不存在时标成无效，点了「新建这个目录」才去建，建好后解除', async () => {
@@ -424,7 +475,8 @@ it('用浏览器登录拉起窗口后轮询，登好就显示登录方式并停�
   await settle();
   expect(fetcher.mock.calls[0]?.[0]).toBe(BROWSER_URL);
   expect(fetcher.mock.calls[0]?.[1]?.method).toBe('POST');
-  expect(host.querySelector('[role="status"]')?.textContent).toContain('浏览器窗口已打开，在里面登录 PikPak');
+  expect(section(host, 'PikPak 账号')?.querySelector('[role="status"]')?.textContent)
+    .toContain('浏览器窗口已打开，在里面登录 PikPak');
   expect(buttonNamed('用浏览器登录', host)).toBeNull();
   expect(buttonNamed('登录', host)?.disabled).toBe(true);
   await tick(2000);
@@ -447,7 +499,8 @@ it('刷新页面时登录窗口还开着就接着轮询，点取消回到可以�
   const fetcher = replies(browserAt('cancelled', '已取消浏览器登录'));
   vi.stubGlobal('fetch', fetcher);
   const host = await mount(<DownloadSettings initial={browserAt('waiting')} receipt={vi.fn()} />);
-  expect(host.querySelector('[role="status"]')?.textContent).toContain('等你在浏览器窗口里登录 PikPak');
+  expect(section(host, 'PikPak 账号')?.querySelector('[role="status"]')?.textContent)
+    .toContain('等你在浏览器窗口里登录 PikPak');
   expect(actionOrder(buttonNamed('取消', host)?.parentElement)).toEqual(['取消', '登录']);
   await click(buttonNamed('取消', host));
   await settle();
@@ -470,8 +523,32 @@ it('等太久没登录时报出原因，上一次留在服务端的结果不当�
   expect(host.querySelector('[role="alert"]')?.textContent).toBe(message);
 });
 
+it('本地下载卡显示 qB 检查结果，密码不回显', async () => {
+  const fetcher = fetchMock(200, {
+    ok: true, address: 'http://192.0.2.10:8085', version: 'v4.6.4', webapi_version: '2.9.3',
+    save_path: '/vol1/media/Peach', media_root: 'R:\\media', problems: [],
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const host = await mount(<DownloadSettings initial={state({
+    local_roots: [{ root: 'R:\\media', label: '本地库' }],
+    qbittorrent: {
+      address: 'http://192.0.2.10:8085', save_path: '/vol1/media/Peach',
+      media_root: 'R:\\media', username: 'admin', password_set: true,
+    },
+  })} receipt={vi.fn()} />);
+  expect(field(host, 'qBittorrent 地址')?.value).toBe('http://192.0.2.10:8085');
+  expect(field(host, 'qBittorrent 密码')?.placeholder).toBe('已保存，留空不改');
+  const card = section(host, '本地下载')!;
+  await click(buttonNamed('检查连接', card));
+  await settle();
+  expect(fetcher.mock.calls[0]?.[0]).toBe('/api/configuration/downloads/qbittorrent/check');
+  expect(host.textContent).toContain('v4.6.4');
+  expect(host.textContent).toContain('2.9.3');
+  expect(host.textContent).toContain('本地库 · R:\\media');
+});
+
 it('只读端整块不可操作，并说明原因', async () => {
   const host = await mount(<DownloadSettings initial={state({ available: false })} receipt={vi.fn()} />);
   expect(buttonNamed('保存配置', host)?.disabled).toBe(true);
-  expect(host.textContent).toContain('云下载只在允许修改数据库的设备上可用');
+  expect(host.textContent).toContain('下载只在允许修改数据库的设备上可用');
 });

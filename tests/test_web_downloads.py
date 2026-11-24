@@ -240,9 +240,118 @@ class RouteTests(_App):
         self.assertEqual(second, first)
         self.assertEqual(self.service.store.get(result.task.id).postprocess_run_id, first)
 
+    def test_postprocess_cancelled_before_enqueue_returns_stays_cancelled_and_can_be_retried(self):
+        task = self.service.store.save(dl.DownloadTask(
+            id=0, info_hash=HASH, provider="115", source_uri="", display_name="ABC-123",
+            target="/115/云下载", state=dl.INGESTED, postprocess_state=dl.POSTPROCESS_PENDING))
+        contract = self.app.state.web_contract
+        enqueue = contract.task_runs.enqueue_followups
+
+        def cancel_after_enqueue(*args, **kwargs):
+            result = enqueue(*args, **kwargs)
+            run_id = result["queued"][0]
+            response = self.client.post(f"/api/tasks/{run_id}/control", json={"action": "cancel"})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(contract.task_runs.get(run_id).status, "cancelled")
+            return result
+
+        with mock.patch.object(contract.followups, "wake"), \
+                mock.patch.object(contract.task_runs, "enqueue_followups", side_effect=cancel_after_enqueue):
+            run_id = download_postprocess.enqueue(contract, task)
+        payload = self.client.get("/api/downloads").json()["tasks"][0]
+        self.assertEqual((payload["postprocess_state"], payload["postprocess_run_id"]),
+                         (dl.POSTPROCESS_CANCELLED, run_id))
+        self.assertEqual(payload["postprocess_label_code"], "download.state.cancelled")
+        self.assertFalse(payload["postprocess_active"])
+        self.assertTrue(payload["postprocess_retryable"])
+        self.assertIsNone(payload["postprocess_retry_at"])
+        self.assertEqual(self.service.poll_once(), 0)
+        self.assertIsNone(download_postprocess.enqueue(contract, task))
+
+        queued = []
+        self.service.after_ingest = lambda item: queued.append(item.id)
+        response = self.client.post("/api/downloads/postprocess", json={"id": task.id})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["task"]["postprocess_state"], dl.POSTPROCESS_PENDING)
+        self.assertEqual(queued, [task.id])
+        self.assertEqual(self.provider.submitted, [])
+
+    def test_start_recovers_older_download_postprocess_with_a_cancelled_run(self):
+        task = self.service.store.save(dl.DownloadTask(
+            id=0, info_hash=HASH, provider="115", source_uri="", display_name="ABC-123",
+            target="/115/云下载", state=dl.INGESTED, postprocess_state=dl.POSTPROCESS_PENDING))
+        contract = self.app.state.web_contract
+        with mock.patch.object(contract.followups, "wake"):
+            run_id = download_postprocess.enqueue(contract, task)
+        with contract.database.write_transaction() as connection:
+            # 模拟旧版只结算任务中心、下载卡片仍显示排队。
+            connection.execute("UPDATE task_run SET status='cancelled',finished_at=? WHERE id=?",
+                               ("2026-11-17T10:00:00Z", run_id))
+        other = self.service.store.save(dl.DownloadTask(
+            id=0, info_hash="2" * 40, provider="115", source_uri="", display_name="DEF-456",
+            target="/115/云下载", state=dl.INGESTED, postprocess_state=dl.POSTPROCESS_QUEUED,
+            postprocess_run_id=run_id))
+        self.service.after_ingest = mock.Mock()
+        self.addCleanup(self.service.stop)
+        with mock.patch.object(self.service, "_loop"):
+            self.service.start()
+        repaired = self.service.store.get(task.id)
+        self.assertEqual((repaired.postprocess_state, repaired.postprocessed_at),
+                         (dl.POSTPROCESS_CANCELLED, "2026-11-17T10:00:00Z"))
+        self.assertEqual(self.service.store.get(other.id).postprocess_state, dl.POSTPROCESS_QUEUED)
+        self.service.after_ingest.assert_not_called()
+
 
 class SettingsBlockTests(_App):
     """CloudDrive2 那一侧换成 `self.answer`；没有令牌时走真的 `check`，它在连网之前就停。"""
+
+    def test_qbittorrent_password_is_stored_but_never_returned(self):
+        from peach import web_downloads
+        self.app.state.push_discovery.declared_roots = {"local": ("R:\\media",)}
+        self.service.channel_catalog = lambda: {"providers": [], "problems": []}
+        client = TestClient(self.app, client=("127.0.0.1", 50000), base_url="http://127.0.0.1")
+        with mock.patch.object(web_downloads, "check_qbittorrent", return_value={
+                "ok": True, "address": "http://192.0.2.10:8085", "version": "v4.6.4",
+                "webapi_version": "2.9.3", "save_path": "/vol1/media/Peach",
+                "media_root": "R:\\media", "problems": []}):
+            response = client.post("/api/configuration/downloads", json={
+                "qbittorrent_address": "http://192.0.2.10:8085",
+                "qbittorrent_save_path": "/vol1/media/Peach",
+                "qbittorrent_media_root": "R:\\media",
+                "qbittorrent_username": "admin",
+                "qbittorrent_password": "test-only-password",
+            })
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["qbittorrent"]["username"], "admin")
+        self.assertTrue(body["qbittorrent"]["password_set"])
+        self.assertEqual(body["qbittorrent"]["save_path"], "/vol1/media/Peach")
+        self.assertNotIn("test-only-password", response.text)
+        self.assertIn("test-only-password", self.secrets()["download-qbittorrent.json"])
+
+    def test_qbittorrent_check_without_configuration_reports_the_missing_fields(self):
+        client = TestClient(self.app, client=("127.0.0.1", 50000), base_url="http://127.0.0.1")
+        response = client.get("/api/configuration/downloads/qbittorrent/check")
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertFalse(body["ok"])
+        self.assertIn("地址", " ".join(body["problems"]))
+
+    def test_qbittorrent_check_can_discover_an_unsaved_default_directory(self):
+        from peach import downloads_qbittorrent
+        self.app.state.push_discovery.declared_roots = {"local": ("R:\\media",)}
+        client = TestClient(self.app, client=("127.0.0.1", 50000), base_url="http://127.0.0.1")
+        with mock.patch.object(downloads_qbittorrent, "check", return_value={
+                "ok": True, "version": "v5.1.0", "webapi_version": "2.11.3",
+                "save_path": "/downloads", "problems": []}):
+            response = client.post("/api/configuration/downloads/qbittorrent/check", json={
+                "qbittorrent_address": "http://192.0.2.10:8085", "qbittorrent_save_path": "",
+                "qbittorrent_media_root": "R:\\media", "qbittorrent_username": "admin",
+                "qbittorrent_password": "test-only-password"})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["ok"])
+        self.assertEqual(response.json()["save_path"], "/downloads")
+        self.assertEqual(self.service.config.qbittorrent_save_path, "")
 
     def test_invalid_service_address_is_refused_before_settings_or_token_are_saved(self):
         self.service.save_settings({"clouddrive_address": "localhost:19798", "wait_hours": 48}, self.roots())
@@ -549,8 +658,10 @@ class ResourceIndexerRoutes(_App):
         hd = {"source": "manko.fun", "resolution": 1080, "info_hash": failed, "name": "ABC-123"}
         fallback = {"source": "sukebei", "resolution": 1080, "info_hash": other, "name": "ABC-123 FHD"}
         with mock.patch("peach.web_resource_search.direct_search", return_value={
-                "items": [hd, fallback], "warnings": [], "trace": [], "next_sources": [], "reference_only": []}) as direct,              mock.patch("peach.web_resource_search._SEARCH.run", return_value={
-                "ok": True, "state": "ready", "items": [], "warnings": [], "error": ""}) as search,              mock.patch("peach.web_resource_search.rank_candidates", side_effect=lambda rows, goal: rows):
+                "items": [hd, fallback], "warnings": [], "trace": [], "next_sources": [], "reference_only": []}) as direct, \
+             mock.patch("peach.web_resource_search._SEARCH.run", return_value={
+                "ok": True, "state": "ready", "items": [], "warnings": [], "error": ""}) as search, \
+             mock.patch("peach.web_resource_search.rank_candidates", side_effect=lambda rows, goal, **kwargs: rows):
             result = q_resource_search(self.app.state.web_contract, {"code": "ABC-123", "skip": [failed]})
             self.assertFalse(direct.call_args.kwargs["stop_on_preferred"])
             self.assertIn(failed, search.call_args.args[3])

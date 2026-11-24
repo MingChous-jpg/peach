@@ -7,13 +7,11 @@ ADR-0022 的取舍是「构建产物进 Git」：运行时的 Python 服务、Py
 
 - **不需要 Node 的**：产物在不在、页面加载路径、独立模块图、清单是否
   精确钉版本、共享客户端是否唯一。这些在任何机器上都跑。
-- **需要 Node 的**：tsc、lint 与 vitest。npm 或 `frontend/node_modules` 不在时本机显式
-  跳过——本机可能根本没装 Node，让整个测试域红掉只会让人绕过入口，而不是去装 Node。
-  CI 的 Test 工作流由 `web-bundle` 统一执行三个工具；其他任务与本机经正式入口运行。
-  CI 实际执行工具的任务缺前置条件时判失败。
-
-「产物是否由当前源码构建出来」这一条不在这里：不装 Node 就无法重建，无从比较。
-那道门槛在 CI 的 `web-bundle` job 里，`npm run build` 之后 `git diff --exit-code web/dist`。
+- **需要 Node 的**：tsc、lint、vitest，以及「产物是否由当前源码构建出来」。npm 或
+  `frontend/node_modules` 不在时本机显式跳过——本机可能根本没装 Node，让整个测试域红掉
+  只会让人绕过入口，而不是去装 Node。CI 的 Test 工作流由 `web-bundle` 统一执行这几项
+  （产物那一项是 `npm run build` 之后 `git diff --exit-code web/dist`）；其他任务与本机经
+  正式入口运行。CI 实际执行工具的任务缺前置条件时判失败。
 """
 from __future__ import annotations
 
@@ -28,7 +26,7 @@ import tempfile
 import unittest
 
 from peach.diagnostic_browser import BUNDLE_CHUNK_NAME
-from scripts import test_history
+from scripts import npm_backports, test_history
 from test_frontend_preflight import frontend_npm
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,20 +93,6 @@ class MainBundleTests(unittest.TestCase):
         assets = PageAssets((ROOT / "web" / "index.html").read_text(encoding="utf-8"))
         self.assertEqual([script["src"] for script in assets.scripts], ["/dist/peach-app.js"])
         self.assertEqual(assets.scripts[0].get("type"), "module")
-
-    def test_the_startup_switches_and_their_payload_are_in_the_shipped_bundle(self):
-        """「开机自启」那三颗开关的标签和它们发出去的键，判据落在产物上。
-
-        `web/dist/` 是提交进 Git 的产物。改了 `frontend/src` 不重建，浏览器拿到
-        的仍是旧的那一份，而 tsc 和 vitest 都只看源码，谁都不会红——只有扫产物这一条会。
-        配置页在按页拆出的 chunk 里，入口与 chunk 一起扫。
-        """
-        for label in ("开机后启动 Peach", "只启动托盘，不打开网页", "在桌面创建快捷方式"):
-            self.assertIn(label, self.bundle,
-                          f"产物里没有「{label}」，先跑 npm --prefix frontend run build")
-        payload = self.bundle[self.bundle.index('"/api/configuration/startup"'):][:240]
-        for key in ("enabled:", "silent:", "desktop:"):
-            self.assertIn(key, payload, f"保存开机自启没带上 {key}")
 
     def test_react_bundle_records_stable_dependency_paths(self):
         """区域注释只能从 `node_modules/` 起，不得把生成它的工作树路径写进产物。"""
@@ -286,15 +270,26 @@ class FrontendManifestTests(unittest.TestCase):
         declared = {**self.manifest.get("dependencies", {}),
                     **self.manifest.get("devDependencies", {})}
         self.assertTrue(declared)
-        for name, version in declared.items():
-            self.assertRegex(version, r"^\d+\.\d+\.\d+$",
-                             f"{name} 没有钉死版本，两台机器会装出不同的产物")
         lock = json.loads((FRONTEND / "package-lock.json").read_text(encoding="utf-8"))
         self.assertEqual(lock["name"], self.manifest["name"])
+        registry = ROOT / npm_backports.REGISTRY
+        backports = json.loads(registry.read_text(encoding="utf-8")) if registry.is_file() else []
+        packages = lock["packages"]
         for name, version in declared.items():
-            entry = lock["packages"].get(f"node_modules/{name}")
+            node = f"node_modules/{name}"
+            entry = packages.get(node)
             self.assertIsNotNone(entry, f"{name} 不在 lockfile 里")
-            self.assertEqual(entry["version"], version, name)
+            self.assertRegex(entry["version"], r"^\d+\.\d+\.\d+$", name)
+            if version.startswith("file:"):
+                # 本地回移包的身份同时由 npm 版本、锁、登记和内容摘要固定。
+                registered = [item for item in backports if item["project"] == "frontend"
+                              and item["package"] == name and item["version"] == entry["version"]
+                              and f"file:{item['artifact']}" == version]
+                self.assertEqual(len(registered), 1, f"{name} 的回移包须有唯一登记")
+                verified = npm_backports.verified_nodes(FRONTEND, packages, registered[0])
+                self.assertTrue(verified, f"{name} 的锁和压缩包须通过完整性核对")
+            else:
+                self.assertEqual(entry["version"], version, name)
 
     def test_the_root_manifest_stays_limited_to_the_vendored_packages(self):
         """根清单只登记手工 vendor 的那几个包，构建依赖不许混进去。"""
@@ -316,11 +311,11 @@ class FrontendManifestTests(unittest.TestCase):
         self.assertIn("directory: /frontend", dependabot)
 
     def test_ci_owns_the_only_gate_that_can_catch_a_stale_bundle(self):
-        """本机验不了「产物是否由当前源码构建」，这道门槛只在 CI。
+        """没装 Node 的机器验不了「产物是否由当前源码构建」，CI 的这道门槛兜底。
 
-        它一旦被删掉，源码和 `web/dist/` 就能无声地分叉，而所有本地测试照样全绿——
-        那正是这条断言要拦的。`git add --intent-to-add` 不能省：光 `git diff` 只看
-        已跟踪的文件，构建新出的产物是未跟踪的，会被直接放过。
+        它一旦被删掉，源码和 `web/dist/` 就能在没有 Node 的交付里无声地分叉——那正是
+        这条断言要拦的。`git add --intent-to-add` 不能省：光 `git diff` 只看已跟踪的文件，
+        构建新出的产物是未跟踪的，会被直接放过。装了 Node 的本机由 `BundleFreshnessTests` 拦。
         """
         workflow = (ROOT / ".github" / "workflows" / "test.yml").read_text(encoding="utf-8")
         for step in ("actions/setup-node", "npm --prefix frontend ci",
@@ -362,6 +357,32 @@ class SharedStateContractTests(unittest.TestCase):
                    if "@preact/signals" in path.read_text(encoding="utf-8")]
         self.assertEqual(outside, [],
                          f"{outside} 用了 signal：跨页共享请读同一个 queryKey，局部状态用 hooks")
+
+
+class BundleFreshnessTests(unittest.TestCase):
+    """提交的 `web/dist/` 必须就是当前源码构建出来的那一份。
+
+    本机交付不等 CI：改了前端源码或语言资源却没重建，`integrate` 照样合进 master，
+    要等 CI 的 `web-bundle` 才红。这里把同一道比对搬到本机：构建到临时目录
+    （`PEACH_FRONTEND_OUT_DIR`，开发副本热重建用的也是它），再与提交的产物逐文件比。
+    """
+
+    def test_the_committed_bundle_is_what_the_current_sources_build(self):
+        npm = frontend_npm("build", "vite")
+        with tempfile.TemporaryDirectory() as folder:
+            fresh = Path(folder)
+            completed = subprocess.run(
+                [npm, "--prefix", str(FRONTEND), "run", "build", "--silent"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=str(FRONTEND),
+                env={**os.environ, "PEACH_FRONTEND_OUT_DIR": str(fresh)}, check=False)
+            self.assertEqual(completed.returncode, 0, f"{completed.stdout}\n{completed.stderr}")
+            built = {path.name: path.read_bytes() for path in fresh.iterdir() if path.is_file()}
+        committed = {path.name: path.read_bytes() for path in DIST.iterdir() if path.is_file()}
+        stale = sorted(name for name in built.keys() & committed.keys() if built[name] != committed[name])
+        problems = {"内容与构建不同": stale, "提交里缺": sorted(built.keys() - committed.keys()),
+                    "构建里已没有": sorted(committed.keys() - built.keys())}
+        self.assertEqual({key: value for key, value in problems.items() if value}, {},
+                         "web/dist 不是当前源码的构建结果：npm --prefix frontend run build 后把 web/dist 一起提交")
 
 
 class VitestTests(unittest.TestCase):

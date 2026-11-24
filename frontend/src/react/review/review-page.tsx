@@ -9,14 +9,17 @@
  * - 分组、筛选、页码是组件状态。复核队列是消耗性的：判一条它就少一条，第 3 页指的是
  *   哪二十行随每一次判定而变，写进地址栏分享出去只会指向另一批东西。换分类、换分组、
  *   换筛选都回第 1 页，也正说明页码依附于此刻这一屏的看法，不是这一页的身份。 */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { RiCheckboxCircleLine } from '@remixicon/react';
 
 import { Button } from '@/components/base/buttons/button';
 import type { ReviewProps } from '../bundle';
 import { errorMessage } from '../../api';
+import type { BulkAction } from '../components/bulk-action';
 import { DataTableFooter } from '../components/table-controls';
+import { queryClient } from '../query';
+import { enterPageSelection, usePageSelection } from '../components/page-selection';
 import { EmptyState } from '../components/empty-state';
 import { Note } from '../components/note';
 import { Page } from '../components/page';
@@ -35,6 +38,7 @@ import {
   reviewWindow, selectReviewRange, settleReviewRows, submitDecision,
 } from './review';
 import { t } from '../../i18n';
+import { useRectangleSelection } from '../components/rectangle-selection';
 
 // 与配置页共用 BoardUI gray PillTab 样式；保留 tabpanel 与复核队列计数。
 const TAB_CLASS = 'flex cursor-pointer items-center justify-between gap-2';
@@ -63,6 +67,9 @@ export function ReviewPage(props: ReviewProps) {
   /* 勾选、选中的来源值、勾上的作品样本、失败原因，身份都是 `item_key`：翻页、换分组
      之后手里还是同一批东西。它们不进地址栏——那是这一刻手里的一批，不是这一页的身份。 */
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set<string>());
+  const selecting = usePageSelection(() => setSelected(new Set<string>()));
+  // 直接勾某一项等于进入多选（右上角开关同一份状态）。
+  useEffect(() => { if (selected.size) enterPageSelection() }, [selected]);
   const [choices, setChoices] = useState<ReadonlyMap<string, RowChoice>>(new Map());
   const [errors, setErrors] = useState<ReadonlyMap<string, string>>(new Map());
   const [feedback, setFeedback] = useState('');
@@ -119,6 +126,20 @@ export function ReviewPage(props: ReviewProps) {
   const pageGroups = groups
     .map((group) => ({ ...group, rows: group.rows.filter((row) => onPage.has(row.item_key)) }))
     .filter((group) => group.rows.length);
+  const panel = useRef<HTMLDivElement>(null);
+  const pendingFocus = useRef<{ card: HTMLElement; following: string[] } | null>(null);
+  const rectangle = useRectangleSelection(selecting && !locked
+    ? (keys, add) => setSelected(current => new Set([...(add ? current : []), ...keys])) : undefined,
+    '[data-review-key]', '.review-grid');
+  useLayoutEffect(() => {
+    const pending = pendingFocus.current;
+    if (!pending || pending.card.isConnected) return;
+    pendingFocus.current = null;
+    if (document.activeElement !== document.body) return;
+    const rows = [...(panel.current?.querySelectorAll<HTMLElement>('[data-review-key]') ?? [])];
+    const next = pending.following.map(key => rows.find(row => row.dataset.reviewKey === key)).find(Boolean);
+    (next ?? rows[0] ?? panel.current)?.focus();
+  });
 
   const choiceOf = (row: ReviewRow): RowChoice => choices.get(row.item_key) || defaultChoice(row);
   const selectedRows = useMemo(() => queue.filter((row) => selected.has(row.item_key)), [queue, selected]);
@@ -135,6 +156,7 @@ export function ReviewPage(props: ReviewProps) {
   /* 换分类就是换一条队列：上一条队列里的勾选、选中的来源和失败原因都不再有对应的行，
      留着只会让工具条报一个算不出来的数。 */
   const resetView = () => {
+    pendingFocus.current = null;
     setGroupBy('candidates');
     setFilter('');
     setFieldFilter('');
@@ -161,6 +183,14 @@ export function ReviewPage(props: ReviewProps) {
       submitDecision(decisionPayload(target, currentReviewRow(target, row), status, choiceOf(row))),
     onSuccess: (result, { row, status, category: target }) => {
       if (!result.ok) { fail(row.item_key, result.error || t('manage:reviewPage.decisionRejected')); return }
+      const card = document.activeElement?.closest<HTMLElement>('[data-review-key]');
+      if (card?.dataset.reviewKey === row.item_key && panel.current?.contains(card)) {
+        const rows = [...panel.current.querySelectorAll<HTMLElement>('[data-review-key]')];
+        const index = rows.indexOf(card);
+        const following = [...rows.slice(index + 1), ...rows.slice(0, index).reverse()]
+          .map(row => row.dataset.reviewKey!);
+        pendingFocus.current = { card, following };
+      }
       settleReviewRows(target, [row.item_key], status);
       forget([row.item_key]);
       toast(decisionReceipt(status));
@@ -194,23 +224,52 @@ export function ReviewPage(props: ReviewProps) {
       forget(done);
       failures.forEach(([key, message]) => fail(key, message));
       setFeedback('');
-      const doneKey = { approved: 'manage:reviewPage.approvedCount', rejected: 'manage:reviewPage.ignoredCount', skipped: 'manage:reviewPage.laterCount', restore: 'manage:reviewPage.pendingCount' }[status];
-      toast(t(doneKey, { count: done.length })
-        + (failures.length ? t('manage:reviewPage.notCompletedSuffix', { count: failures.length }) : ''));
     },
     onError: (cause) => { setFeedback(errorMessage(cause)) },
   });
 
-  const runBulk = (status: DecisionStatus) => {
-    if (bulk.isPending || !selectedRows.length) return;
-    if (status === 'approved' && metadata
-      && selectedRows.some((row) => !choiceOf(row).candidateKey)) {
-      setFeedback(t('manage:reviewPage.chooseSourceFirst'));
-      return;
-    }
-    setFeedback('');
-    bulk.mutate({ status, category, rows: selectedRows });
+  /* 判定键：忽略与稍后能放回待处理，放回待处理能按原来的队列改回去；通过会写进真相字段，撤不回。
+     撤销只动这一批里真的写成了的那几条。 */
+  const host = { receipt: toast, failure: (cause: unknown) => setFeedback(errorMessage(cause)) };
+  const back: Partial<Record<ReviewQueue, DecisionStatus>> = { ignored: 'rejected', later: 'skipped' };
+  const decideMany = (status: DecisionStatus, label: string): BulkAction<ReviewRow> => {
+    let outcome = { done: [] as string[], failures: [] as unknown[] };
+    return {
+    key: status, label, reversal: status === 'approved' ? 'irreversible' : 'undo', danger: false,
+    confirm: (rows) => {
+      if (status === 'approved' && metadata && rows.some((row) => !choiceOf(row).candidateKey)) {
+        throw new Error(t('manage:reviewPage.chooseSourceFirst'));
+      }
+      setFeedback('');
+      return { title: label, body: t(`manage:reviewPage.confirm.${status}`, { count: rows.length }) };
+    },
+    run: async (rows) => {
+      outcome = await bulk.mutateAsync({ status, category, rows: [...rows] });
+      const { done } = outcome;
+      if (status === 'approved') return;
+      const target = category;
+      const settled = rows.filter((row) => done.includes(row.item_key));
+      const previous = status === 'restore' ? back[queueView] : 'restore';
+      return async () => {
+        for (const row of settled) {
+          await submitDecision(decisionPayload(target, currentReviewRow(target, row), previous as DecisionStatus, choiceOf(row)));
+        }
+        await queryClient.invalidateQueries({ queryKey: REVIEW_KEY });
+      };
+    },
+    receipt: () => t({ approved: 'manage:reviewPage.approvedCount', rejected: 'manage:reviewPage.ignoredCount',
+      skipped: 'manage:reviewPage.laterCount', restore: 'manage:reviewPage.pendingCount' }[status], { count: outcome.done.length })
+      + (outcome.failures.length ? t('manage:reviewPage.notCompletedSuffix', { count: outcome.failures.length }) : ''),
+    };
   };
+  const approvable = selectedRows.every((row) => canApprove(category, row));
+  const bulkActions = [
+    ...(queueView !== 'ignored' ? [decideMany('rejected', t('manage:reviewToolbar.ignoreSelected'))] : []),
+    queueView === 'pending' ? decideMany('skipped', t('manage:reviewToolbar.laterSelected')) : decideMany('restore', t('manage:reviewToolbar.restoreSelected')),
+    ...(queueView !== 'ignored' ? [decideMany('approved', t('manage:reviewToolbar.approveSelected'))] : []),
+  ].map((action) => ({ action, items: selectedRows, host,
+    variant: action.key === 'approved' || (queueView === 'ignored' && action.key === 'restore') ? 'primary' as const : undefined,
+    disabled: bulk.isPending || decide.isPending || (action.key === 'approved' && !approvable) }));
 
   /* 统一选择来源只动所选那几行的选中项，不替人按下「通过」：改的是要写什么，判断仍归人。 */
   const unifySource = (source: string) => {
@@ -273,7 +332,7 @@ export function ReviewPage(props: ReviewProps) {
             })} />
         </div>
 
-        <div role="tabpanel" id={`review-panel-${category}`} aria-labelledby={`review-tab-${category}`}
+        <div ref={panel} role="tabpanel" id={`review-panel-${category}`} aria-labelledby={`review-tab-${category}`} tabIndex={-1} {...rectangle}
           className="flex min-w-0 flex-1 flex-col gap-5">
             <BulkToolbar queueView={queueView} queueCounts={queueCounts} onQueueChange={goQueue} locked={locked}
               fields={fields} fieldFilter={activeField}
@@ -282,11 +341,10 @@ export function ReviewPage(props: ReviewProps) {
               onGroupBy={(next) => { setGroupBy(next); setFilter(''); setPage(1) }}
               groups={groups} filter={activeFilter}
               onFilter={(next) => { setFilter(next); setPage(1) }}
-              pageKeys={pageKeys} selected={selected} onSelected={setSelected}
+              pageKeys={pageKeys} allKeys={filteredRows.map((row) => row.item_key)} selected={selected} onSelected={setSelected}
               selectedRows={selectedRows} metadata={metadata}
-              approvable={selectedRows.every((row) => canApprove(category, row))}
               busy={bulk.isPending || decide.isPending} feedback={feedback}
-              onUnifySource={unifySource} onRun={runBulk} />
+              onUnifySource={unifySource} actions={bulkActions} />
 
           {win.rows.length ? pageGroups.map((group) => (
             <section key={group.key} className="flex flex-col gap-3">

@@ -16,7 +16,7 @@
 
 ## 截图
 
-[![影片馆藏：搜索、筛选与海报墙](https://peach.video/assets/screenshots/home-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/home-wide-20261025-2.png)
+[![影片馆藏：搜索、筛选与海报墙](https://peach.video/assets/screenshots/home-wide-20261118-2-1280.webp)](https://peach.video/assets/screenshots/home-wide-20261118-2.png)
 
 电影演示资料，来源与许可见[素材说明](https://peach.video/credits/)。
 
@@ -25,19 +25,19 @@
 
 **人物与作品**
 
-[![查理·卓别林的资料与作品](https://peach.video/assets/screenshots/profile-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/profile-wide-20261025-2.png)
+[![查理·卓别林的资料与作品](https://peach.video/assets/screenshots/profile-wide-20261118-2-1280.webp)](https://peach.video/assets/screenshots/profile-wide-20261118-2.png)
 
 **创作者关注**
 
-[![创作者关注与作品更新](https://peach.video/assets/screenshots/follow-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/follow-wide-20261025-2.png)
+[![创作者关注与作品更新](https://peach.video/assets/screenshots/follow-wide-20261118-2-1280.webp)](https://peach.video/assets/screenshots/follow-wide-20261118-2.png)
 
 **馆藏统计**
 
-[![馆藏、存储与观看统计](https://peach.video/assets/screenshots/stats-wide-20261025-3-1280.webp)](https://peach.video/assets/screenshots/stats-wide-20261025-3.png)
+[![馆藏、存储与观看统计](https://peach.video/assets/screenshots/stats-wide-20261118-2-1280.webp)](https://peach.video/assets/screenshots/stats-wide-20261118-2.png)
 
 **播放器**
 
-[![Big Buck Bunny 播放器](https://peach.video/assets/screenshots/play-wide-20261025-2-1280.webp)](https://peach.video/assets/screenshots/play-wide-20261025-2.png)
+[![Big Buck Bunny 播放器](https://peach.video/assets/screenshots/play-wide-20261118-2-1280.webp)](https://peach.video/assets/screenshots/play-wide-20261118-2.png)
 
 </details>
 
@@ -47,7 +47,7 @@
 - **本地与网盘**：统一浏览本地硬盘、SMB、已挂载网盘和 PikPak 媒体库。
 - **播放与记录**：网页与外部播放器、字幕、倍速、旋转、续播和时间轴预览。
 - **关注与发现**：订阅人物与创作者更新，发现作品，管理「想要」清单。
-- **云下载**：按影片编号查找或提交磁力，下载完成后整理入库。
+- **云下载与本地下载**：按影片编号查找或提交磁力，可交给 115、PikPak 或 qBittorrent，下载完成后整理入库。
 - **馆藏管理**：管理标签、重复文件、多版本与分卷；按女优批量永久删除影片，保留人物档案和照片。资料和观看记录保存在本机。
 - **任务中心**：暂停、继续或取消本机后台任务，查看可取得的各任务 CPU、GPU 与下载活动。
 
@@ -55,8 +55,8 @@
 
 | 方式 | 入口 |
 | --- | --- |
-| Windows x64 | [安装版](https://github.com/peach-mitao/peach/releases/download/v0.57.0/Peach-0.57.0-windows-x64-setup.exe) · [免安装版](https://github.com/peach-mitao/peach/releases/download/v0.57.0/Peach-0.57.0-windows-x64.zip) |
-| macOS | [Apple Silicon / ARM64](https://github.com/peach-mitao/peach/releases/download/v0.57.0/Peach-0.57.0-macos-arm64.dmg) · [Intel / x86_64](https://github.com/peach-mitao/peach/releases/download/v0.57.0/Peach-0.57.0-macos-x86_64.dmg) |
+| Windows x64 | [安装版](https://github.com/peach-mitao/peach/releases/download/v0.62.0/Peach-0.62.0-windows-x64-setup.exe) · [免安装版](https://github.com/peach-mitao/peach/releases/download/v0.62.0/Peach-0.62.0-windows-x64.zip) |
+| macOS | [Apple Silicon / ARM64](https://github.com/peach-mitao/peach/releases/download/v0.62.0/Peach-0.62.0-macos-arm64.dmg) · [Intel / x86_64](https://github.com/peach-mitao/peach/releases/download/v0.62.0/Peach-0.62.0-macos-x86_64.dmg) |
 | Docker / NAS | [部署说明](docs/DOCKER.md) |
 | 源码运行 | [安装步骤](docs/OPERATIONS.md#从源码运行windowsmacos)，需要 Git、uv 和 Python 3.14+ |
 
@@ -64,7 +64,7 @@
 
 ## 文档
 
-[运行与配置](docs/OPERATIONS.md) · [来源支持](docs/SOURCING.md) · [外部播放器](docs/EXTERNAL_PLAYERS.md) · [诊断与数据分享](docs/DIAGNOSTICS.md) · [更新日志](CHANGELOG.md)
+[运行与配置](docs/OPERATIONS.md) · [来源支持](docs/SOURCING.md) · [本地下载](docs/LOCAL_DOWNLOAD.md) · [外部播放器](docs/EXTERNAL_PLAYERS.md) · [诊断与数据分享](docs/DIAGNOSTICS.md) · [更新日志](CHANGELOG.md)
 
 参与开发：[贡献说明](CONTRIBUTING.md) · [开发约定](AGENTS.md) · [测试](docs/TESTING.md)
 

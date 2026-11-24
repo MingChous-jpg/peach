@@ -1,6 +1,7 @@
 /* 详情播放器：给舞台播放区的 `<video>` 挂 Video.js 与全部 Peach 控件。
  *
- * - `mountDetailPlayer` 挂一个 Video.js 实例：片源解析、时长校正、出错时从分片退回直读、脱盘判定，
+ * - `mountDetailPlayer` 挂一个 Video.js 实例：片源解析、时长校正、片源解不了时逐级回退（原文件 → 码流复制分片
+ *   → 视频重编码，按能力直放的再换一份不报能力的计划）、脱盘判定，
  *   ready 之后挂设置菜单、拖动预览、Media Session、转圈与字幕。
  * - `attachPlayerChrome` 把统计面板、加载速度角标与氛围光接到一块媒体框上。播放器进小窗时摘下，
  *   展开回舞台时接到新的媒体框上，实例本身不重建。
@@ -21,9 +22,12 @@ import { detailPlayer, setDetailPlayer } from './registry';
 import { playbackKey, playbackPosition, stopPlaybackPosition, trackPlaybackPosition } from './progress';
 import {
   averageBitrate, bufferedAhead, createBufferMeter, fmtLoadRate, fmtSpeed, PLAYER_PANEL_EVENT,
-  playerSpeedBits, playerStatsOverlayHtml, playerStatsPlot, pushPlayerStat, streamEntries,
+  playerRequestWaterfall, playerSpeedBits, playerStatsOverlayHtml, playerStatsPlot, pushPlayerStat, streamEntries,
 } from './stats';
-import { detailStreamSession, detailStreamSource, directDetailSource } from './stream';
+import { watchDecoding } from './decode-support';
+import {
+  detailFallbackSource, detailStreamSession, detailStreamSource, directDetailSource, streamFallbackChain, watchesDecoding,
+} from './stream';
 import { stopTelemetry, wireFollowTelemetry, wireTelemetry } from './telemetry';
 import type { MediaFacts, PlayerItem, PlayerSource, SourceQuality, VjsPlayer } from './types';
 import { ensureVideojs } from './videojs';
@@ -34,6 +38,7 @@ import { interfaceLanguage, t } from '../i18n';
 export interface PlayerResume { time: number; autoplay: boolean }
 
 export interface DetailPlayerOptions {
+  released?: () => boolean;
   guidePreview?: boolean;
   playbackKey?: string;
   /** 给定片源（关注条目的 `/follow-stream`）；不给就按作品的来源解析。 */
@@ -90,9 +95,11 @@ export async function mountDetailPlayer(
   /* 拉不到就退回原生 video，和「页面里没有 videojs」是同一个兜底出口。 */
   let videojs;
   try { videojs = await ensureVideojs() } catch {
+    if (options.released?.()) return null;
     video.controls = true;
     if (options.guidePreview) return null;
     source().then((next) => {
+      if (options.released?.()) return;
       video.addEventListener('loadedmetadata', () => {
         if (resume && resume.time > 0) video.currentTime = Math.min(resume.time, realDuration(video.duration) || resume.time);
       }, { once: true });
@@ -100,6 +107,7 @@ export async function mountDetailPlayer(
     }).catch(() => {});
     return null;
   }
+  if (options.released?.()) return null;
   const player = videojs(video, {
     controls: true, preload: 'metadata', language: interfaceLanguage, responsive: true,
     /* 海报与作品当前封面偏好一致，交给原生视频显示。 */
@@ -138,6 +146,9 @@ export async function mountDetailPlayer(
     }
   };
   const segmentedNow = () => String(player.currentSource()?.type || '').includes('mpegurl');
+  const requestStart = performance.now();
+  let previousWaterfall = '';
+  let previousPanel: HTMLElement | null = null;
   const session: PlayerSession = { chrome: null, ready: false, updateStats: () => {} };
   sessions.set(player, session);
   session.updateStats = () => {
@@ -184,11 +195,43 @@ export async function mountDetailPlayer(
       [t('catalog:playerStats.playbackTime'), `${fmtClock(video.currentTime)} / ${fmtClock(expected || player.duration())}`],
       [t('catalog:playerStats.date'), new Date().toLocaleString(interfaceLanguage)],
     ];
-    statsPanel.innerHTML = `<dl>${rows.map(([key, value, plot]) =>
+    statsPanel.querySelector('[data-player-stats-values]')!.innerHTML = `<dl>${rows.map(([key, value, plot]) =>
       `<dt>${esc(key)}</dt><dd${plot ? ' data-player-stats-metric=""' : ''}>${plot || ''}<span>${esc(value)}</span></dd>`).join('')}</dl>`;
+    const currentSource = player.currentSrc();
+    const source = currentSource ? new URL(currentSource, location.href) : null;
+    const timings = segmented && !options.source ? resources : source?.origin === location.origin
+      ? performance.getEntriesByName(source.href, 'resource') as PerformanceResourceTiming[] : [];
+    const waterfall = playerRequestWaterfall(timings.filter(entry => entry.startTime >= requestStart));
+    if (waterfall !== previousWaterfall || statsPanel !== previousPanel) {
+      statsPanel.querySelector('[data-player-waterfall-rows]')!.innerHTML = waterfall;
+      previousWaterfall = waterfall; previousPanel = statsPanel;
+    }
   };
   player.on(['loadstart', 'loadedmetadata', 'durationchange', 'error'], enforceDuration);
-  let segmentedSource = false, fallbackUsed = false;
+  let takeFallback: (error: unknown, failed: PlayerSource) => Promise<PlayerSource | null> = async () => null;
+  /** 挂在播放器上的那条片源与盯首帧的那一轮；换源时一起换。 */
+  let mounted: PlayerSource | null = null, watching: AbortController | null = null;
+  const mountSource = (next: PlayerSource) => {
+    watching?.abort(); watching = null;
+    mounted = next;
+    if (watchesDecoding(next)) {
+      const signal = (watching = new AbortController()).signal;
+      watchDecoding(video, () => { void fallBack({ code: 3 }, next) }, signal);
+    }
+    player.src(next);
+  };
+  /** 片源解不了时换下一条，保留当前秒数；换成了返回 true。 */
+  const fallBack = async (error: unknown, failed: PlayerSource | null): Promise<boolean> => {
+    if (!failed || player.isDisposed()) return false;
+    const resumeAt = video.currentTime, playing = autoplay || !video.paused;
+    const next = await takeFallback(error, failed);
+    if (!next || player.isDisposed() || mounted !== failed) return false;
+    if (resumeAt > 0) player.one('loadedmetadata', () => { if (!player.isDisposed()) player.currentTime(resumeAt) });
+    mountSource(next);
+    if (playing) player.play()?.catch(() => {});
+    return true;
+  };
+  player.on('dispose', () => { watching?.abort(); watching = null });
   const updateNet = () => {
     const netBadge = session.chrome?.netBadge;
     if (!netBadge || player.isDisposed()) return;
@@ -214,17 +257,14 @@ export async function mountDetailPlayer(
   player.on(['loadstart', 'progress', 'waiting', 'stalled'], showNet);
   player.on(['canplay', 'playing'], () => { updateNet(); hideNet() });
   player.on('error', () => {
-    if (segmentedSource && !fallbackUsed && !player.isDisposed()) {
-      fallbackUsed = true; segmentedSource = false;
-      player.src(directDetailSource(item));
-      if (autoplay) player.play()?.catch(() => {});
-      return;
-    }
-    // 播到一半掉盘时 video 元素只报通用错误；来源状态才分得清脱盘和文件损坏。
-    if (options.checkSourceStatus === false) return;
-    void host.loadSourceStatus().then((status) => {
-      if (status[String(item.root_id || item.location)] !== false || player.isDisposed()) return;
-      player.error({ code: 2, message: t('catalog:playerControls.directoryOffline', { reason: host.offlineReason(String(item.root_id || item.location)) }) });
+    if (player.isDisposed()) return;
+    void fallBack(player.error(), mounted).then((switched) => {
+      // 播到一半掉盘时 video 元素只报通用错误；来源状态才分得清脱盘和文件损坏。
+      if (switched || options.checkSourceStatus === false || player.isDisposed()) return;
+      return host.loadSourceStatus().then((status) => {
+        if (status[String(item.root_id || item.location)] !== false || player.isDisposed()) return;
+        player.error({ code: 2, message: t('catalog:playerControls.directoryOffline', { reason: host.offlineReason(String(item.root_id || item.location)) }) });
+      });
     });
   });
   player.ready(() => {
@@ -245,13 +285,15 @@ export async function mountDetailPlayer(
   });
   if (!options.guidePreview) source().then((next) => {
     if (!live()) return;
-    segmentedSource = String(next.type || '').includes('mpegurl');
+    const segmented = String(next.type || '').includes('mpegurl');
+    const first = { ...next, fallback: next.fallback ?? (segmented ? directDetailSource(item) : undefined) };
+    takeFallback = streamFallbackChain(first, options.source ? undefined : () => detailFallbackSource(item));
     if (resume && resume.time > 0) player.one('loadedmetadata', () => {
       if (player.isDisposed()) return;
       const duration = realDuration(player.el().querySelector('video')?.duration) || realDuration(player.duration());
       player.currentTime(Math.min(resume.time, duration || resume.time));
     });
-    player.src(next);
+    mountSource(first);
     enforceDuration(); setTimeout(enforceDuration, 0); setTimeout(enforceDuration, 250);
     if (autoplay) player.play()?.catch(() => {});
   }).catch(() => {});
@@ -301,8 +343,18 @@ export function attachPlayerChrome(player: VjsPlayer, frame: HTMLElement): () =>
       statsTimer = setInterval(session.updateStats, 1000);
     };
     const closeStatsForOtherPanel = (event: Event) => { if ((event as CustomEvent<string>).detail !== 'stats') closeStats() };
+    const closeStatsOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closeStats();
+      statsButton.focus();
+    };
+    statsPanel.addEventListener('keydown', closeStatsOnEscape);
     document.addEventListener(PLAYER_PANEL_EVENT, closeStatsForOtherPanel);
-    offPanels = () => document.removeEventListener(PLAYER_PANEL_EVENT, closeStatsForOtherPanel);
+    offPanels = () => {
+      statsPanel.removeEventListener('keydown', closeStatsOnEscape);
+      document.removeEventListener(PLAYER_PANEL_EVENT, closeStatsForOtherPanel);
+    };
   }
   const tech = player.el().querySelector('video');
   const stopAmbient = tech ? mountPlayerAmbient(tech) : () => {};
@@ -353,7 +405,7 @@ export function mountPlayer(video: HTMLVideoElement, options: MountPlayerOptions
   const frame = options.chrome === false ? null : video.parentElement;
   if (frame) preparePlayerFrame(frame, video);
   const key = playbackKey(kind, item, media?.index ?? null);
-  let detail: DetailPlayerOptions = { guidePreview, playbackKey: key, resume: guidePreview ? null : options.resume ?? { time: playbackPosition(key, item), autoplay: false } };
+  let detail: DetailPlayerOptions = { guidePreview, playbackKey: key, resume: guidePreview ? null : options.resume ?? { time: playbackPosition(key, item, host.settings().resumeRestartPercent), autoplay: false } };
   if (kind === 'follow') {
     detail = {
       ...detail,
@@ -370,11 +422,20 @@ export function mountPlayer(video: HTMLVideoElement, options: MountPlayerOptions
     detachChrome();
     if (player && handedOff?.(player)) return;
     stopPlaybackPosition(trackedVideo);
-    if (!player) { stopTelemetry(trackedVideo); return }
+    if (!player) {
+      stopTelemetry(trackedVideo);
+      if (trackedVideo.hasAttribute('src')) {
+        trackedVideo.pause();
+        trackedVideo.removeAttribute('src');
+        trackedVideo.load();
+      }
+      return;
+    }
     if (detailPlayer() === player) { setDetailPlayer(null); stopPlayerPanels() }
     disposePlayer(player);
   };
-  void mountDetailPlayer(item, video, guidePreview ? false : options.autoplay ?? host.settings().detailAutoplay, detail).then((mounted) => {
+  void mountDetailPlayer(item, video, guidePreview ? false : options.autoplay ?? host.settings().detailAutoplay,
+    { ...detail, released: () => released }).then((mounted) => {
     player = mounted;
     // 挂载还没回来媒体区就换了：这一个一出来就拆掉。
     if (released) { release(); return }

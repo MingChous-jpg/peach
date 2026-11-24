@@ -11,7 +11,7 @@ import { CloudDownloadDialog, type DownloadPrefill } from '../activity/cloud-dow
 import { Note } from '../components/note';
 import { EmptyState } from '../components/empty-state';
 import { WantList } from '../wants/want-list';
-import { JavSelectionProvider, useVisibleJavWorks } from './jav-selection';
+import { JavSelectionProvider, useJavRectangle, useVisibleJavWorks } from './jav-selection';
 import { addWant, invalidateWants } from '../wants/wants';
 import { busyProps, useAction } from '../settings/use-action';
 import { controlDiscoveryMetadata, DISCOVERY_METADATA_KEY, discoveryKey, fetchDiscoveries, fetchDiscoveryMetadata, metadataInterval, writeJavQuery,
@@ -22,7 +22,7 @@ import { Releases } from './jav-releases';
 import { JavHeader } from './jav-header';
 import { IndexSearch } from '../index/index-search';
 import { spriteGlyph } from '../components/sprite-glyph';
-import { FilterGlassRows, FilterIconButton, FilterPill, GlassPill } from '../components/filter-glass';
+import { FilterGlassRows, FilterIconButton, FilterPill, FilterActionButton } from '../components/filter-glass';
 import { LibraryShortcuts } from '../library-shortcuts/shortcut-controls';
 import { Segments, SortKeys } from '../entity-filter/entity-filter-page';
 import { TaskProgress } from '../components/task-progress';
@@ -30,18 +30,19 @@ import { activityKind } from '../../activity-kinds';
 import { DISCOVERY_SORTS, discoveryScore, recommendationScore, type DiscoverySort } from './discovery-sorts';
 import { jobText, serverLabelList } from '../../core/server-text';
 import { t } from '../../i18n';
+import type { Receipt } from '../components/bulk-action';
 
 const MetadataStopGlyph = spriteGlyph('x');
 const MetadataRefreshGlyph = spriteGlyph('refresh-cw');
 const SEARCH_LABELS: Record<string, string> = { releases: t('catalog:javSearch.filterReleases'), discover: t('catalog:javSearch.filterRecommended'), wants: t('catalog:javSearch.filterWants') };
 
 export function JavPage({ tab, readOnly, navigate, receipt }: {
-  tab: string; readOnly: boolean; navigate(path: string): void; receipt(message: string): void;
+  tab: string; readOnly: boolean; navigate(path: string): void; receipt: Receipt;
 }) {
   const [download, setDownload] = useState<DownloadPrefill | null>(null);
   const [text, changeText] = useState(() => new URLSearchParams(location.search).get('q') || '');
   const setText = (value: string) => { changeText(value); writeJavQuery({ q: value }) };
-  return <JavSelectionProvider key={tab} readOnly={readOnly} receipt={receipt}><div className="flex w-full flex-col gap-6">
+  return <JavSelectionProvider key={tab} readOnly={readOnly} receipt={receipt} dock={tab !== 'wants'}><div className="flex w-full flex-col gap-6">
     <JavHeader tab={tab} navigate={navigate} find={() => setDownload({})}
       search={<IndexSearch label={SEARCH_LABELS[tab] || t('catalog:javDiscover.filter')} value={text} onQuery={setText} />} />
     {tab === 'releases'
@@ -134,6 +135,7 @@ function Discover({ readOnly, receipt, resource, query, navigate, clearText }: {
     (!query || [item.code, item.title, item.performers, item.studio, ...(item.tags || []), ...(item.performer_refs || []).map(ref => ref.name)].join(' ').toLocaleLowerCase().includes(query.toLocaleLowerCase())));
   const waiting = discoveries.isPending;
   useVisibleJavWorks(items);
+  const rectangle = useJavRectangle(!waiting);
   return <section ref={section} aria-label={t('catalog:shared.recommendedForYou')} aria-busy={waiting} className="flex min-w-0 flex-col gap-4">
     <FilterGlassRows label={t('catalog:javDiscover.filtersLabel')} topLabel={t('catalog:javDiscover.scopeLabel')} attrs={{ 'data-filter-frame': '', 'data-jav-filter': '', 'data-catalog-frame': '' }}
       busy={waiting} topClassName="gap-1.5 overflow-visible" bottomClassName="min-h-12" top={<div data-catalog-scroll="">
@@ -148,7 +150,7 @@ function Discover({ readOnly, receipt, resource, query, navigate, clearText }: {
       </div></div>} bottom={<>
         <span data-catalog-readout="">{waiting ? <span data-skeleton="count" aria-hidden className="relative inline-block h-3.5 w-37.5 rounded-md align-middle skeleton-sheen" /> : t('catalog:countLabel.works', { count: items.length })}</span>
         <LibraryShortcuts currentHref={() => location.pathname + location.search} />
-        {query || tag ? <GlassPill onPress={() => { setTag(''); clearText() }}>{t('catalog:shared.clearFilters')}</GlassPill> : null}
+        {query || tag ? <FilterActionButton onPress={() => { setTag(''); clearText() }}>{t('catalog:shared.clearFilters')}</FilterActionButton> : null}
         <span data-entity-sorts="">
         {scope === 'external' ? <FilterIconButton data-entity-batch="" data-jav-metadata-update=""
           label={metadata?.status === 'running' ? t('catalog:javDiscover.stopUpdating') : t('catalog:javDiscover.updateMetadata')}
@@ -156,7 +158,7 @@ function Discover({ readOnly, receipt, resource, query, navigate, clearText }: {
           icon={metadata?.status === 'running' ? MetadataStopGlyph : MetadataRefreshGlyph}
           onPress={() => updateMetadata(metadata?.status === 'running' ? 'stop' : 'update')} /> : null}
         <Segments label={t('catalog:entityFilter.javCardLayout')} value={layout} options={JAV_LAYOUTS} onChange={storeJavLayout} />
-        <SortKeys sorts={DISCOVERY_SORTS.map(([key, label, ariaLabel]) => ({ key, label, ariaLabel,
+        <SortKeys group="discover" sorts={DISCOVERY_SORTS.map(([key, label, ariaLabel]) => ({ key, label, ariaLabel,
           pressed: key === sort, dir: direction }))} onSort={key => {
           if (key === sort) setAscending(!ascending); else { setSort(key as DiscoverySort); setAscending(key === 'code') }
         }} /></span>
@@ -177,7 +179,7 @@ function Discover({ readOnly, receipt, resource, query, navigate, clearText }: {
       {query || tag ? t('catalog:javDiscover.clearFiltersHint') : scope === 'library' ? t('catalog:javDiscover.libraryEmptyHint') : t('catalog:javDiscover.externalEmptyHint')}
     </EmptyState> : null}
     {action.error ? <Note tone="error">{action.error}</Note> : null}
-    <div data-media-grid="" className={JAV_RECOMMENDATION_GRID} style={{ '--card-ratio': ratio } as CSSProperties}>
+    <div data-media-grid="" className={JAV_RECOMMENDATION_GRID} style={{ '--card-ratio': ratio } as CSSProperties} {...rectangle}>
       {items.map(item => {
         const recommendation = recommendationScore(item.taste_score ?? item.score);
         const scoreDetails = [recommendation.label, t('catalog:javScore.taste', { score: discoveryScore(item.taste_score ?? item.score) }),

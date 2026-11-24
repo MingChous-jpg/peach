@@ -57,6 +57,8 @@ export interface AccessSettingsProps {
   devices?(state: AccessState): import('react').ReactNode;
   /** 不论访问方式都跟在后面的分区（访问口令）；确认文案随当前访问方式变。 */
   after?(state: AccessState): import('react').ReactNode;
+  /** 保存成功后报新的访问状态：远程访问卡按它判断能不能开。 */
+  onSaved?(state: AccessState): void;
 }
 
 export interface StartupState {
@@ -165,7 +167,7 @@ export interface AutomaticUpdateState {
 }
 
 /** 媒体库中可用的直连渠道与 CloudDrive2 路径渠道。 */
-export type DownloadProviderKey = '115' | 'pikpak' | `clouddrive:${string}:${string}`;
+export type DownloadProviderKey = '115' | 'pikpak' | 'qbittorrent' | `clouddrive:${string}:${string}`;
 
 export interface DownloadConfig {
   clouddrive_address: string;
@@ -173,6 +175,11 @@ export interface DownloadConfig {
   /** PikPak 根目录对应的数据库路径前缀，空串表示还没选。 */
   pikpak_root: string;
   wait_hours: number;
+  edition_preferences?: string[];
+  /** 本地 qBittorrent：地址、下载器保存目录、对应媒体库根目录。 */
+  qbittorrent_address?: string;
+  qbittorrent_save_path?: string;
+  qbittorrent_media_root?: string;
 }
 
 export type PikPakBrowserState = 'idle' | 'waiting' | 'done' | 'cancelled' | 'timeout' | 'failed';
@@ -195,6 +202,12 @@ export interface DownloadSettingsState {
   pikpak_browser: { available: boolean; state: PikPakBrowserState; message: string;
                     message_code?: string; message_params?: Record<string, unknown> };
   pikpak_roots: string[];
+  /** 可作为本地下载目标的媒体根；`root` 是账本路径，`label` 是媒体库名。 */
+  local_roots: { root: string; label: string }[];
+  /** 本地 qBittorrent 设置；密码只报存没存过。 */
+  qbittorrent: {
+    address: string; save_path: string; media_root: string; username: string; password_set: boolean;
+  };
   providers: { key: DownloadProviderKey; label: string }[];
   max_wait_hours: number;
 }
@@ -202,6 +215,21 @@ export interface DownloadSettingsState {
 /** 「保存配置」的响应：设置块加一份按已保存配置做的检查报告，没有令牌时为 null。 */
 export interface DownloadSaveResult extends DownloadSettingsState {
   report?: DownloadCheckReport | null;
+  qbittorrent_report?: QbittorrentCheckReport | null;
+}
+
+/** 本地 qBittorrent 的只读检查结果。 */
+export interface QbittorrentCheckReport {
+  ok: boolean;
+  address: string;
+  version: string;
+  webapi_version: string;
+  /** 页面填写的保存目录；留空时可能带出 qB 的默认保存目录。 */
+  save_path: string;
+  /** 与保存目录对应的媒体库账本路径。 */
+  media_root: string;
+  problems: string[];
+  problem_codes?: CodedLine[];
 }
 
 /** 检查的结果：每一项各自报，一项失败不挡住其余几项。 */
@@ -251,6 +279,8 @@ export interface DownloadTask {
   artwork?: (CoverItem & { performer_entities?: (FaceRef & { name: string })[]; performer_total?: number }) | null;
   state: string;
   state_label: string;
+  /** 本地下载器任务用 `download.state.local.<state>`，其余照 `download.state.<state>`。 */
+  state_label_code?: string;
   failure: string | null;
   failure_label: string | null;
   failure_detail: string | null;
@@ -334,17 +364,14 @@ export interface ReleaseState {
   steps?: { id?: string; text: string; command: string }[];
   /** Docker 镜像检查到新镜像时才有：能否经 Watchtower 一键更新（ADR-0140），不能时 `reason` 说明为什么。 */
   one_click?: { available: boolean; reason: string; reason_code?: string; reason_params?: Record<string, unknown> };
-  /** 有新版本时，本机之后每一版 GitHub Release 的更新说明，新的在前；`en` 与 `zh-CN` 两份按界面语言取。 */
+  /** 有新版本时，本机之后每一版 GitHub Release 的重点，新的在前；`en` 与 `zh-CN` 两份按界面语言取。 */
   notes?: ReleaseNotes[];
 }
 
-/** 一种语言的更新说明：开头的说明段与各分组；条目的 `text` 里反引号包住的是代码。 */
-export interface ReleaseNotesPart {
-  lead: string[];
-  groups: { title: string; items: { area: string; text: string }[] }[];
-}
+/** 一条重点：`text` 里反引号包住的是代码，`#123`、`owner/repo#123` 是 issue 或 PR 编号。 */
+export interface ReleaseHighlight { title: string; text: string }
 
-export interface ReleaseNotes { version: string; url: string; en: ReleaseNotesPart; 'zh-CN': ReleaseNotesPart }
+export interface ReleaseNotes { version: string; url: string; en: ReleaseHighlight[]; 'zh-CN': ReleaseHighlight[] }
 
 export interface UpdateJob {
   state: string; progress: number; message?: string; downloaded?: number; total?: number; version?: string;
@@ -489,7 +516,7 @@ export interface ScrapingProps {
  *  走；`pageSize`／`layout` 是这台浏览器的习惯，跟着 `appSettings` 走。两组都由壳持有存储、
  *  React 持有实时状态，各只有一份。 */
 export interface FollowManageProps {
-  /** 地址栏此刻带着的页签（`list`／`add`／`feeds`）。 */
+  /** 地址栏此刻带着的页签（`list`／`add`）。 */
   tab: string;
   page: number;
   sort: string;
@@ -502,7 +529,7 @@ export interface FollowManageProps {
   /** 偏好改了：存储归壳（`appSettings`），页面不自己写一份。 */
   savePreference(patch: { pageSize?: number; layout?: string }): void;
   /** 写操作在服务端落地之后的过去时回执。 */
-  toast(message: string): void;
+  toast(message: string, options?: { undo?: () => Promise<void> }): void;
   /** 去「看更新」那一页（`/follow`）。整页换成哪一屏仍归遗留壳。 */
   openFollow(): void;
   /** 数据库只读：这台机器只能浏览，写操作全部不给点。 */
@@ -529,8 +556,8 @@ export interface ReviewProps {
   openEntity(kind: string, name: string): void;
   /** 在资源管理器里显示这个文件。成功由遗留层自己发回执，失败回一句原因。 */
   revealSource(id: number): Promise<string>;
-  /** 写操作在服务端落地之后的过去时回执。 */
-  toast(message: string): void;
+  /** 写操作在服务端落地之后的过去时回执；给了 `undo` 就带一颗撤销键。 */
+  toast(message: string, options?: { undo?: () => Promise<void> }): void;
   /** 数据库只读：这台机器只能浏览，判定与收录全部不给点，进页面也不发那一次自动落库。 */
   readOnly: boolean;
   readOnlyMessage: string;
@@ -581,7 +608,7 @@ export type DataCleanupSection = 'review' | 'quality' | 'duplicates' | 'ads' | '
 export interface DataCleanupProps {
   navigate(path: string): void;
   /** 操作回执（遗留层 `actionReceipt`）。`warning` 是做完了但有一部分要留意，走警告音效。 */
-  toast(message: string, options?: { warning?: boolean }): void;
+  toast(message: string, options?: { warning?: boolean; undo?: () => Promise<void> }): void;
   /** 失败回执（遗留层 `actionFailure`）：`action` 是没做成的那件事。 */
   failure(action: string, error: unknown): void;
   /** 点一张读数卡：换到那一页。 */

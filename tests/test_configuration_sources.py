@@ -109,6 +109,19 @@ class ConfigurationIsolationTests(unittest.TestCase):
                 for key in {"tunnel", "automatic_updates", "push_discovery", "downloads"} - {failed}:
                     self.assertIn(key, result)
 
+    def test_settings_can_read_startup_separately_without_probing_it_in_the_main_snapshot(self):
+        from peach import routes_configuration as routes
+
+        startup = {"available": True, "enabled": False, "silent": True}
+        with (patch.object(routes.desktop_startup, "snapshot", return_value=startup) as probe,
+              patch.object(routes.settings_file, "load_config", return_value=self.config),
+              patch.object(routes, "local_only")):
+            lightweight = routes.snapshot(self.config, include_startup=False)
+            self.assertNotIn("startup", lightweight)
+            probe.assert_not_called()
+            self.assertEqual(routes.read_startup(object()), startup)
+            probe.assert_called_once_with(self.config)
+
     def test_generated_push_discovery_origins_support_ipv6_and_actual_ports(self):
         from peach import routes_configuration as routes
 
@@ -393,6 +406,60 @@ class MediaConfigurationTests(unittest.TestCase):
             row = media_config.rows(config, windows=False, probe=True,
                                     known=media_config.reachability_states(monitor))[0]
         self.assertTrue(row["online"])
+
+    def test_reachability_sleeps_until_the_next_due_or_timeout_point(self):
+        """不再每半秒醒一次：在途探测等超时点，探完排到下一个到期点。"""
+        from peach import mount_reachability as reachability
+        now = [100.0]
+        release = threading.Event()
+        monitor = reachability.MountReachability(
+            [reachability.MountRoot("115", "115", "B:/", Path("/Volumes/115"))],
+            probe=lambda path: release.wait(5) and "ok", clock=lambda: now[0], timeout=5.0)
+        self.addCleanup(release.set)
+        self.assertEqual(monitor.tick(), 5.0)
+        now[0] = 103.0
+        self.assertEqual(monitor.tick(), 2.0)
+        now[0] = 105.0
+        self.assertIsNone(monitor.tick(), "已超时的探测只等完成回调")
+        self.assertEqual(monitor.sources()[0]["state"], "timeout")
+        release.set()
+        for _ in range(200):
+            if monitor._states[Path("/Volumes/115")].pending.done():
+                break
+            threading.Event().wait(0.01)
+        now[0] = 106.0
+        self.assertEqual(monitor.tick(), reachability.HEALTHY_INTERVAL)
+        self.assertEqual(monitor.sources()[0]["state"], "ok")
+        now[0] = 106.0 + reachability.HEALTHY_INTERVAL - 1
+        self.assertEqual(monitor.tick(), 1.0)
+        now[0] = 106.0 + reachability.HEALTHY_INTERVAL
+        self.assertEqual(monitor.tick(), 5.0, "到期就起新的探测")
+
+    def test_reachability_loop_wakes_when_a_probe_finishes(self):
+        from peach.mount_reachability import MountReachability, MountRoot
+        release, calls = threading.Event(), []
+
+        def probe(path):
+            calls.append(path)
+            release.wait(5)
+            return "ok"
+        # 冻结的时钟让超时点永远不到；状态能变成在线，只能是完成回调叫醒了调度线程。
+        monitor = MountReachability([MountRoot("115", "115", "B:/", Path("/Volumes/115"))],
+                                    probe=probe, clock=lambda: 0.0, timeout=30.0)
+        monitor.start()
+        self.addCleanup(monitor.stop)
+        self.addCleanup(release.set)
+        for _ in range(200):
+            if calls:
+                break
+            threading.Event().wait(0.01)
+        release.set()
+        for _ in range(200):
+            if monitor.sources()[0]["online"]:
+                break
+            threading.Event().wait(0.01)
+        self.assertTrue(monitor.sources()[0]["online"])
+        self.assertEqual(len(calls), 1)
 
     def test_a_root_the_snapshot_is_still_checking_is_probed_on_the_spot(self):
         """服务刚启动、快照还没探完时，不能把在线的根报成未检测。"""

@@ -1,18 +1,57 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import type { Browser } from 'playwright-core';
-import { launch, layout, settle, visit, VIEWPORTS } from './harness.ts';
+import { CONFIGURATION_ROUTE, launch, layout, settle, visit, VIEWPORTS } from './harness.ts';
 
 describe('配置表单与行间距', () => {
   let browser: Browser;
   before(async () => { browser = await launch() });
   after(async () => { await browser?.close() });
   for (const viewport of VIEWPORTS) {
+    it(`${viewport.name}：拖动下载版本不会产生横向滚动`, async () => {
+      const opened = await visit(browser, '/settings/downloads', viewport);
+      const { page } = opened;
+      try {
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await page.route(CONFIGURATION_ROUTE, async route => {
+          const data = await (await route.fetch()).json();
+          await route.fulfill({ json: { ...data, downloads: {
+            ...data.downloads, media_sources: ['guangya'], token_set: false,
+          } } });
+        });
+        await page.reload();
+        const order = page.getByRole('group', { name: '优先下载的版本' }).locator('[data-navigation-rows]');
+        const first = order.getByRole('group', { name: '中字', exact: true });
+        const second = order.getByRole('group', { name: '无码', exact: true });
+        await first.scrollIntoViewIfNeeded();
+        const start = await first.boundingBox();
+        const target = await second.boundingBox();
+        assert.ok(start && target);
+        const horizontalScroll = () => order.evaluate(element => {
+          const previous = element.scrollLeft;
+          element.scrollLeft = element.clientWidth;
+          const actual = element.scrollLeft;
+          element.scrollLeft = previous;
+          return actual;
+        });
+        await page.mouse.move(start.x + 18, start.y + start.height / 2);
+        await page.mouse.down();
+        try {
+          await page.mouse.move(start.x + 18 + Math.min(120, start.width / 3), target.y + target.height * 0.8);
+          assert.equal(await order.locator('[data-dragging]').count(), 1);
+          assert.ok(await order.evaluate(element => element.scrollWidth > element.clientWidth));
+          assert.equal(await horizontalScroll(), 0);
+        } finally { await page.mouse.up() }
+        assert.equal(await horizontalScroll(), 0);
+        assert.equal(await order.getByRole('group').first().getAttribute('aria-label'), '无码');
+        assert.deepEqual(opened.problems, []);
+      } finally { await opened.close() }
+    });
     it(`${viewport.name}：云下载空检查报告不占据分隔区域`, async () => {
       const opened = await visit(browser, '/settings/library?section=' + encodeURIComponent('下载渠道'), viewport);
       const { page } = opened;
       try {
-        await page.route('**/api/configuration', async route => {
+        await page.route(CONFIGURATION_ROUTE, async route => {
           const data = await (await route.fetch()).json();
           await route.fulfill({ json: { ...data, downloads: { ...data.downloads, media_sources: ['guangya'], token_set: true,
             config: { ...data.downloads.config, clouddrive_address: 'http://127.0.0.1:19798' } } } });
@@ -27,7 +66,7 @@ describe('配置表单与行间距', () => {
         await settle(page);
         assert.equal(await form.locator('dl').count(), 0);
         assert.equal(await form.locator('.border-t').count(), 1);
-        const empty = await form.locator('div').evaluateAll(nodes => nodes.filter(node =>
+        const empty = await form.locator('div:not([aria-live])').evaluateAll(nodes => nodes.filter(node =>
           !node.childNodes.length && node.getBoundingClientRect().height > 0).map(node => node.className));
         assert.deepEqual(empty, []);
         assert.ok((await layout(page)).scrollWidth <= viewport.width + 1);
@@ -60,7 +99,7 @@ describe('配置表单与行间距', () => {
       const opened = await visit(browser, '/settings/library?section=' + encodeURIComponent('应用与维护'), viewport);
       const { page } = opened;
       try {
-        await page.route('**/api/configuration', async route => {
+        await page.route(CONFIGURATION_ROUTE, async route => {
           const data = await (await route.fetch()).json();
           await route.fulfill({ json: { ...data, updates: { ...data.updates, installation: '独立测试包', installation_code: 'standalone',
             state: 'available', latest_version: '1.0.0', message: '有新版本可下载。', package_kind: 'update',
@@ -83,7 +122,7 @@ describe('配置表单与行间距', () => {
       const { page } = opened;
       try {
         await page.route('**/api/configuration/cloud-proxies', route => route.fulfill({ json: { accounts: [] } }));
-        await page.route('**/api/configuration', async route => {
+        await page.route(CONFIGURATION_ROUTE, async route => {
           const data = await (await route.fetch()).json();
           await route.fulfill({ json: { ...data, editable: true, windows: true, media_sources: [
             { location: 'onedrive', root: 'O:\\Movies', path: 'O:\\Movies', cost: 'metered' },
@@ -167,7 +206,7 @@ describe('配置表单与行间距', () => {
       const opened = await visit(browser, '/settings/library?section=' + encodeURIComponent('下载渠道'), viewport);
       const { page } = opened;
       try {
-        await page.route('**/api/configuration', async route => {
+        await page.route(CONFIGURATION_ROUTE, async route => {
           const data = await (await route.fetch()).json();
           const body = data.downloads;
           await route.fulfill({ json: { ...data, downloads: { ...body, available: true, media_sources: ['pikpak'],
@@ -190,7 +229,7 @@ describe('配置表单与行间距', () => {
       const opened = await visit(browser, '/settings/library?section=' + encodeURIComponent('应用与维护'), viewport);
       const { page } = opened;
       try {
-        await page.route('**/api/configuration', async route => {
+        await page.route(CONFIGURATION_ROUTE, async route => {
           const data = await (await route.fetch()).json();
           await route.fulfill({ json: { ...data, uninstall: { ...data.uninstall, available: false } } });
         });

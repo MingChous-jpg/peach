@@ -7,7 +7,7 @@
  *
  * 换一份媒体（轮播、多媒体队列）只改岛内状态：媒体区按「条目:媒体」换一块，播放器随之拆了重挂。
  * 换到组里另一条经壳（`actions.openItem`）：地址要换；舞台取齐那一条后原地换内容，浮窗不重开。 */
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { esc, fmtDur, foldName, icon, requestErrorMessage } from '@peach/legacy/core';
 import { noteHtml } from '@peach/legacy/ui';
@@ -17,7 +17,8 @@ import { Button } from '@/components/base/buttons/button';
 
 import { ApiError, apiSend } from '../../api';
 import { textLang } from '../../core/text-lang';
-import { RetryNote } from '../components/grid-reveal';
+import { DetailFailure } from '../components/detail-failure';
+import { DetailTitle } from '../components/detail-title';
 import { MixGroupLabel, MixQueue, MixQueueRow } from '../components/mix-queue';
 import { RelatedSection } from '../components/related-section';
 import { DetailContinuation } from '../components/detail-continuation';
@@ -50,7 +51,7 @@ const realDuration = (value: unknown) => Number(value) > 0;
 const Glyph = ({ name }: { name: string }) => (
   <span className="contents" dangerouslySetInnerHTML={{ __html: icon(name) }} />
 );
-/** 外链那一枚：描边由全站 `svg.ui-externalmark`（`core/core.css`）给，这一页的 18px 尺寸在 `follow-detail.css`。 */
+/** 资源链接使用全站的行内外链标。 */
 const EXTERNAL_MARK = icon('external-link', 'ui-externalmark');
 
 export function FollowDetailPage(props: FollowDetailProps) {
@@ -64,16 +65,21 @@ export function FollowDetailPage(props: FollowDetailProps) {
   const [mediaIndex, setMediaIndex] = useState(props.mediaIndex);
 
   if (!result.data) {
+    // 整页没取到（不是条目已删）：弹层正中一句说明加重试，与馆藏、番号详情同一个，不在黑色舞台里画红色横条。
+    if (result.isError && !gone(result.error)) return (
+      <div data-stage-grid="" data-follow-detail="">
+        <div data-detail-failure="">
+          <CloseStage onClose={actions.close} />
+          <DetailFailure detail={requestErrorMessage(result.error)} busy={result.isFetching} onRetry={() => void result.refetch()} />
+        </div>
+      </div>
+    );
     return (
       <div data-stage-grid="" data-follow-detail="">
         <div data-stage-media="" data-follow-detail-media="none">
           <CloseStage onClose={actions.close} />
           <div data-follow-detail-placeholder="">
-            {result.isError
-              ? gone(result.error)
-                ? <GoneNote onBack={actions.close} />
-                : <RetryNote message={requestErrorMessage(result.error)} onRetry={() => void result.refetch()} />
-              : null}
+            {result.isError ? <GoneNote onBack={actions.close} /> : null}
           </div>
         </div>
       </div>
@@ -326,23 +332,38 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
     : item.author && foldName(item.author) !== foldName(identity.author) ? item.author : '';
   const mediaIssue = followMediaIssue(item, context);
   const saved = item.status === 'saved';
+  const title = followTitle(item);
+  const tagsId = useId();
+  const [editingTagsFor, setEditingTagsFor] = useState<number | null>(null);
+  if (editingTagsFor !== null && editingTagsFor !== item.id) setEditingTagsFor(null);
+  const editingTags = editingTagsFor === item.id;
   const { busy } = write;
   const busyAttrs = (key: string) => (busy.has(key) ? { 'aria-busy': true, 'aria-disabled': true } as const : {});
   return (
     <div data-stage-side="" data-follow-detail-side="">
       <div data-stage-side-content="">
-        <div data-follow-detail-title="">
-          <div data-stage-title="" data-follow-detail-name="" data-reveal-line=""
-            dangerouslySetInnerHTML={{ __html: followTitleMarks(single, item) + esc(followTitle(item)) }} />
+        <DetailTitle key={item.id} textKey={title} html={followTitleMarks(single, item) + esc(title)} tools={<>
           {item.url ? (
-            <a data-follow-origin="" href={item.url} target="_blank" rel="noreferrer noopener"
-              title={t('follow:followDetail.viewOnSite')} aria-label={t('follow:followDetail.viewOnSite')}
-              dangerouslySetInnerHTML={{ __html: EXTERNAL_MARK }} />
+            <a data-title-tool-link="" data-button-link="" data-follow-origin="" href={item.url} target="_blank" rel="noreferrer noopener"
+              title={t('follow:followDetail.viewOnSite')} aria-label={t('follow:followDetail.viewOnSite')}><Glyph name="external-link" /></a>
           ) : null}
-        </div>
+          <button type="button" data-follow-tags-edit="" aria-label={t('follow:followDetail.editTags')}
+            title={t(editingTags ? 'follow:followDetail.tagsDone' : 'follow:followDetail.editTags')}
+            aria-pressed={editingTags} aria-controls={tagsId} onClick={() => setEditingTagsFor(editingTags ? null : item.id)}>
+            <Glyph name="pencil" />
+          </button>
+          {kind === 'image' && selected ? (
+            <button type="button" data-follow-media-hide={selected.index} aria-label={t('follow:followDetail.hideImage')}
+              title={t('follow:followDetail.hideImage')} {...busyAttrs(`hide:${selected.index}`)} onClick={() => write.hide(selected.index)}>
+              <Glyph name="image-off" />
+            </button>
+          ) : null}
+        </>} />
         <div className="mono" data-stage-meta="" data-reveal-line="">
-          <span>{followWhen(item)}</span>
-          {realDuration(item.duration) ? <span>{fmtDur(item.duration)}</span> : null}
+          <span data-spec-item=""><Glyph name="calendar" /><span>{followWhen(item)}</span></span>
+          {realDuration(item.duration) ? (
+            <span data-spec-item=""><Glyph name="clock" /><span>{fmtDur(item.duration)}</span></span>
+          ) : null}
           {badges ? <span data-follow-badges="" dangerouslySetInnerHTML={{ __html: badges }} /> : null}
         </div>
         <div data-item-identity="" data-follow-detail-identity="">
@@ -365,6 +386,7 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
             {identity.credited ? <span>{t('follow:followDetail.creditedLabel')} {identity.credited}</span> : null}
           </div> : null}
         </div>
+        <FollowTags key={item.id} id={tagsId} item={item} editing={editingTags} label={helpers.tagLabel} actions={actions} />
         {item.summary ? <Summary key={item.id} text={item.summary} /> : null}
         {mediaIssue ? <p data-follow-media-issue="">{mediaIssue}</p> : null}
         {/* 上游没给出媒体时，代理只会回一个不含缘由的失败。有缩略图就换上缩略图并说明这是缩略图；
@@ -402,16 +424,12 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
               {...busyAttrs('new')} onClick={() => write.status('new')}
               dangerouslySetInnerHTML={{ __html: icon('rotate-ccw') }} />
           ) : null}
-          {kind === 'image' && selected ? (
-            <button type="button" data-stage-action="dislike" data-follow-media-hide={selected.index} aria-label={t('follow:followDetail.hideImage')}
-              title={t('follow:followDetail.hideImage')} {...busyAttrs(`hide:${selected.index}`)} onClick={() => write.hide(selected.index)}
-              dangerouslySetInnerHTML={{ __html: icon('image-off') }} />
-          ) : null}
           {src ? (
             <a data-stage-action-link="" data-follow-download="" href={`${src}${src.includes('?') ? '&' : '?'}download=1`} download=""
-              aria-label={t('follow:followDetail.download')} title={t('follow:followDetail.download')} dangerouslySetInnerHTML={{ __html: icon('download') }} />
+              aria-label={t('follow:followDetail.download')} title={t('follow:followDetail.download')}><Glyph name="download" /></a>
           ) : null}
         </div>
+        <span data-follow-state="" aria-live="polite">{write.failure}</span>
         {/* 被隐藏的图退到这条恢复带上：缩略图加一枚撤销键，点了就回到轮播。不占媒体队列，也不进
             角标数——它们已经是「不在看」的那部分。 */}
         {item.hidden_media?.length ? (
@@ -429,8 +447,6 @@ function Side({ item, data, context, media, write, issue, helpers, actions }: {
             </div>
           </div>
         ) : null}
-        <span data-follow-state="" aria-live="polite">{write.failure}</span>
-        <FollowTags key={item.id} item={item} label={helpers.tagLabel} actions={actions} />
       </div>
     </div>
   );

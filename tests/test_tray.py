@@ -46,6 +46,7 @@ from peach.versioning import UpdateResult, VersionSnapshot
 from peach.windows_update import PendingWindowsUpdate, WindowsUpdatePreparation
 from peach.settings_file import SettingsFileError
 from peach.user_messages import UserValueError
+from support.processes import finishes_within, grandchild_alive, hanging_program, kill_grandchild
 
 
 class Response:
@@ -89,6 +90,23 @@ class TrayTests(unittest.TestCase):
     @unittest.skipUnless(
         os.name == "nt", "macOS 走 build_macos_service_specs，不发布 LAN 地址"
     )
+    def test_windows_https_listens_dual_stack_and_pins_only_the_published_ipv4(self):
+        """HTTPS 监听所有网卡才收得到 IPv6；`--mdns-address` 只钉 A 记录与健康检查地址。"""
+        with tempfile.TemporaryDirectory() as directory:
+            tls_dir = Path(directory)
+            for name in ("peach-local-ca.crt", "peach.crt", "peach.key"):
+                (tls_dir / name).write_text("test-only", encoding="utf-8")
+            specs = {spec.name: spec for spec in build_service_specs(lan_address="192.0.2.10",
+                                                                     tls_dir=tls_dir)}
+        command = specs["https"].command
+        self.assertEqual(command[command.index("--host") + 1], "0.0.0.0")
+        self.assertEqual(command[command.index("--mdns-address") + 1], "192.0.2.10")
+        self.assertNotIn("--ipv4-only", command)
+        self.assertEqual(specs["https"].health_url, "https://192.0.2.10/healthz")
+
+    @unittest.skipUnless(
+        os.name == "nt", "macOS 走 build_macos_service_specs，不发布 LAN 地址"
+    )
     def test_windows_service_address_uses_the_current_route_when_not_configured(self):
         with tempfile.TemporaryDirectory() as directory:
             tls_dir = Path(directory)
@@ -128,6 +146,30 @@ class TrayTests(unittest.TestCase):
     def test_hidpi_prefers_per_monitor_v2(self, set_context):
         set_context.return_value = True
         self.assertEqual(enable_hidpi(), "per-monitor-v2")
+
+    @patch("peach.tray.ctypes.WinDLL", create=True)
+    @patch("peach.tray.sys.getwindowsversion", create=True)
+    def test_menu_theme_opts_in_without_forcing_dark(self, windows_version, load_dll):
+        from peach import tray
+
+        windows_version.return_value.build = 18362
+        with patch.object(tray.sys, "platform", "win32"):
+            tray.enable_windows_menu_theme()
+
+        load_dll.assert_called_once_with("uxtheme.dll")
+        load_dll.return_value.__getitem__.assert_called_once_with(135)
+        load_dll.return_value.__getitem__.return_value.assert_called_once_with(1)
+
+    @patch("peach.tray.ctypes.WinDLL", create=True)
+    @patch("peach.tray.sys.getwindowsversion", create=True)
+    def test_menu_theme_skips_the_legacy_ordinal(self, windows_version, load_dll):
+        from peach import tray
+
+        windows_version.return_value.build = 17763
+        with patch.object(tray.sys, "platform", "win32"):
+            tray.enable_windows_menu_theme()
+
+        load_dll.assert_not_called()
 
     def test_update_check_is_background_notification_not_modal_dialog(self):
         snapshot = VersionSnapshot("0.2.1", "master", "abc12345", False, False, None)
@@ -322,6 +364,24 @@ class ServiceStatusTests(unittest.TestCase):
             manager._run.call_args.kwargs["env"]["PYTHONIOENCODING"], "utf-8",
         )
 
+    @patch("peach.tray.DATABASE_PATH", Path("/local/ledger.db"))
+    @patch("peach.tray.SHARED_DATABASE_PATH", Path("/shared/ledger.db"))
+    def test_a_sync_that_never_returns_is_stopped_and_the_services_come_back(self):
+        """服务停着、操作锁占着时 `ledger-sync` 卡住：到期收掉整棵进程树，照常恢复服务。"""
+        directory = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        self.addCleanup(kill_grandchild, directory)
+        program = hanging_program(directory)
+        manager = ServiceManager(tuple(), ledger_plan=lambda: SyncPlan("pull", "共享副本更新"))
+        with patch("peach.tray.LEDGER_SYNC_SECONDS", 2),                 patch.object(manager, "start_missing") as start,                 patch.object(manager, "wait_until_ready", return_value=True):
+            ok, message = finishes_within(lambda: manager.sync_ledger(program), 30)
+        self.assertFalse(ok)
+        self.assertIn("超过 2 秒没有结束", message)
+        start.assert_called_once_with(reason="restore after database sync")
+        deadline = time.monotonic() + 10
+        while grandchild_alive(directory) and time.monotonic() < deadline:
+            time.sleep(0.1)
+        self.assertFalse(grandchild_alive(directory), "ledger-sync 起的孙进程还活着")
+
     def test_take_ownership_is_an_explicit_ledger_command(self):
         manager = ServiceManager(
             tuple(),
@@ -499,17 +559,21 @@ class ServiceStatusTests(unittest.TestCase):
 class ReplicationSwitchTests(unittest.TestCase):
     """ADR-0023 第 3 阶段：`replication.enabled = false` 时托盘不装配复制那一层。"""
 
-    def items(self, enabled):
-        with patch("peach.tray.REPLICATION_ENABLED", enabled):
+    def items(self, enabled, packaged):
+        with patch("peach.tray.REPLICATION_ENABLED", enabled), patch("peach.tray.standalone", return_value=packaged):
             return ledger_menu_items(
                 lambda label, action: (label, action), Mock(), Mock())
 
     def test_menu_items_disappear_when_replication_is_off(self):
-        self.assertEqual(self.items(False), [])
+        for packaged in (False, True):
+            with self.subTest(packaged=packaged):
+                self.assertEqual(self.items(False, packaged), [])
 
     def test_menu_items_are_assembled_when_replication_is_on(self):
-        labels = [label for label, _ in self.items(True)]
-        self.assertEqual(labels, ["同步数据库", "由本机接管数据库写入"])
+        for packaged in (False, True):
+            with self.subTest(packaged=packaged):
+                labels = [label for label, _ in self.items(True, packaged)]
+                self.assertEqual(labels, ["同步数据库", "由本机接管数据库写入"])
 
     def test_sync_ledger_refuses_instead_of_probing_a_share(self):
         """菜单项没了，但托盘还有别的入口；这条路径会去探一个不存在的共享。"""
@@ -706,7 +770,8 @@ class LogRetentionAtStartupTests(unittest.TestCase):
     def check_log_sweep(self, root, platform, tray, settings_file):
         config = settings_file.PeachConfig(root, root / "config.toml")
         events = []
-        def sweep(_):
+        def sweep(_, *, retention):
+            self.assertEqual(retention, tray.log_retention.RETENTION)
             events.append("sweep")
             raise OSError("log busy")
         def manager(*args, **kwargs):
@@ -825,6 +890,13 @@ class SourceSyncTests(unittest.TestCase):
 
         self.assertFalse(launchd_owns_this_process(
             Mock(return_value=Mock(returncode=113, stdout="")), uid=501))
+
+    def test_launchctl_that_never_returns_counts_as_not_owned_and_a_failed_restart(self):
+        hung = Mock(side_effect=subprocess.TimeoutExpired(["launchctl"], 30))
+        self.assertFalse(launchd_owns_this_process(hung, uid=501))
+        self.assertEqual(hung.call_args.kwargs["timeout"], tray_module.LAUNCHCTL_SECONDS)
+        self.assertNotEqual(restart_tray_process(hung, uid=501).returncode, 0)
+        self.assertEqual(hung.call_args.kwargs["timeout"], tray_module.LAUNCHCTL_SECONDS)
 
     def test_windows_tray_lists_source_sync_next_to_ledger(self):
         source = inspect.getsource(PeachTray.__init__)
@@ -1190,6 +1262,9 @@ class MacMenuBarTests(unittest.TestCase):
             self.assertIn("--port", command)
             self.assertGreater(int(command[command.index("--port") + 1]), 1024)
             self.assertNotIn("--mdns-address", command)
+            # pf 只转发 IPv4 的 80/443；IPv6 客户端按 AAAA 连过来会落到没人监听的端口。
+            if "0.0.0.0" in command:
+                self.assertIn("--ipv4-only", command)
 
     def test_https_spec_only_appears_with_real_tls_material(self):
         """macOS 这份是开发环境：没有本机 CA 也应该能用，不像 Windows 那样直接报错。"""

@@ -84,6 +84,9 @@ async function show(given: FollowDetailData, patch: Partial<FollowDetailProps> =
   return { host, props, actions: props.actions as ActionMocks };
 }
 
+/** 标签平时只读：先点行尾「编辑标签」，才有「添加标签」入口。 */
+const editTags = (host: Element) => click(host.querySelector('[data-follow-tags-edit]'));
+
 describe('取数', () => {
   it('标签候选保留来源分类并按规范名称显示选中勾号', async () => {
     const fallback = serve();
@@ -94,6 +97,7 @@ describe('取数', () => {
         { k:'未知', n:1, cat:'unknown', aliases:[], hidden:false },
       ] }) }) : fallback(url, init)));
     const { host } = await show(data(item(8, { tags:['3d'], detail_tags:['3d'], tag_types:{ '3d':'general' } })));
+    await editTags(host);
     await click(host.querySelector('[aria-label="添加标签"]')); await settle();
     const selected = host.querySelector('[data-pick="3D"]')!;
     expect(selected.getAttribute('aria-pressed')).toBe('true');
@@ -117,6 +121,7 @@ describe('取数', () => {
     const { host, actions: receipts } = await show(data(original));
     queryClient.setQueryData(followItemKey(sibling.id), data(sibling, group(original, { variants: [sibling] })));
     expect(buttonNamed('管理标签', host)).toBeNull();
+    await editTags(host);
     await click(host.querySelector('[aria-label="添加标签"]'));
     const input = host.querySelector<HTMLInputElement>('#tagPickSearch')!;
     await type(input, '精选');
@@ -128,11 +133,13 @@ describe('取数', () => {
     expect(receipts.toast).not.toHaveBeenCalled();
     await waiting.release({ ok: true, json: async () => ({ item: updated, group: group(updated, { variants: [sibling] }) }) });
     await settle();
-    expect(host.querySelector('[data-follow-tag="精选"]')).not.toBeNull();
+    expect(host.querySelector('[data-remove-tag="精选"]')).not.toBeNull();
     expect(queryClient.getQueryData<FollowDetailData>(followItemKey(sibling.id))?.group?.primary.tags).toContain('精选');
     expect(receipts.toast).toHaveBeenCalledWith('已添加标签「精选」', expect.objectContaining({ undo: expect.any(Function) }));
     await click(host.querySelector('[aria-label="删除标签 精选"]')); await settle();
-    expect(host.querySelector('[data-follow-tag="精选"]')).toBeNull();
+    expect(host.querySelector('[data-remove-tag="精选"]')).toBeNull();
+    expect(host.querySelector('[data-remove-tag="source"]')).not.toBeNull();
+    await editTags(host);
     expect(host.querySelector('[data-follow-tag="source"]')).not.toBeNull();
   });
 
@@ -146,11 +153,12 @@ describe('取数', () => {
       : fallback(url, init)));
     const { host } = await show(data(original));
     expect(host.querySelectorAll('[data-detail-tag]')).toHaveLength(20);
+    await editTags(host);
     await click(host.querySelector('[aria-label="添加标签"]'));
     await type(host.querySelector<HTMLInputElement>('#tagPickSearch')!, 'zz');
     await click(host.querySelector('[data-pick="zz"]'));
     await settle();
-    expect(host.querySelector('[data-follow-tag="zz"]')).not.toBeNull();
+    expect(host.querySelector('[data-remove-tag="zz"]')).not.toBeNull();
     expect(host.querySelector('[data-tags-more]')?.textContent).toBe('还有 10 个');
   });
 
@@ -159,6 +167,7 @@ describe('取数', () => {
     vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => url === '/api/follow/tag'
       ? Promise.resolve({ ok: false, status: 400, json: async () => ({ error: '标签名不含逗号' }) }) : fallback(url, init)));
     const { host, actions: receipts } = await show(data(item(8)));
+    await editTags(host);
     await click(host.querySelector('[aria-label="添加标签"]'));
     const input = host.querySelector<HTMLInputElement>('#tagPickSearch')!;
     await type(input, 'a,b');
@@ -175,7 +184,7 @@ describe('取数', () => {
     const host = await mount(<QueryClientProvider client={queryClient}><FollowDetailPage {...props} /></QueryClientProvider>);
     await settle();
     expect(fetcher.mock.calls.map(([url]) => url)).toContain('/api/follow?item=8');
-    expect(host.querySelector('[data-follow-detail-name]')?.textContent).toBe('更新 8');
+    expect(host.querySelector('[data-follow-detail] [data-detail-title]')?.textContent).toBe('更新 8');
 
     queryClient.clear();
     serve({ page: { groups: [], sources: [], author_aliases: [] } });
@@ -207,7 +216,7 @@ describe('侧栏', () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
-  it('自上而下：正文、操作、状态一行、标签；标签按 rule34 的类型顺序', async () => {
+  it('标签在反馈操作前显示，反馈状态紧随操作；标签按 rule34 的类型顺序', async () => {
     const { host } = await show(data(item(1, {
       summary: '正文', detail_tags: ['solo', 'kou', 'ow', 'animated', 'odd', 'tracer'],
       tag_types: { ow: 'copyright', tracer: 'character', kou: 'artist', solo: 'general', animated: 'metadata' },
@@ -215,10 +224,29 @@ describe('侧栏', () => {
     const [summary, actionsBar, state, tags] = ['[data-follow-detail-summary]', '[data-follow-detail-actions]',
       '[data-follow-state]', '[data-follow-detail-tags]'].map((selector) => host.querySelector(selector)!);
     const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect([follows(summary!, actionsBar!), follows(actionsBar!, state!), follows(state!, tags!)]).toEqual([true, true, true]);
+    expect([follows(tags!, summary!), follows(summary!, actionsBar!), follows(actionsBar!, state!)]).toEqual([true, true, true]);
     expect([...host.querySelectorAll<HTMLElement>('[data-follow-tag]')].map((tag) => [tag.dataset.followTag, tag.closest('[data-detail-tag]')?.getAttribute('data-tag-cat')]))
       .toEqual([['ow', 'r34-copyright'], ['tracer', 'r34-character'], ['kou', 'r34-artist'], ['solo', 'r34-general'],
         ['animated', 'r34-metadata'], ['odd', 'r34-unknown']]);
+  });
+
+  it('标题工具里的「编辑标签」切换标签增删', async () => {
+    const { host } = await show(data(item(3, { detail_tags: ['solo', 'kou'] })));
+    const tags = host.querySelector('[data-follow-detail-tags]')!;
+    expect(tags.querySelectorAll('[data-remove-tag]').length).toBe(0);
+    expect(tags.querySelector('#tagPlus')).toBeNull();
+    const toggle = host.querySelector<HTMLButtonElement>('[data-title-tools] [data-follow-tags-edit]')!;
+    expect(toggle.getAttribute('aria-controls')).toBe(tags.id);
+    expect(toggle.getAttribute('aria-label')).toBe('编辑标签');
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    await click(toggle);
+    expect(tags.querySelectorAll('[data-remove-tag]').length).toBe(2);
+    expect(tags.querySelector('#tagPlus')).not.toBeNull();
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    await click(toggle);
+    expect(tags.querySelectorAll('[data-remove-tag]').length).toBe(0);
+    expect(tags.querySelector('#tagPlus')).toBeNull();
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('来源外链、网盘链接与下载键；发布者与署名作者不同才写', async () => {
@@ -227,11 +255,13 @@ describe('侧栏', () => {
       resource_urls: ['https://gofile.io/d/a', 'https://mega.nz/folder/b', 'https://files.example.org/c'],
     })), sources: [{ id: 1, provider: 'kemono', author_name: '作者' }] });
     const origin = host.querySelector('[data-follow-origin]')!;
+    expect(origin.closest('[data-title-tools]')).not.toBeNull();
     expect([origin.getAttribute('title'), origin.getAttribute('aria-label'), origin.getAttribute('href')])
       .toEqual(['打开来源页面', '打开来源页面', 'https://example.invalid/post/2']);
     expect([...host.querySelectorAll('[data-follow-resources] a')].map((link) => link.textContent))
       .toEqual(['Gofile', 'MEGA', 'files.example.org']);
     const download = host.querySelector('[data-follow-download]')!;
+    expect(download.closest('[data-follow-detail-actions]')).not.toBeNull();
     expect(download.hasAttribute('download')).toBe(true);
     expect(download.getAttribute('href')).toBe('/follow-stream?id=2&download=1');
     expect(host.querySelector('[data-follow-detail-identity] [data-id-name]')?.textContent).toBe('作者');
@@ -242,7 +272,7 @@ describe('侧栏', () => {
     const { host } = await show(data(item(5, { title: '', media_items: [
       { index: 0, media_kind: 'video', name: 'a.mp4', resource_group: 'g1' }, { ...image(1), resource_group: 'g1' },
     ] })));
-    expect(host.querySelector('[data-follow-detail-name]')?.textContent).toBe('未命名内容');
+    expect(host.querySelector('[data-follow-detail] [data-detail-title]')?.textContent).toBe('未命名内容');
     expect(host.querySelector('[data-follow-queue]')?.textContent).toContain('未命名内容 · 2 个媒体');
   });
 
