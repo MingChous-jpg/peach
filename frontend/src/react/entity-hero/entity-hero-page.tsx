@@ -16,7 +16,8 @@ import { textLang } from '../../core/text-lang';
 import { entityDisplayName, nameScript } from '../../core/entity-names';
 import { useEntityNames } from '../use-entity-names';
 
-import { Button } from '@/components/base/buttons/button';
+import { Button, ButtonLink } from '@/components/base/buttons/button';
+import { javSubscriptionPath } from '../follow-manage/jav-subscription-path';
 
 import { AvatarPicker } from '../avatar-picker/avatar-picker-page';
 import { Note } from '../components/note';
@@ -28,10 +29,11 @@ import { Glyph } from './glyph';
 import { FeedSwitch, MorePop } from './hero-pop';
 import { NamePicker } from './name-picker';
 import {
-  COMPANY_ALIASES_SHOWN, agencyOf, companyFactRows, entityFeedTip, entryMarks, factRows, heroLinks, isCompany, isPeople, nameChoices, nameLine, shownTags,
+  COMPANY_ALIASES_SHOWN, agencyOf, companyFactRows, entityFeedTip, entryMarks, factRows, heroLinks, isCompany, nameChoices, nameLine, shownTags,
   type EntityHeroActions, type EntityHeroData, type EntityHeroHelpers, type EntityHeroProps,
   type HeroCostar, type HeroFollow, type LinkMark, type LinkView,
 } from './entity-hero';
+import { isPersonEntity } from '../../core/entity-links';
 import { codedText, serverLabels } from '../../core/server-text';
 import { interfaceLanguage, t } from '../../i18n';
 
@@ -56,11 +58,12 @@ function costarImg(person: HeroCostar): string {
 export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, feedError, retryFeed, actions, helpers }: EntityHeroProps) {
   useEntityNames();
   const displayName = entityDisplayName(kind, entity.canonical_name, Number(entity.id));
-  const people = isPeople(kind);
+  const people = isPersonEntity(kind);
   const company = isCompany(kind);
   const facts = people ? factRows(entity.profile) : company ? companyFactRows(entity.company_profile) : [];
   const links = heroLinks(entity, kind);
   const marks = entryMarks(entity);
+  const findFeed = !entity.feed && entity.identity_categories?.includes('japanese_av');
   const costars = kind === 'agency' ? [] : (entity.related_performers || []);
   const linkRow = useRef<HTMLDivElement>(null);
   const costarRow = useRef<HTMLDivElement>(null);
@@ -99,8 +102,8 @@ export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, feedErro
                   const name = entityDisplayName(identity.kind, identity.canonical_name, identity.id);
                   const text = identity.relation === 'same_person' ? t('catalog:entityHero.samePersonIdentity', { name }) : t('catalog:entityHero.linkedAccount', { name });
                   return (
-                    <button type="button" key={identity.id} title={text}
-                      className="min-w-0 max-w-full text-text-primary underline wrap-anywhere"
+                    <button type="button" key={identity.id} title={text} data-inline-action=""
+                      className="min-w-0 max-w-full cursor-pointer text-text-primary wrap-anywhere"
                       onClick={() => actions.openEntity(identity.kind, identity.canonical_name)}>
                       {text}
                     </button>
@@ -111,7 +114,7 @@ export function EntityHeroPage({ kind, name, entity, feedNew, feedHost, feedErro
             {links.length ? (
               <div ref={linkRow} data-entity-links="">{links.map((link, at) => <HeroLinkView key={at} link={link} />)}</div>
             ) : null}
-            {marks.length || entity.feed ? <EntryMarks entity={entity} actions={actions} helpers={helpers} /> : null}
+            {marks.length || entity.feed || findFeed ? <EntryMarks entity={entity} actions={actions} helpers={helpers} findFeed={findFeed} /> : null}
             {entity.follow?.held.length ? <HeldAuthors follow={entity.follow} displayName={displayName} actions={actions} /> : null}
           </div>
           {facts.length ? (
@@ -380,7 +383,7 @@ function HeroLinkView({ link }: { link: LinkView }) {
     default:
       return (
         <a data-link="url" href={link.url} target="_blank" rel="noopener noreferrer" title={link.title}>
-          <LinkIcon mark={link.mark} /><span data-link-label="">{link.text}</span>
+          <LinkIcon mark={link.mark} /><span data-link-label="" data-external-link-label="">{link.text}</span>
           <svg className="ui-externalmark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-external-link" /></svg>
         </a>
       );
@@ -391,8 +394,8 @@ function HeroLinkView({ link }: { link: LinkView }) {
  *
  *  MISSAV 站上没有图形标识，它的标题就是排出来的字：Halant 500、`MISS` 跟页面墨色、`AV` 用
  *  它的粉。一位女优在 javdb 有两个演员页是常事，第二枚在标识后面缀服务端编好的序号。 */
-function EntryMarks({ entity, actions, helpers }: {
-  entity: EntityHeroData; actions: EntityHeroActions; helpers: EntityHeroHelpers;
+function EntryMarks({ entity, actions, helpers, findFeed }: {
+  entity: EntityHeroData; actions: EntityHeroActions; helpers: EntityHeroHelpers; findFeed?: boolean;
 }) {
   const [following, setFollowing] = useState(!!entity.feed?.following);
   const [busy, setBusy] = useState(false);
@@ -428,6 +431,9 @@ function EntryMarks({ entity, actions, helpers }: {
       ))}
       {entity.feed ? <FeedSwitch following={following} busy={busy} onToggle={(on) => { void toggle(on) }}
         tip={entityFeedTip(following)} /> : null}
+      {findFeed ? <ButtonLink variant="secondary" size="small" href={javSubscriptionPath(entity.canonical_name)}>
+        {t('catalog:entityHero.subscribeNewReleases')}
+      </ButtonLink> : null}
     </div>
   );
 }

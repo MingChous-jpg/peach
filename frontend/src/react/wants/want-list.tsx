@@ -1,5 +1,6 @@
 /* JAV 想要：按状态分组的作品卡，复用资源链接查询与查找资源弹层。 */
 import { useEffect, useState } from 'react';
+import { ImageWithFallback } from '../components/image-with-fallback';
 import { Radio } from 'react-aria-components';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -9,7 +10,7 @@ import { Button, ButtonLink } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
 
-import { apiGet, errorMessage } from '../../api';
+import { apiGet } from '../../api';
 import { javContentSkeleton } from '../../jav-skeleton';
 import type { DownloadsSnapshot } from '../bundle';
 import { CloudDownloadDialog, type DownloadPrefill } from '../activity/cloud-download-dialog';
@@ -17,12 +18,12 @@ import { DOWNLOADS_KEY, DOWNLOADS_URL } from '../activity/downloads-panel';
 import type { BulkAction, Receipt } from '../components/bulk-action';
 import { cardClass } from '../components/card';
 import { SelectionDock } from '../components/selection-dock';
-import { JavBatchResources } from '../jav/jav-batch-resources';
+import { JavBatchResources, type BatchResourceWork } from '../jav/jav-batch-resources';
 import { useJavSelection } from '../jav/jav-selection';
 import { useRectangleSelection, type RectangleCommit } from '../components/rectangle-selection';
-import type { Discovery } from '../jav/jav';
 import { EmptyState, EmptyFocusButton } from '../components/empty-state';
 import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { DataTableFooter } from '../components/table-controls';
 import { pageWindow } from '../follow-manage/follow-manage';
 import { ErrorLine } from '../follow-manage/source-view';
@@ -57,8 +58,8 @@ function Cover({ want }: { want: Want }) {
     <span className="relative inline-grid w-card-cover shrink-0 aspect-card-cover place-items-center overflow-hidden rounded-2lg bg-media-placeholder max-sm:w-24">
       <span className="text-caption-1-regular text-text-secondary">{t('catalog:shared.noCover')}</span>
       {want.cover ? (
-        <img src={want.cover} alt="" loading="lazy" referrerPolicy={want.remote_cover ? 'no-referrer' : undefined}
-          onError={(event) => event.currentTarget.remove()} className="absolute inset-0 size-full object-cover" />
+        <ImageWithFallback src={want.cover} alt="" loading="lazy" referrerPolicy={want.remote_cover ? 'no-referrer' : undefined}
+          className="absolute inset-0 size-full object-cover" />
       ) : null}
     </span>
   );
@@ -121,7 +122,7 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
           {want.phase === 'searching' || want.phase === 'given_up' ? (
             <Button variant="primary" size="small" leadingIcon={RiSearchLine} onClick={onCloudDownload}>{t('catalog:shared.searchTorrents')}</Button>
           ) : null}
-          <Button variant="danger" size="small" leadingIcon={RiDeleteBinLine} disabled={readOnly} {...busyProps(busy === `remove:${want.id}`)}
+          <Button variant="secondary" size="small" leadingIcon={RiDeleteBinLine} disabled={readOnly} {...busyProps(busy === `remove:${want.id}`)}
             onClick={onRemove}>{t('catalog:shared.remove')}</Button>
         </div>
       </div>
@@ -133,10 +134,9 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
 }
 
 /** 一段（待找、未发售……）：标题带总数，各段独立保存页码与每页数量。 */
-function WantPhase({ phase, label, rows, row, onRectangle }: {
-  phase: string; label: string; rows: Want[]; row(want: Want): ReactNode; onRectangle?: RectangleCommit | undefined;
+function WantPhase({ phase, label, rows, row, onRectangle, selecting }: {
+  phase: string; label: string; rows: Want[]; row(want: Want): ReactNode; onRectangle?: RectangleCommit | undefined; selecting: boolean;
 }) {
-  const rectangle = useRectangleSelection(onRectangle);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(WANT_PAGE_SIZE);
   const [magnetFilter, setMagnetFilter] = useState('all');
@@ -145,6 +145,7 @@ function WantPhase({ phase, label, rows, row, onRectangle }: {
   const available = rows.filter(hasMagnet);
   const filtered = phase !== 'searching' || magnetFilter === 'all' ? rows
     : rows.filter(want => hasMagnet(want) === (magnetFilter === 'available'));
+  const rectangle = useRectangleSelection(filtered.length ? onRectangle : undefined, { selecting, start: '[data-want-items]' });
   const win = pageWindow(filtered.length, pageSize, page);
   return (
     <section aria-label={label} data-want-phase={phase} className="flex flex-col gap-4">
@@ -164,7 +165,9 @@ function WantPhase({ phase, label, rows, row, onRectangle }: {
       </div>
       {!filtered.length ? <EmptyState size="compact" icon={RiStarLine} title={t('catalog:wants.noFilterMatches')}
         actions={<Button size="small" onClick={() => { setMagnetFilter('all'); setPage(1) }}>{t('catalog:shared.viewAll')}</Button>}>{null}</EmptyState> : null}
-      <div {...rectangle}><ul className="flex flex-col gap-4">{filtered.slice(win.start, win.end).map(row)}</ul></div>
+      <div data-rectangle-gutter="" {...rectangle}>
+        <ul data-want-items="" className="flex flex-col gap-4">{filtered.slice(win.start, win.end).map(row)}</ul>
+      </div>
       <div data-want-pager="">
         <DataTableFooter label={label} total={win.total} pagination={{ pageIndex: win.page - 1, pageSize }}
           onChange={next => { setPageSize(next.pageSize); setPage(next.pageIndex + 1) }} unit={t('catalog:wants.itemUnit')} />
@@ -223,13 +226,13 @@ export function WantList({ readOnly, toast, query = '', clearQuery }: WantListPr
   const selection = useJavSelection();
   const selecting = Boolean(selection?.mode);
   const [picked, setPicked] = useState<ReadonlySet<number>>(new Set());
-  const [resources, setResources] = useState<Discovery[] | null>(null);
+  const [resources, setResources] = useState<BatchResourceWork[] | null>(null);
   useEffect(() => { if (!selecting) setPicked(new Set()) }, [selecting]);
   const chosen = items.filter((want) => picked.has(want.id));
   const allPicked = items.length > 0 && chosen.length === items.length;
   const host = { receipt: toast };
   const removeMany: BulkAction<Want> = {
-    key: 'remove', label: t('catalog:shared.remove'), reversal: 'undo', danger: true,
+    key: 'remove', label: t('catalog:shared.remove'), reversal: 'undo',
     confirm: (rows) => ({ title: t('catalog:wants.removeMany'), body: t('catalog:wants.removeManyBody', { count: rows.length }) }),
     run: async (rows) => {
       const { previous } = await removeWants(rows.map((want) => want.id));
@@ -271,11 +274,11 @@ export function WantList({ readOnly, toast, query = '', clearQuery }: WantListPr
         {action.error ? <Note tone="error" title={t('catalog:wants.actionFailed')}>{action.error}</Note> : null}
       </div>
 
-      {wants.error ? <Note tone="error" title={t('catalog:wants.loadFailed')}>{errorMessage(wants.error)}</Note> : null}
+      {wants.error ? <QueryErrorNote titleKey="catalog:wants.loadFailed" query={wants} /> : null}
       {wants.isPending ? <div role="status" aria-label={t('catalog:wants.loading')} dangerouslySetInnerHTML={{ __html: javContentSkeleton('wants') }} /> : null}
       {data?.scraping ? <TaskProgress embedded kind={activityKind('want-scrape')} label={t('catalog:wants.fetchingNew')} /> : null}
       {data?.searching ? <TaskProgress embedded kind={activityKind('want-search')} label={t('catalog:wants.searchingResources')} /> : null}
-      {downloads.error ? <Note tone="error" title={t('catalog:wants.downloadSettingsFailed')}>{errorMessage(downloads.error)}</Note> : null}
+      {downloads.error ? <QueryErrorNote titleKey="catalog:wants.downloadSettingsFailed" query={downloads} /> : null}
       {downloads.data && !configured.length ? <Note tone="neutral">{t('shell:downloadChannels.notConfigured')}{t('shell:format.sentenceGap')}<a href="/settings/downloads">{t('shell:downloadChannels.settingsLink')}</a></Note> : null}
       {downloads.data && !downloads.data.available ? <Note tone="neutral">{t('catalog:wants.cloudPrimaryOnly')}</Note> : null}
 
@@ -291,8 +294,8 @@ export function WantList({ readOnly, toast, query = '', clearQuery }: WantListPr
         const rows = items.filter((want) => want.phase === phase);
         if (!rows.length) return null;
         return (
-          <WantPhase key={phase} phase={phase} label={label} rows={rows}
-            onRectangle={selecting && !action.busy ? (keys, add) =>
+          <WantPhase key={phase} phase={phase} label={label} rows={rows} selecting={selecting}
+            onRectangle={selection && !action.busy ? (keys, add) =>
               setPicked(current => new Set([...(add ? current : []), ...keys.map(Number)])) : undefined} row={(want) => (
             <WantRow key={want.id} want={want} readOnly={readOnly} busy={action.busy}
               downloads={downloads.data} provider={selected} toast={toast}
@@ -319,8 +322,10 @@ export function WantList({ readOnly, toast, query = '', clearQuery }: WantListPr
           onClick={() => setPicked(allPicked ? new Set() : new Set(items.map((want) => want.id)))}>
           {allPicked ? t('catalog:javSelection.deselectPage') : t('catalog:wants.selectAll')}</Button>}>
         <Button size="small" variant="secondary" disabled={!searchable.length}
-          onClick={() => setResources(searchable.map((want) => ({ id: want.id, code: want.code!, title: want.title || '',
-            release_date: want.release_date || undefined }) as Discovery))}>{t('catalog:shared.searchTorrents')}</Button>
+          onClick={() => setResources(searchable.map(({ id, code, title, cover, performers, studio, release_date }) => ({
+            id, code: code!, title: title || '', cover, performers, studio, release_date,
+          })))}>
+          {t('catalog:shared.searchTorrents')}</Button>
         <Button size="small" variant="ghost" onClick={() => selection?.close()}>{t('catalog:javSelection.exit')}</Button>
       </SelectionDock>
       <JavBatchResources items={resources} close={() => setResources(null)} readOnly={readOnly} receipt={toast} />

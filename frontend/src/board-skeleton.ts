@@ -1,5 +1,5 @@
 import { resolveFollowSort, SORT_OPTIONS, type SortDir, type SortKey } from './follow-sort';
-import { islandButton, islandSelect } from './island-skeleton';
+import { islandButton, islandSearchInput, islandSelect } from './island-skeleton';
 import { configurationSkeleton } from './configuration-skeleton';
 import { javPageSkeleton } from './jav-skeleton';
 import { javTab } from './react/jav/jav-navigation';
@@ -7,6 +7,10 @@ import { duplicatesSkeleton, qualityGoalsSkeleton, repairCenterSkeleton, statsSk
 import { CONFIGURATION_SECTIONS, isSettingsSectionPath } from './history/settings-route';
 import { FOLLOW_MANAGE_NAV as FOLLOW_TABS } from './react/follow-manage/manage-route';
 import { t } from './i18n';
+import { orderTableColumns, tableLayoutSnapshot } from './table-column-order';
+import { cardClass } from './react/components/card';
+import { rememberedPageSize } from './react/components/page-size-preferences';
+import { FEED_SOURCE_CARD, FEED_SOURCE_COLUMNS, FEED_SOURCE_FOOTER, FEED_SOURCE_TABLE, rememberedFeedSourceCount } from './react/follow-manage/feed-source-layout';
 
 /** 等待态复用页面容器，只有异步内容使用占位。 */
 const line = (width = '60%') => `<span class="skeleton" style="width:${width}"></span>`;
@@ -54,35 +58,72 @@ const followPageSize = (): number => {
 };
 /* 表格的列、列名与排序指示照 React 那张 Board UI `Table`：选择列由勾选框提供名称，
    当前排序落在哪一列，那一列的指示就朝哪头。 */
-const TABLE_COLUMNS = [['select', ''], ['author', t('shell:shared.creators')], ['source', t('shell:followTable.source')], ['provider', t('shell:followTable.site')], ['status', t('shell:followTable.status')], ['checked', t('shell:followTable.lastChecked')], ['actions', t('follow:shared.actions')]] as const;
+const TABLE_COLUMNS = ([['select', ''], ['author', t('shell:shared.creators')], ['source', t('shell:followTable.source')], ['provider', t('shell:followTable.site')], ['status', t('shell:followTable.status')], ['checked', t('shell:followTable.lastChecked')], ['actions', t('follow:shared.actions')]] as const)
+  .map(([id, name]) => ({ id, name }));
 const COLUMN_OF: Partial<Record<SortKey, string>> = { name: 'author', source: 'source', provider: 'provider', status: 'status', checked: 'checked' };
 export const SORT_MARK = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12.7071 15.2929C12.3166 15.6834 11.6834 15.6834 11.2929 15.2929L7.70711 11.7071C7.07714 11.0771 7.52331 10 8.41421 10H15.5858C16.4767 10 16.9229 11.0771 16.2929 11.7071L12.7071 15.2929Z" fill="currentColor"/></svg>';
 const followTable = (rows: number, { sort, dir }: { sort: SortKey; dir: SortDir }) => {
-  const head = TABLE_COLUMNS.map(([id, name]) => {
+  const { order, visibility = {} } = tableLayoutSnapshot('follow-sources');
+  const columns = orderTableColumns(TABLE_COLUMNS, order)
+    .filter(({ id }) => id === 'select' || id === 'source' || visibility[id] !== false);
+  const head = columns.map(({ id, name }) => {
     if (!name) return '<th></th>';
     if (id === 'actions') return `<th>${name}</th>`;
     const direction = COLUMN_OF[sort] === id ? ` data-direction="${dir === 'asc' ? 'ascending' : 'descending'}"` : '';
     return `<th><span class="flex items-center gap-0.5">${name}<span data-sort-indicator${direction}>${SORT_MARK}</span></span></th>`;
   }).join('');
-  const row = `<tr>${[followCheck(), `<span class="flex min-w-0 items-center gap-2">${block(32, 32, true)}${text('5em')}</span>`, text('10em'), `<span class="flex items-center gap-1.5">${block(14, 14)}${text('4em')}</span>`, block(48, 24), text('113px'), followRowActions()].map(cell => `<td>${cell}</td>`).join('')}</tr>`;
+  const cells = {
+    select: followCheck(), author: `<span class="flex min-w-0 items-center gap-2">${block(32, 32, true)}${text('5em')}</span>`,
+    source: text('10em'), provider: `<span class="flex items-center gap-1.5">${block(14, 14)}${text('4em')}</span>`,
+    status: block(48, 24), checked: text('113px'), actions: followRowActions(),
+  };
+  const row = `<tr>${columns.map(({ id }) => `<td>${cells[id]}</td>`).join('')}</tr>`;
   return `<div data-board-data-table data-follow-table class="follow-skeleton-table"><div class="w-full overflow-x-auto"><table class="bui-table bui-table-sm"><thead><tr>${head}</tr></thead><tbody>${repeat(row, rows)}</tbody></table></div></div>`;
 };
 /** 分页行：条数与页码要等数据，每页几条是这台浏览器的偏好，照最终的字样写出来。 */
-const followPager = (table: boolean, size: number) => `<div class="flex flex-wrap items-center justify-between gap-3"><span class="mr-auto text-body-2-regular text-text-secondary">${text('111px')}</span><div data-toolbar-actions>${islandSelect(t('shell:tablePagination.perPage', { count: size, unit: table ? t('follow:followOverview.itemUnit') : t('follow:followOverview.creatorUnit') }), { size: 'sm' })}${block(204, 32)}</div></div>`;
+const followPager = (unit: string, size: number) => `<div class="flex flex-wrap items-center justify-between gap-3"><span class="mr-auto text-body-2-regular text-text-secondary">${text('111px')}</span><div data-toolbar-actions>${islandSelect(t('shell:tablePagination.perPage', { count: size, unit }), { size: 'sm' })}${block(204, 32)}</div></div>`;
+
+/** 用最近一次成功读取的总数预留订阅表，占位行数随本机分页偏好。 */
+export function feedSourcesSkeleton(): string {
+  const count = rememberedFeedSourceCount() ?? 4;
+  if (count === 0) return '';
+  const size = rememberedPageSize(FEED_SOURCE_TABLE);
+  const { order, visibility = {}, widths = {} } = tableLayoutSnapshot(FEED_SOURCE_TABLE);
+  const columns = orderTableColumns(FEED_SOURCE_COLUMNS, order)
+    .filter(({ id, required }) => required || visibility[id] !== false);
+  const head = columns.map(({ id, label, min, width }) =>
+    `<th style="min-width:${min}px;width:${widths[id] ?? width}px">${id === 'select' ? followCheck() : label}</th>`).join('');
+  const cells: Record<string, string> = {
+    select: followCheck(), name: text('10em'), status: block(48, 24), actions: followRowActions(),
+  };
+  const row = `<tr>${columns.map(({ id }) => `<td>${cells[id] ?? text('5em')}</td>`).join('')}</tr>`;
+  return `<section data-feed-sources-skeleton class="${cardClass({ padding: 'none', className: FEED_SOURCE_CARD })}">
+    <div data-responsive-toolbar><div data-toolbar-heading><h3 class="text-title-2-medium text-text-primary">${t('follow:feedSources.title')}</h3><span class="text-body-2-regular text-text-secondary">${text('132px')}</span></div>
+    <div data-toolbar-actions><div data-index-search class="ml-auto min-w-0 max-w-80 flex-1">${islandSearchInput(t('follow:feedSources.search'))}</div>${islandButton({ label: t('follow:feedSources.fetchNow'), attrs: WAITING })}${block(36, 36)}${block(36, 36)}</div></div>
+    <div data-board-data-table data-follow-table><div class="w-full overflow-x-clip"><table class="bui-table bui-table-sm"><thead><tr>${head}</tr></thead><tbody>${repeat(row, Math.min(count, size))}</tbody></table></div></div>
+    ${followPager(t('shell:tablePagination.pageUnit'), size)}
+    <footer class="${FEED_SOURCE_FOOTER}"><span class="mr-auto text-body-2-regular text-text-secondary">${text('12em')}</span></footer>
+  </section>`;
+}
 /** 关注列表以外的页签：内容各不相同、要等数据才知道长什么样，只画那张填充卡和几行占位。 */
 const followPanel = () => `<div class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-4 px-6 py-5 max-sm:px-4 ui-follow-skeleton-surface"><h3 class="text-title-2-medium text-text-primary">${text('120px')}</h3>${['72%', '56%', '64%', '40%'].map((width) => `<span class="text-body-medium">${text(width)}</span>`).join('')}</div>`;
 type FollowSkeletonOptions = { followLayout?: string; followPageSize?: number; followSort?: string; followDir?: string; followTab?: string };
 const followList = (options: FollowSkeletonOptions) => {
   const tab = followTabKey(options.followTab);
   if (tab !== 'list') return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${followReadings()}<div class="flex flex-col gap-6">${followTabs(tab)}<div class="flex flex-col gap-4">${followPanel()}</div></div></div></div>`;
+  return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${followReadings()}<div class="flex flex-col gap-6">${followTabs(tab)}<div class="flex flex-col gap-4">${feedSourcesSkeleton()}${followListSurfaceSkeleton(options)}</div></div></div></div>`;
+};
+
+/** 关注列表取数时保留卡面与已有版式偏好。 */
+export function followListSurfaceSkeleton(options: FollowSkeletonOptions = {}): string {
   const table = options.followLayout === 'table';
   const order = resolveFollowSort(options.followSort, options.followDir);
   const size = options.followPageSize || followPageSize();
   const content = table
     ? followTable(size, order)
     : `${followCheck(t('follow:sourceList.selectPageShort'))}<div class="flex flex-col gap-3">${followAuthor(3)}${followAuthor(4)}${followAuthor(3)}</div>`;
-  return `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${followReadings()}<div class="flex flex-col gap-6">${followTabs(tab)}<div class="flex flex-col gap-4"><div class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-4 px-6 py-5 max-sm:px-4 ui-follow-skeleton-surface" data-layout="${table ? 'table' : 'default'}">${followToolbar({ table, ...order })}${content}${followPager(table, size)}</div></div></div></div></div>`;
-};
+  return `<div class="min-w-0 bg-background-secondary-default rounded-2xl shadow-card flex flex-col gap-4 px-6 py-5 max-sm:px-4 ui-follow-skeleton-surface" data-layout="${table ? 'table' : 'default'}">${followToolbar({ table, ...order })}${content}${followPager(table ? t('follow:followOverview.itemUnit') : t('follow:followOverview.creatorUnit'), size)}</div>`;
+}
 
 /** 详情骨架外层 `[data-skeleton="detail"]` 里面那一格：舞台岛自己画外层，里面照这一份写。格子与详情栏
  *  的几何是舞台的（`react/stage/stage.css`），骨架的底色与行距是壳的 `skeleton` 一族。 */
@@ -90,12 +131,30 @@ export function detailSkeletonBody(): string {
   return `<div data-stage-grid="" aria-hidden="true"><div data-stage-media="" class="ui-skeleton-detail-media skeleton"></div><aside data-stage-side=""><div data-stage-side-content="" class="ui-skeleton-lines">${line('85%')}${line('65%')}${repeat(lines(), 4)}</div></aside></div>`;
 }
 
+/** 首次读取任务列表时预留主区位置。需要处理、已跳过和云下载按各自的结果出现。 */
+export const taskRunSectionsSkeleton = () =>
+  [t('manage:taskCenter.inProgress'), t('manage:taskCenter.recentlyCompleted')].map(title => `<section class="activitysection flex min-w-0 flex-col gap-3"><h3 class="text-title-2-medium text-text-primary">${title}</h3><div class="min-w-0 rounded-2xl shadow-card bg-background-secondary-default"><div class="flex flex-col gap-1.5 px-5 pt-5 pb-4"><span class="text-title-1-medium">${text('8em')}</span><span class="text-caption-1-regular">${text('14em')}</span>${text('60%')}${text('40%')}</div><div class="border-t border-separator-border px-5 py-2.5">${text('6em')}</div></div></section>`).join('');
+
 export function boardPageSkeleton(
   path: string, options: FollowSkeletonOptions = {},
 ): string {
   let body = '';
   if (path === '/stats') {
     body = statsSkeleton();
+  } else if (path === '/ai') {
+    body = `<div data-ai-search-workspace="" class="peach-react @container"><div data-ai-search-layout="">
+      <div data-ai-search-pane="">
+        <div class="flex min-h-14 items-center justify-between px-4 py-2.5 text-headline-medium text-text-primary sm:px-5">${t('catalog:libraryAssistant.title')}<span class="skeleton size-8 rounded-full @min-[52rem]:hidden"></span></div>
+        <div data-ai-search-scroll=""><div data-ai-search-content="" class="flex min-h-full flex-col items-center justify-center gap-4 py-4">
+          <span class="skeleton size-12 rounded-2xl"></span>
+          <div class="flex max-w-full flex-col items-center gap-2">${text('12em')}${text('17em')}</div>
+          <div class="flex w-full max-w-2xl flex-wrap justify-center gap-2">${[246,214,188,250,148,170,155,145,197].map(width =>
+            `<span class="skeleton h-9 max-w-full rounded-full" style="width:${width}px"></span>`).join('')}</div>
+        </div></div>
+        <div data-ai-search-content="" data-ai-search-compose="" class="flex flex-col gap-1.5"><div class="flex h-12 items-center gap-2 rounded-full bg-background-primary-default px-1.5 shadow-xs"><span class="skeleton size-9 shrink-0 rounded-full"></span>${text('8em')}<span class="skeleton ml-auto w-12"></span><span class="skeleton size-9 shrink-0 rounded-full"></span></div><div class="flex h-7 items-center justify-between px-2">${text('4em')}${text('3em')}</div></div>
+      </div>
+      <div data-ai-search-rail=""><div class="flex flex-col gap-3">${text('8em')}${text('4em')}</div></div>
+    </div></div>`;
   } else if (path === '/jav') {
     const tab = javTab(new URLSearchParams(location.search).get('tab'));
     body = javPageSkeleton(tab === 'library' ? 'discover' : tab);
@@ -106,7 +165,7 @@ export function boardPageSkeleton(
   } else if (isSettingsSectionPath(path) && path.split('/')[2]! in CONFIGURATION_SECTIONS) {
     body = configurationSkeleton(CONFIGURATION_SECTIONS[path.split('/')[2] as keyof typeof CONFIGURATION_SECTIONS]);
   } else if (path === '/tasks') {
-    body = `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${[t('manage:taskCenter.inProgress'), t('manage:taskCenter.skipped'), t('manage:taskCenter.recentlyCompleted')].map(title => `<section class="activitysection flex min-w-0 flex-col gap-3"><h3 class="text-title-2-medium text-text-primary">${title}</h3><div class="min-w-0 rounded-2xl shadow-card bg-background-secondary-default"><div class="flex flex-col gap-1.5 px-5 pt-5 pb-4"><span class="text-title-1-medium">${text('8em')}</span><span class="text-caption-1-regular">${text('14em')}</span>${text('60%')}${text('40%')}</div><div class="border-t border-separator-border px-5 py-2.5">${text('6em')}</div></div></section>`).join('')}</div></div>`;
+    body = `<div class="peach-react"><div class="mx-auto flex w-full max-w-board flex-col gap-8">${taskRunSectionsSkeleton()}</div></div>`;
   } else if (path === '/settings/maintenance/repairs') {
     body = repairCenterSkeleton();
   } else if (path === '/duplicates') {
@@ -114,7 +173,7 @@ export function boardPageSkeleton(
   } else if (path === '/quality-goals') {
     body = qualityGoalsSkeleton();
   } else if (path === '/playlists') {
-    body = `<div class="peach-react"><section class="w-full pt-1 pb-10.5"><header class="mb-4 flex items-start justify-between gap-4.5 max-board-narrow:flex-col max-board-narrow:items-stretch"><div><h2 class="mb-1 text-display-4-medium! text-text-primary">${t('catalog:shared.playlists')}</h2><p class="text-body-2-regular text-text-secondary">${t('catalog:playlistsPage.description')}</p></div><div class="flex flex-wrap items-end gap-2"><div class="min-w-50 max-w-80 flex-1 basis-50 max-board-narrow:min-w-0 max-board-narrow:max-w-none"><span class="text-body-medium">${t('catalog:playlistsPage.newPlaylistLabel')}</span><span class="skeleton ui-configuration-skeleton-input mt-1.5"></span></div>${islandButton({ label: t('catalog:playlistsPage.createButton'), attrs: WAITING })}</div></header><div class="mx-auto w-full max-w-board"><div class="ui-playlistcards card-grid-cover gap-4.5">${repeat(`<article class="playlistcard skeletoncard"><i></i><b></b><em></em></article>`, 6)}</div></div></section></div>`;
+    body = `<div class="peach-react"><section class="w-full pt-1 pb-10.5"><header class="mb-4 flex items-start justify-between gap-4.5 max-board-narrow:flex-col max-board-narrow:items-stretch"><div><h2 class="mb-1 text-display-4-medium! text-text-primary">${t('catalog:shared.playlists')}</h2><p class="text-body-2-regular text-text-secondary">${t('catalog:playlistsPage.description')}</p></div><div class="flex flex-wrap items-end gap-2"><div class="min-w-50 max-w-80 flex-1 basis-50 max-board-narrow:min-w-0 max-board-narrow:max-w-none"><span class="text-body-medium">${t('catalog:playlistsPage.newPlaylistLabel')}</span><span class="skeleton ui-configuration-skeleton-input mt-1.5"></span></div>${islandButton({ label: t('catalog:playlistsPage.createButton'), attrs: WAITING })}</div></header><div class="mx-auto w-full max-w-board"><div class="mb-4 flex"><div data-index-search class="ml-auto min-w-0 max-w-80 flex-1">${islandSearchInput('', '', t('catalog:playlistsPage.search'))}</div></div><div class="ui-playlistcards card-grid-cover gap-4.5">${repeat(`<article class="playlistcard skeletoncard"><i></i><b></b><em></em></article>`, 6)}</div></div></section></div>`;
   } else return '';
   return `<div class="board-page-skeleton" data-skeleton="board${path}" role="status" aria-label="${t('manage:manageSkeleton.loadingPage')}"><div aria-hidden="true" inert>${body}</div></div>`;
 }

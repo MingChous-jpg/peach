@@ -53,11 +53,7 @@ export interface TunnelState {
 export interface AccessSettingsProps {
   initial: AccessState;
   receipt(message: string): void;
-  /** 需要登录时紧跟在密码分区下面的设备列表；改密码后拿到新 `revision` 重新画。 */
-  devices?(state: AccessState): import('react').ReactNode;
-  /** 不论访问方式都跟在后面的分区（访问口令）；确认文案随当前访问方式变。 */
-  after?(state: AccessState): import('react').ReactNode;
-  /** 保存成功后报新的访问状态：远程访问卡按它判断能不能开。 */
+  /** 保存后更新设备、访问口令和远程访问分区。 */
   onSaved?(state: AccessState): void;
 }
 
@@ -462,11 +458,9 @@ export interface ConfigurationPanel {
   active: boolean;
 }
 
-/** Peach 配置的分组：媒体库与入库、来源与订阅、下载渠道、网络与访问、应用与维护。
- *  `panel` 只在配置页里给，单独挂一组时没有。 */
+/** Peach 配置的分组共享配置快照和操作回执。 */
 export interface ConfigurationGroupProps extends Pick<ConfigurationProps, 'receipt'> {
   data: ConfigurationData;
-  panel?: ConfigurationPanel;
   issues?: import('react').ReactNode;
 }
 

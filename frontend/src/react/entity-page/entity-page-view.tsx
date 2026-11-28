@@ -21,6 +21,7 @@ import { EmptyState } from '../components/empty-state';
 import { runBulkAction } from '../components/bulk-action';
 import { deleteProfilesAction } from '../index/roster-actions';
 import { RetryNote } from '../components/grid-reveal';
+import { Note } from '../components/note';
 import { spriteGlyph } from '../components/sprite-glyph';
 import type { EntityBodyActions, EntityPhotos, EntityRoster } from '../entity-body/entity-body';
 import { EntityBodyPage } from '../entity-body/entity-body-page';
@@ -185,6 +186,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
   /* ── 照片墙 ── */
   const [seeds, setSeeds] = useState<Record<number, string>>({});
   const wallSet = mediaNow.set;
+  const [shuffleFailure, setShuffleFailure] = useState<{ set: number; message: string } | null>(null);
   const wallSeed = seeds[wallSet] || '';
   const wall = useInfiniteQuery({ ...photosOptions(kind, name, wallSet, wallSeed), enabled: view === 'photos' });
   const wallPage = wall.data?.pages[0];
@@ -396,6 +398,7 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
     },
     setState: (value) => actions.route({ ...filters, state: value }, EMPTY_MEDIA),
     toggleTag: actions.toggleTag,
+    setQuery: (q) => actions.route({ ...filters, q }, EMPTY_MEDIA),
     clearFilter: actions.clearFilter,
     clearAll: actions.clearAll,
     setSort: actions.setSort,
@@ -409,10 +412,16 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
         await queryClient.fetchQuery(next).catch(() => null);
         return;
       }
+      setShuffleFailure(null);
       const seed = newSeed();
-      const next = await queryClient.fetchInfiniteQuery(photosOptions(kind, name, wallSet, seed)).catch(() => null);
-      if (!alive.current || !next?.pages[0] || next.pages[0].error) return;
-      setSeeds((current) => ({ ...current, [wallSet]: seed }));
+      try {
+        const next = await queryClient.fetchInfiniteQuery(photosOptions(kind, name, wallSet, seed));
+        const page = next.pages[0];
+        if (!page || page.error) throw new Error(page?.error || t('catalog:entityPage.shufflePhotosFailed'));
+        if (alive.current) setSeeds((current) => ({ ...current, [wallSet]: seed }));
+      } catch (error) {
+        if (alive.current) setShuffleFailure({ set: wallSet, message: errorMessage(error) });
+      }
     },
     setJavLayout: actions.setJavLayout,
     setPhotoLayout: actions.setPhotoLayout,
@@ -452,11 +461,11 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
   } : null;
   /* 名下一部作品都没有（或筛完一部不剩）时正文是空态，下排那排排序键与换一批没有东西可排，不出。 */
   const combo = helpers.comboItems(filters);
-  const filtered = combo.length > 0 || !!filters.state;
+  const filtered = combo.length > 0 || !!filters.state || !!filters.q;
   const worksEmpty = view === 'videos' && !!items.data && !(items.data.items || []).length;
   const showAll = () => actions.route(
     // 键名与壳的 `clearAll` 同一组，外加观看状态。
-    { ...filters, state: '', tag: '', creator: '', studio: '', owner: '' }, EMPTY_MEDIA);
+    { ...filters, state: '', tag: '', creator: '', studio: '', owner: '', q: '' }, EMPTY_MEDIA);
   let readout = '';
   let busy = false;
   if (view === 'people') readout = `${kind === 'studio' ? t('catalog:shared.labels') : t('catalog:shared.performers')} · ${roster.length.toLocaleString()}`;
@@ -501,12 +510,18 @@ function EntityLoaded(props: EntityPageProps & { entity: EntityPageData }) {
         saved={() => helpers.receipt(t('catalog:seedName.saved'))} /> : null}
       {createPortal(
         <EntityFilterPage kind={kind} name={name} view={view} views={views} state={filters.state || ''}
-          states={props.states} tags={tags} combo={combo} readout={readout} busy={busy}
+          states={props.states} query={filters.q || ''} tags={tags} combo={combo} readout={readout} busy={busy}
           video={worksEmpty ? null : video} photo={photo} online={view === 'online' ? online.head : null} actions={filterActions}
           helpers={filterHelpers} />,
         hosts.filter)}
       {createPortal(
-        <EntityFolderWorkspace enabled={view === 'videos'}>{view === 'online'
+        <EntityFolderWorkspace enabled={view === 'videos'}>
+          {view === 'photos' && shuffleFailure?.set === wallSet
+            ? <Note tone="error" title={<span data-copy-key="catalog.entityPage.shufflePhotosFailure">{t('catalog:entityPage.shufflePhotosFailure')}</span>}
+              action={<Button size="small" variant="secondary" onClick={() => { void filterActions.reshuffle() }}>{t('catalog:shared.retryNow')}</Button>}>
+              {shuffleFailure.message}
+            </Note> : null}
+          {view === 'online'
           ? <EntityOnline view={online.view} media={online.media} result={online.result}
             data={online.data} visible={online.visible} context={online.context} photoSize={props.photoSize}
             photoLayout={props.photoLayout} imagesOnly={props.followImagesOnly} helpers={props.follow.helpers}

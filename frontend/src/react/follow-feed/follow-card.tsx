@@ -12,7 +12,9 @@
  * 一叠（`isMix`）悬停时逐张翻过组里彼此不同的画面，时序与门槛同 Mix 卡（`../components/use-stack-flip.ts`）。
  * 翻的是卡片渲染时就在手上的缩略图，悬停不为动画再发请求；第一张是静止封面本身。 */
 import { memo, useCallback, useEffect, useRef, useState, type ComponentPropsWithoutRef, type MouseEvent } from 'react';
+import { hasSelectionModifier } from '../../selection';
 import { esc, fmtDur, icon, entityPath } from '@peach/legacy/core';
+import { spinnerHtml } from '@peach/legacy/ui';
 import { tagLabel } from '@peach/legacy/tags';
 import { CardDate, CardTags, WhoLabel } from '../components/card-meta';
 import { RecommendationReason } from '../components/recommendation-reason';
@@ -170,7 +172,7 @@ function FollowCardView(props: FollowCardProps) {
     const target = event.target as HTMLElement;
     /* 标签在这张卡上只是读的，点它什么都不做，多选里也不算点了这张卡。 */
     if (target.closest('[data-media-tag]')) return;
-    if (actions.toggleSelection && (selectMode || event.shiftKey || event.ctrlKey || event.metaKey)) {
+    if (actions.toggleSelection && (selectMode || hasSelectionModifier(event))) {
       event.preventDefault();
       actions.toggleSelection(item.id, event.shiftKey);
       return;
@@ -187,7 +189,8 @@ function FollowCardView(props: FollowCardProps) {
       onMouseEnter={flip.onPointerEnter} onMouseLeave={flip.onPointerLeave}>
       {menu.menu}
       <div data-follow-visual="" data-mix-stack={stack.isMix ? '' : undefined}>
-        <button type="button" data-follow-open="" aria-label={t('follow:followCard.openDetails', { title })} />
+        <button type="button" data-follow-open="" aria-pressed={selectMode ? selected : undefined}
+          aria-label={selectMode ? t('shell:mediaCard.selectNamed', { name: title }) : t('follow:followCard.openDetails', { title })} />
         <div data-media-pic="">
           {thumbUrl
             ? <Thumb key={thumbUrl} src={thumbUrl} fallback={imageFallback} width={sized?.width} height={sized?.height}
@@ -224,24 +227,24 @@ function FollowCardView(props: FollowCardProps) {
             {props.variant !== 'next' ? <div data-follow-actions="">
               <button type="button" data-follow-save={item.id} title={saved ? t('follow:shared.saved') : t('follow:followDetail.saveToDatabase')}
                 aria-label={saved ? t('follow:shared.saved') : t('follow:followDetail.saveToDatabase')} disabled={saved}
-                aria-busy={busy === 'save' || undefined} aria-disabled={busy === 'save' || undefined}
+                aria-busy={busy === 'save' || undefined} aria-disabled={Boolean(busy) || undefined}
                 onClick={(event) => act(event, () => props.onSave?.(item.id))}
-                dangerouslySetInnerHTML={{ __html: icon(saved ? 'check' : 'bookmark-plus') }} />
+                dangerouslySetInnerHTML={{ __html: busy === 'save' ? spinnerHtml() : icon(saved ? 'check' : 'bookmark-plus') }} />
               <button type="button" data-follow-status={item.id} data-to="seen" title={t('follow:followDetail.markSeen')} aria-label={t('follow:followDetail.markSeen')}
                 disabled={item.status === 'seen'} aria-busy={busy === 'seen' || undefined}
-                aria-disabled={busy === 'seen' || undefined}
+                aria-disabled={Boolean(busy) || undefined}
                 onClick={(event) => act(event, () => props.onStatus?.(item.id, 'seen'))}
-                dangerouslySetInnerHTML={{ __html: icon('eye') }} />
+                dangerouslySetInnerHTML={{ __html: busy === 'seen' ? spinnerHtml() : icon('eye') }} />
               <button type="button" data-follow-status={item.id} data-to="ignored" title={t('follow:shared.ignore')} aria-label={t('follow:shared.ignore')}
                 disabled={item.status === 'ignored'} aria-busy={busy === 'ignored' || undefined}
-                aria-disabled={busy === 'ignored' || undefined}
+                aria-disabled={Boolean(busy) || undefined}
                 onClick={(event) => act(event, () => props.onStatus?.(item.id, 'ignored'))}
-                dangerouslySetInnerHTML={{ __html: icon('eye-off') }} />
+                dangerouslySetInnerHTML={{ __html: busy === 'ignored' ? spinnerHtml() : icon('eye-off') }} />
               {item.status === 'seen' || item.status === 'ignored' ? (
                 <button type="button" data-follow-status={item.id} data-to="new" title={t('follow:followDetail.markUnseen')} aria-label={t('follow:followDetail.markUnseen')}
-                  aria-busy={busy === 'new' || undefined} aria-disabled={busy === 'new' || undefined}
+                  aria-busy={busy === 'new' || undefined} aria-disabled={Boolean(busy) || undefined}
                   onClick={(event) => act(event, () => props.onStatus?.(item.id, 'new'))}
-                  dangerouslySetInnerHTML={{ __html: icon('rotate-ccw') }} />
+                  dangerouslySetInnerHTML={{ __html: busy === 'new' ? spinnerHtml() : icon('rotate-ccw') }} />
               ) : null}
             </div> : null}
           </div> : null}
@@ -260,7 +263,7 @@ function FollowCardView(props: FollowCardProps) {
               标签只读（卡上不筛选），另外记下来源类型。 */}
           <div data-media-byline="" data-follow-byline="">
             {identity.entityName ? (
-              <FollowAuthorLink name={identity.entityName} actions={actions} data-media-who="" data-follow-author="" title={identity.author}>
+              <FollowAuthorLink name={identity.entityName} actions={actions} data-media-who="" data-follow-author="" data-inline-action="" title={identity.author}>
                 <WhoLabel name={identity.author} />
               </FollowAuthorLink>
             ) : <span data-media-who="" data-follow-author="" title={identity.author}><WhoLabel name={identity.author} /></span>}

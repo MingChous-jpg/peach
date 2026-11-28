@@ -2,10 +2,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { RiSearchLine } from '@remixicon/react';
 import { spinnerHtml } from '@peach/legacy/ui';
-import { Button } from '@/components/base/buttons/button';
+import { Button, ButtonLink } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
 import { Select, SelectItem } from '@/components/base/select/select';
-import { apiGet } from '../../api';
+import { apiGet, errorMessage } from '../../api';
 import { ErrorText, FieldLabel, Help } from '../settings/section';
 import { useAction } from '../settings/use-action';
 import { coverUrl } from '@peach/card-art';
@@ -13,19 +13,51 @@ import type { MediaPage } from '../catalog-grid/types';
 import type { DownloadPrefill } from './cloud-download-dialog';
 import { sameWorkCode } from './work-code';
 import { composingKey } from '../components/ime';
-import { codedText, serverLabelList } from '../../core/server-text';
+import { useDatalistSuggest } from '../search/datalist-suggest';
+import { librarySuggest } from '../search/library-suggest';
+
+const CODE_SUGGEST = librarySuggest(['asset']);
+import { codedText } from '../../core/server-text';
 import { joinList, t } from '../../i18n';
 import { ScrapeSourceLabel } from '../components/source-label';
 import { resourceSourceKey } from '../wants/resource-display';
+import { ResourceWarningNotes, type ResourceWarnings } from '../wants/resource-warning-notes';
+import { Note } from '../components/note';
 
 interface Candidate {
   id: string; uri: string; name: string; size: number; seeders: number; origins: string[];
   resolution: number; codec: string; chinese: boolean; uncensored: boolean;
 }
 /** 搜索结果：`error`、`warnings` 是 zh-CN 原句，旁边的 code 与参数给当前语言。 */
-interface Result {
+interface Result extends ResourceWarnings {
   state: string; items: Candidate[]; error: string; error_code?: string; error_params?: Record<string, unknown>;
-  warnings: string[]; warning_codes?: (string | null)[]; warning_params?: (Record<string, unknown> | null)[];
+  source_failures?: string[];
+}
+
+function mergeSourceRetry(previous: Result, next: Result, source: string): Result {
+  const items = new Map(previous.items.map(item => [item.id, item]));
+  for (const item of next.items) {
+    const prior = items.get(item.id);
+    items.set(item.id, prior ? { ...prior, seeders: Math.max(prior.seeders, item.seeders),
+      origins: [...new Set([...prior.origins, ...item.origins])] } : item);
+  }
+  const warnings = [
+    ...(previous.warnings ?? []).flatMap((text, index) => previous.warning_sources?.[index] === source
+      ? [] : [{ result: previous, text, index }]),
+    ...(next.warnings ?? []).map((text, index) => ({ result: next, text, index })),
+  ];
+  const ready = previous.state === 'ready' || next.state === 'ready';
+  const retrySources = [...(previous.retry_sources ?? []).filter(key => key !== source), ...(next.retry_sources ?? [])];
+  return {
+    ...next, state: ready ? 'ready' : next.state, error: ready ? '' : next.error,
+    items: [...items.values()],
+    warnings: warnings.map(({ text }) => text),
+    warning_sources: warnings.map(({ result, index }) => result.warning_sources?.[index] ?? ''),
+    warning_codes: warnings.map(({ result, index }) => result.warning_codes?.[index] ?? null),
+    warning_params: warnings.map(({ result, index }) => result.warning_params?.[index] ?? null),
+    connection_checks: [...(previous.connection_checks ?? []).filter(key => key !== source), ...(next.connection_checks ?? [])],
+    retry_sources: retrySources,
+  };
 }
 
 function SearchSpinner({ className }: { className?: string }) {
@@ -42,9 +74,11 @@ function preferredGoal(reason: string | undefined): string {
 
 export function ResourceSearch({ initialCode, reason, choose, onSearch, onWork }: {
   initialCode: string; reason?: string; choose(uri: string, code: string): void;
-  onSearch?(code: string): void; onWork?(work: DownloadPrefill | null): void;
+  onSearch?(code: string): void; onWork?(work: DownloadPrefill | null, error?: string): void;
 }) {
   const [code, setCode] = useState(initialCode);
+  // 敲番号时给馆藏里已有的作品候选：补高清、补字幕多半是找库里已有的那一部。
+  const suggestions = useDatalistSuggest('resource-code', code, CODE_SUGGEST);
   const [goal, setGoal] = useState(() => preferredGoal(reason));
   const [min, setMin] = useState('');
   const [max, setMax] = useState('');
@@ -53,12 +87,14 @@ export function ResourceSearch({ initialCode, reason, choose, onSearch, onWork }
   const [selected, setSelected] = useState('');
   const action = useAction();
   const metadataRequest = useRef<AbortController | null>(null);
+  const lastQuery = useRef('');
   useEffect(() => () => metadataRequest.current?.abort(), []);
   const search = () => {
     if (!code.trim() || action.busy) return;
     const query = new URLSearchParams({ code: code.trim(), goal });
     if (min) query.set('min_size', String(Math.round(Number(min) * 1024 ** 3)));
     if (max) query.set('max_size', String(Math.round(Number(max) * 1024 ** 3)));
+    lastQuery.current = query.toString();
     setResult(null);
     setSelected('');
     const requested = code.trim();
@@ -77,17 +113,35 @@ export function ResourceSearch({ initialCode, reason, choose, onSearch, onWork }
         onWork(item ? { code: item.code, title: String(item.catalog_title || item.name || ''), performers: item.performers ? joinList(item.performers) : undefined,
           release_date: String(item.release_date || ''), duration: item.duration, studio: item.studio,
           cover: item.has_cover ? coverUrl(item, true) : '', origin: `asset:${item.id}` } : null);
-      }, () => { if (!controller.signal.aborted) onWork(null) });
+      }, error => { if (!controller.signal.aborted) onWork(null, errorMessage(error)) });
     }
   };
+  const retrySource = (source: string) => {
+    const query = new URLSearchParams(lastQuery.current);
+    query.set('retry_source', source);
+    void action.run(source, (signal) => apiGet<Result>(`/api/resources/search?${query}`, signal), next => {
+      if (next.state === 'busy') {
+        action.setError(codedText(next, 'error'));
+        return;
+      }
+      setResult(previous => previous ? mergeSourceRetry(previous, next, source) : next);
+    });
+  };
   return (
-    <section aria-label={t('manage:resourceSearch.searchTorrents')} aria-busy={Boolean(action.busy)} className="flex min-w-0 flex-col gap-4">
+    <form aria-label={t('manage:resourceSearch.searchTorrents')} aria-busy={Boolean(action.busy)}
+      className="flex min-w-0 flex-col gap-4" onSubmit={event => { event.preventDefault(); search() }}
+      onKeyDown={event => {
+        if (event.key === 'Enter' && !event.defaultPrevented && event.target instanceof HTMLInputElement &&
+            !composingKey(event.nativeEvent)) {
+          event.preventDefault();
+          event.currentTarget.requestSubmit();
+        }
+      }}>
       {reason ? <Help>{t('manage:resourceSearch.goal', { reason })}</Help> : null}
       <Input label={t('manage:resourceSearch.byCode')} value={code} maxLength={80} placeholder={t('manage:resourceSearch.placeholder')} enterKeyHint="search"
-        leadingIcon={action.busy ? SearchSpinner : RiSearchLine}
-        isReadOnly={Boolean(action.busy)} aria-busy={Boolean(action.busy)} onChange={setCode} onKeyDown={(event) => {
-          if (event.key === 'Enter' && !composingKey(event.nativeEvent)) { event.preventDefault(); search() }
-        }} />
+        leadingIcon={action.busy ? SearchSpinner : RiSearchLine} ref={suggestions.bind}
+        isReadOnly={Boolean(action.busy)} aria-busy={Boolean(action.busy)} onChange={setCode} />
+      {suggestions.list}
       <div className="flex flex-col gap-1">
         <FieldLabel>{t('manage:resourceSearch.prefer')}</FieldLabel>
         <Select aria-label={t('manage:resourceSearch.prefer')} selectedKey={goal} isDisabled={Boolean(action.busy)}
@@ -100,12 +154,18 @@ export function ResourceSearch({ initialCode, reason, choose, onSearch, onWork }
         <Input label={t('manage:resourceSearch.minSize')} inputMode="decimal" value={min} onChange={setMin} />
         <Input label={t('manage:resourceSearch.maxSize')} inputMode="decimal" value={max} onChange={setMax} />
       </div>
-      {action.busy ? <Help role="status">{t('manage:resourceSearch.searching')}</Help> : null}
+      {action.busy === 'search' ? <Help role="status">{t('manage:resourceSearch.searching')}</Help> : null}
       {action.error ? <ErrorText>{action.error}</ErrorText> : null}
-      {result?.error ? <Help role="status">{codedText(result, 'error')}</Help> : null}
-      {result?.state === 'ready' && !result.items.length ? <Help role="status">{t('manage:resourceSearch.noResults')}</Help> : null}
-      {result ? serverLabelList(result.warnings, result.warning_codes, result.warning_params)
-        .map((warning) => <Help key={warning}>{warning}</Help>) : null}
+      {result?.error ? <Note tone="error" action={result.error_code === 'labels.resourceSearch.noIndexer' ?
+        <ButtonLink variant="secondary" size="small" href="/settings/subscriptions#sources-indexers">
+          {t('manage:resourceSearch.openIndexers')}</ButtonLink> : undefined}>
+        {codedText(result, 'error')}
+      </Note> : null}
+      {result?.state === 'ready' && !result.items.length ? <Help role="status">
+        {result.source_failures?.length || result.retry_sources?.length
+          ? t('manage:resourceSearch.noResultsFromAvailable') : t('manage:resourceSearch.noResults')}
+      </Help> : null}
+      {result ? <ResourceWarningNotes result={result} onRetry={retrySource} busy={action.busy} /> : null}
       {result?.items.length ? <ul className="flex min-w-0 flex-col gap-4">
         {result.items.map((item) => <li key={item.id} className="flex min-w-0 flex-col gap-2 border-t border-separator-border pt-4">
           <p className="break-words text-body-2-medium text-text-primary">{item.name}</p>
@@ -118,6 +178,6 @@ export function ResourceSearch({ initialCode, reason, choose, onSearch, onWork }
           }}>{selected === item.id ? t('manage:resourceSearch.magnetFilled') : t('manage:resourceSearch.useTorrent')}</Button></div>
         </li>)}
       </ul> : null}
-    </section>
+    </form>
   );
 }

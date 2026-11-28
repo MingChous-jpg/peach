@@ -1,7 +1,7 @@
 """资源搜索的只读 Web 契约；下载仍由云下载写入口接收。"""
 from .coded_text import parallel
 from .javdb_public import public_cache_scope
-from .magnet_chain import HIGH_QUALITY, edition_rank, rank_candidates, search as direct_search
+from .magnet_chain import CHAIN, HIGH_QUALITY, edition_rank, rank_candidates, search as direct_search
 from .resource_search import Filters, Indexers, Search
 from .user_messages import UserValueError
 
@@ -10,7 +10,8 @@ _SEARCH = Search()
 
 def _merged_error(direct: dict, indexed: dict) -> dict:
     """两路都没给出结果时用后备索引器那一句报错，连同它的 code 一起交给界面；有结果时报错为空。"""
-    if direct["items"] or indexed.get("ok"):
+    if direct["items"] or indexed.get("state") == "ready" or (
+            indexed.get("state") == "unavailable" and direct.get("complete")):
         return {"error": ""}
     return {"error": indexed.get("error", ""),
             **{key: indexed[key] for key in ("error_code", "error_params") if key in indexed}}
@@ -18,6 +19,14 @@ def _merged_error(direct: dict, indexed: dict) -> dict:
 
 def auto_resource_search(contract, args) -> dict:
     return q_resource_search(contract, args, edition_preferences=contract.downloads.config.edition_preferences)
+
+
+def _retry_indexer(credentials, source: str, code: str, filters: Filters, excluded: set[str]) -> dict:
+    indexers = [row for row in Indexers(credentials).load()
+                if row["enabled"] and f"indexer:{row['key']}" == source]
+    if not indexers:
+        raise UserValueError("errors.resourceSearch.invalidRetrySource")
+    return _SEARCH.run(indexers, code, filters, sorted(excluded), retry=True)
 
 
 def q_resource_search(contract, args, *, edition_preferences: tuple[str, ...] = ()) -> dict:
@@ -39,12 +48,20 @@ def q_resource_search(contract, args, *, edition_preferences: tuple[str, ...] = 
     skip = list(map(str, raw_skip)) if isinstance(raw_skip, (list, tuple)) else []
     excluded = set(blocked) | set(skip)
     code = str(args.get("code") or "")
+    retry_source = str(args.get("retry_source") or "")
+    if retry_source.startswith("indexer:"):
+        return _retry_indexer(service.credentials, retry_source, code, filters, excluded)
+    if retry_source and retry_source not in {source.key for source in CHAIN[:4]}:
+        raise UserValueError("errors.resourceSearch.invalidRetrySource")
     with public_cache_scope(contract.cover_root.parent / 'jav-public'):
+        options = {"retry_source": retry_source} if retry_source else {}
         direct = direct_search(
             contract.follow_secrets_root, code, min_size=filters.min_size,
             max_size=filters.max_size, goal=filters.goal, stop_on_preferred=not skip,
-            edition_preferences=edition_preferences)
+            edition_preferences=edition_preferences, **options)
     direct["items"] = [row for row in direct["items"] if row["info_hash"] not in excluded]
+    if retry_source:
+        return direct
     # manko.fun 给出高清候选时按用户指定的优先级短路，不再消耗后备索引器请求。
     if not skip and not edition_preferences and direct["items"] and direct["items"][0]["source"] == "manko.fun" \
             and direct["items"][0]["resolution"] >= HIGH_QUALITY:
@@ -53,22 +70,36 @@ def q_resource_search(contract, args, *, edition_preferences: tuple[str, ...] = 
     if edition_preferences:
         options["priority"] = lambda row: edition_rank(row, code, edition_preferences)
     indexed = _SEARCH.run(Indexers(service.credentials).load(), code, filters, sorted(excluded), **options)
+    return _combine_search_results(direct, indexed, code, filters.goal, edition_preferences)
+
+
+def _combine_search_results(direct: dict, indexed: dict, code: str, goal: str,
+                            edition_preferences: tuple[str, ...]) -> dict:
     combined = list(direct["items"])
     for row in indexed.get("items", ()):
         combined.append({
             **row, "size_text": "", "files": "", "file_count": 0, "file_list": [],
             "promo_files": 0, "source_url": "", "watermark_check": "pending",
         })
-    warnings = direct["warnings"] + list(indexed.get("warnings") or ())
+    indexer_warnings = list(indexed.get("warnings") or ())
+    warnings = direct["warnings"] + indexer_warnings
+    indexer_state = indexed.get("state", "error")
+    ready = bool(direct["items"]) or indexer_state == "ready" or (
+        indexer_state == "unavailable" and direct.get("complete") is True)
     return {
         "ok": bool(direct["items"]) or indexed.get("ok", False),
-        "state": "ready" if direct["items"] or indexed.get("state") == "ready" else indexed.get("state", "error"),
-        "items": rank_candidates(combined, filters.goal, code=code, edition_preferences=edition_preferences),
+        "state": "ready" if ready else indexer_state,
+        "items": rank_candidates(combined, goal, code=code, edition_preferences=edition_preferences),
         "warnings": warnings, **parallel("warning", warnings),
+        "warning_sources": (direct.get("warning_sources") or [""] * len(direct["warnings"]))
+                           + (indexed.get("warning_sources") or [""] * len(indexer_warnings)),
+        "retry_sources": [*(direct.get("retry_sources") or ()), *(indexed.get("retry_sources") or ())],
         "trace": direct["trace"] + (["indexer fallback: queried"] if indexed.get("state") != "unavailable" else []),
         "next_sources": direct["next_sources"], "reference_only": direct["reference_only"],
         # 后备索引器答复了也补不上直连来源没查成的那部分：浏览器添加据此等来源恢复，不记成无资源。
         "unfetched_sources": list(direct.get("unfetched_sources") or ()),
+        "source_failures": [*(direct.get("source_failures") or ()), *(indexed.get("failures") or ())],
+        "connection_checks": list(direct.get("connection_checks") or ()),
         **_merged_error(direct, indexed),
         "retry_after": max((value for value in (direct.get('retry_after'), indexed.get('retry_after'))
                             if value is not None), default=None),

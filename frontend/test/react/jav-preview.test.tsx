@@ -6,7 +6,7 @@ import { javDetailKey, type JavDetail } from '../../src/react/jav-detail/jav-det
 import { queryClient } from '../../src/react/query';
 import { buttonNamed, click, fetchMock, mountRoot, sentBody, settle } from './render';
 
-const player = vi.hoisted(() => vi.fn((_video: HTMLVideoElement, _source: { src: string; type: string }, _failed: () => void) => vi.fn()));
+const player = vi.hoisted(() => vi.fn((_video: HTMLVideoElement, _source: { src: string; type: string }, _failed: (reason: string) => void) => vi.fn()));
 vi.mock('../../src/player', () => ({ mountPreviewPlayer: player }));
 notifyManager.setScheduler(notify => notify());
 afterEach(() => { queryClient.clear(); player.mockClear() });
@@ -45,15 +45,16 @@ it('预告失败时销毁播放器，重试重新挂载，切回图片清理实�
   try {
     await click(mounted.host.querySelector('[data-jav-preview-toggle]'));
     const first = player.mock.results[0]!.value;
-    await act(async () => player.mock.calls[0]![2]());
+    await act(async () => player.mock.calls[0]![2]('播放时未能从来源载入视频'));
     await settle();
     expect(first).toHaveBeenCalledOnce();
     expect(mounted.host.querySelector('[data-jav-video] video')).toBeNull();
-    const failure = mounted.host.querySelector('[data-jav-video] [role="note"]')!;
-    expect(failure.textContent).toContain('视频预览未取得');
+    const failure = mounted.host.querySelector('[data-jav-video] [role="alert"]')!;
+    expect(failure.textContent).toContain('播放时未能从来源载入视频');
+    expect(failure.textContent).toContain('视频预览加载失败');
     await click(buttonNamed('立即重试', failure));
     expect(player).toHaveBeenCalledTimes(2);
-    expect(mounted.host.querySelector('[data-jav-video] [role="note"]')).toBeNull();
+    expect(mounted.host.querySelector('[data-jav-video] [role="alert"]')).toBeNull();
     const second = player.mock.results[1]!.value;
     await click(mounted.host.querySelector('[data-jav-preview-toggle]'));
     expect(second).toHaveBeenCalledOnce();
@@ -73,7 +74,7 @@ it('没有封面时舞台里给说明与立即重试，取到后换成本机封�
   const { fetcher, host } = await mountMissingCover({ ok: true, has_cover: true, cover_version: 'v7', message: '' });
   try {
     const gap = host.querySelector('[data-jav-picture-gap]');
-    expect(gap?.querySelector('strong')?.textContent).toBe('封面未取得');
+    expect(gap?.querySelector('strong')?.textContent).toBe('封面无法显示');
     // 舞台恒为黑底，不套空态卡片。
     expect(gap?.querySelector('[data-empty-state]')).toBeNull();
     await click(buttonNamed('立即重试', gap!));
@@ -109,24 +110,24 @@ it('没有封面而有样张时仍停在封面那格，写出取图记录的原�
   const { host, unmount } = await mountDetail({ ...missingCover, preview_count: 2,
     cover_message: '所有渠道都没有候选', cover_message_code: 'errors.javCoverFetch.noCandidates', cover_message_params: {} });
   try {
-    expect(host.querySelector('[data-jav-picture-gap] p')?.textContent).toBe('所有渠道都没有候选');
+    expect(host.querySelector('[data-jav-picture-gap] p')?.textContent).toBe('没有找到可用的封面');
     const gap = host.querySelector('[data-thumbnail-gap]');
-    expect(gap?.getAttribute('aria-label')).toBe('封面未取得');
+    expect(gap?.getAttribute('aria-label')).toBe('封面无法显示');
     expect(gap?.textContent).toBe('');
   } finally { await unmount(); vi.unstubAllGlobals() }
 });
 
-it('预告没取到时在预告的位置说明，点它重取整页资料', async () => {
-  const { fetcher, host, unmount } = await mountDetail({ ...missingCover, has_cover: true, preview_message: 'DMM 视频预览未取得，请稍后重试' },
+it('预告没取到时在预告的位置说明，点它单独重取预告', async () => {
+  const { fetcher, host, unmount } = await mountDetail({ ...missingCover, has_cover: true, preview_message: 'DMM 视频预览查询失败，请稍后重试' },
     { ...missingCover, has_cover: true });
   try {
     expect(host.querySelector('[data-jav-info] [role="note"]')).toBeNull();
     const tag = host.querySelector('[data-jav-preview-toggle][data-unavailable]')!;
-    expect(tag.textContent).toBe('视频预览未取得');
-    expect(tag.getAttribute('title')).toBe('DMM 视频预览未取得，请稍后重试');
+    expect(tag.textContent).toBe('视频预览加载失败');
+    expect(tag.getAttribute('title')).toBe('DMM 视频预览查询失败，请稍后重试');
     await click(tag);
     await settle();
-    expect(String(fetcher.mock.calls[0]?.[0])).toBe('/api/jav/detail?code=EXM-002&refresh=1');
+    expect(String(fetcher.mock.calls[0]?.[0])).toBe('/api/jav/detail?code=EXM-002&part=preview&refresh=1');
   } finally { await unmount(); vi.unstubAllGlobals() }
 });
 
@@ -137,7 +138,7 @@ it('整页详情没取到时居中给空态，不是红色横条', async () => {
   try {
     await settle();
     const empty = mounted.host.querySelector('[data-jav-failure] [data-empty-state]');
-    expect(empty?.querySelector('h3')?.textContent).toBe('详情未取得');
+    expect(empty?.querySelector('h3')?.textContent).toBe('详情加载失败');
     expect(empty?.textContent).toContain('EXM-003');
     expect(mounted.host.querySelector('[data-jav-failure] [data-media-error]')).toBeNull();
   } finally { await mounted.unmount(); vi.unstubAllGlobals() }

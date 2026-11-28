@@ -2,6 +2,8 @@
 import json
 import hashlib
 import logging
+from datetime import datetime
+from pathlib import Path
 
 from . import interface_text, settings_file
 from .library_processing_scope import directory_choices, directory_config, scoped_config, scoped_assets
@@ -176,9 +178,7 @@ def q_library_processing(contract, _args):
         state.update(status='stopping', eta_seconds_min=None, eta_seconds_max=None)
     if recovery.get('status') == 'cancelled' and recovery.get('job_id') == state.get('job_id'):
         state.update(status='cancelled', outcome='cancelled', error='')
-    state['retryable_asset_ids'] = _remaining_retry_ids(contract, state)
-    if _issues_all_removed(contract, state):
-        state['archived'] = True
+    _project_pending_issues(contract, state)
     from .library_new_assets import pending
     state['new_asset_count'] = len(pending(contract.db_path))
     if state.get('status') not in ACTIVE and recovery.get('status') == 'blocked':
@@ -335,6 +335,14 @@ def _writer_active(config):
         return True
 
 
+def _legacy_issue_rows(config, job_id):
+    from .library_processing import state_path
+    saved = json.loads(state_path(config).read_text(encoding='utf-8'))
+    if str(saved.get('job_id') or '') != job_id:
+        return []
+    return saved.get('issues', [])
+
+
 def q_library_processing_issues(contract, args):
     state = _current(contract)
     job_id = str(args.get('job_id') or '')
@@ -347,9 +355,7 @@ def q_library_processing_issues(contract, args):
     else:
         rows = []
         if state.get('issue_count'):
-            from .library_processing import state_path
-            saved = json.loads(state_path(settings_file.active()).read_text(encoding='utf-8'))
-            rows = saved.get('issues', [])
+            rows = _legacy_issue_rows(settings_file.active(), job_id)
             if not rows:
                 raise UserValueError('api.libraryProcessing.issuesUnavailable')
         raw = json.dumps(rows, ensure_ascii=False)
@@ -362,78 +368,129 @@ def q_library_processing_issues(contract, args):
             'rows': rows[offset:offset + limit]}
 
 
-def _remaining_retry_ids(contract, previous):
-    ids = list(previous.get('retryable_asset_ids') or [])
-    if not ids:
-        return []
-    remaining = set()
-    with contract.database.read_connection() as connection:
-        for offset in range(0, len(ids), 900):
-            batch = ids[offset:offset+900]
-            remaining.update(row[0] for row in connection.execute(
-                'SELECT id FROM asset WHERE disposal IS NULL AND id IN ('+','.join('?'*len(batch))+')',batch))
-    return [value for value in ids if value in remaining]
-
-
-#: 问题日志 → (mtime_ns, 大小, 问题项的影片 id 或 None)。轮询每 10 秒一次，日志没变就不重读。
-_ISSUE_ASSETS: dict = {}
-
-
-def _issue_assets(path):
-    """问题日志里每一条问题项（告知项不算）对应的影片；有一条不带影片就是 None。"""
-    try:
-        info = path.stat()
-    except OSError:
-        return None
-    cached = _ISSUE_ASSETS.get(str(path))
-    if cached is not None and cached[:2] == (info.st_mtime_ns, info.st_size):
-        return cached[2]
-    from .library_processing import _note_key
-    ids = set()
-    try:
-        with path.open(encoding='utf-8') as handle:
-            for line in handle:
-                if not line.strip():
-                    continue
-                item = json.loads(line)
-                if _note_key(item):
-                    continue
-                asset_id = item.get('asset_id')
-                if isinstance(asset_id, bool) or not isinstance(asset_id, int):
-                    ids = None
-                    break
-                ids.add(asset_id)
-    except (OSError, ValueError, AttributeError):
-        ids = None
-    _ISSUE_ASSETS.clear()
-    _ISSUE_ASSETS[str(path)] = (info.st_mtime_ns, info.st_size, ids)
-    return ids
-
-
-def _issues_all_removed(contract, state):
-    """跑完、留有问题的那一趟，问题影片都已不在馆藏（删掉、进回收站或标「已消失」）时为真。
-
-    资源同步清掉失效条目后，那一趟的红框和悬浮提示就不该再要人处理：读状态时现算，
-    不改状态文件，问题日志原样留着；条目从回收站还原了，提示也跟着回来。来源离线时
-    账本不动，这里不会把「盘没挂上」当成「文件删了」。有一条问题不对应影片（准备工具失败、
-    预算到顶的汇总）就不算。"""
-    if (state.get('archived') or state.get('status') != 'failed' or state.get('outcome') != 'partial'
-            or not state.get('issue_count') or not state.get('job_id')):
-        return False
-    from pathlib import Path
-    path = Path(state['issues_log']) if state.get('issues_log') else issues_path(
-        settings_file.active(), str(state['job_id']))
-    ids = _issue_assets(path)
-    if not ids:
-        return False
+def _active_issue_assets(contract, ids):
+    active = {}
     ids = sorted(ids)
     with contract.database.read_connection() as connection:
         for offset in range(0, len(ids), 900):
-            batch = ids[offset:offset + 900]
-            if connection.execute('SELECT 1 FROM asset WHERE disposal IS NULL AND id IN ('
-                                  + ','.join('?' * len(batch)) + ') LIMIT 1', batch).fetchone():
-                return False
-    return True
+            batch = ids[offset:offset+900]
+            active.update((asset_id, (path, seen)) for asset_id, path, seen in connection.execute(
+                'SELECT id,path,last_seen FROM asset WHERE disposal IS NULL AND id IN ('
+                + ','.join('?' * len(batch)) + ')', batch))
+    return active
+
+
+def _remaining_retry_ids(contract, previous):
+    ids = list(previous.get('retryable_asset_ids') or [])
+    active = _active_issue_assets(contract, ids) if ids else {}
+    return [value for value in ids if value in active]
+
+
+#: 终态日志的待处理投影只需要 issue_preview 的字段与恢复判据。
+_ISSUE_PREVIEW = ('asset_id', 'title', 'path', 'message', 'message_code', 'message_params', 'severity')
+_ISSUE_LOG_FIELDS = (*_ISSUE_PREVIEW, 'retryable', 'last_failed_at')
+_ISSUE_LOG: dict = {}
+_ROOT_ISSUES = frozenset({'errors.libraryProcessing.sourceRootOffline', 'errors.libraryProcessing.sourceRootUnreadable'})
+
+
+def _issue_rows(path):
+    from .library_processing import _note_key
+    try:
+        info = path.stat()
+        key = (str(path), info.st_mtime_ns, info.st_size)
+        if (cached := _ISSUE_LOG.get(key)) is not None:
+            return cached
+        with path.open(encoding='utf-8') as handle:
+            rows = [{key: item[key] for key in _ISSUE_LOG_FIELDS if key in item}
+                    for item in (json.loads(line) for line in handle if line.strip())
+                    if not _note_key(item)]
+    except (OSError, ValueError, AttributeError, TypeError):
+        return None
+    _ISSUE_LOG.clear()
+    _ISSUE_LOG[key] = rows
+    return rows
+
+
+def _media_seen_again(issue, asset, state):
+    from .library_diagnostics import _local_access
+    if not _local_access(issue):
+        return False
+    path, seen = asset
+    # 路径只在登记新文件、改名或移动成功后改变。原路径回来则用更新过的扫描水位。
+    if path and issue.get('path') and issue['path'] != path:
+        return True
+    failed = issue.get('last_failed_at') or state.get('completed_at')
+    if not seen or type(failed) not in (int, float):
+        return False
+    try:
+        return datetime.fromisoformat(seen).timestamp() > failed
+    except (ValueError, OverflowError, OSError):
+        return False
+
+
+def _reachable_sources(contract, rows):
+    monitor = getattr(contract, 'mount_reachability', None)
+    if monitor is None or not any(row.get('message_code') in _ROOT_ISSUES for row in rows):
+        return {}
+    # 旧日志只写来源名。该来源所有登记根都有新的成功快照，才能确认是原来失败的根恢复了。
+    return {row['location']: row['checked_at'] for row in monitor.sources()
+            if row['state'] == 'ok' and row['checked_at'] is not None}
+
+
+def _resolved_issue(row, active, reachable, state):
+    asset_id = row.get('asset_id')
+    if type(asset_id) is int:
+        return asset_id not in active or _media_seen_again(row, active[asset_id], state)
+    if row.get('message_code') in _ROOT_ISSUES:
+        params = row.get('message_params')
+        source = params.get('source') if isinstance(params, dict) else None
+        failed = row.get('last_failed_at') or state.get('completed_at')
+        return (not state.get('directory') and isinstance(source, str)
+                and type(failed) in (int, float) and reachable.get(source, 0) > failed)
+    return False
+
+
+def _pending_issue_rows(contract, state):
+    if (state.get('status') != 'failed' or state.get('outcome') != 'partial'
+            or not state.get('issue_count') or not state.get('job_id')):
+        return None
+    config = settings_file.active()
+    job_id = str(state['job_id'])
+    path = Path(state['issues_log']) if state.get('issues_log') else issues_path(config, job_id)
+    rows = _issue_rows(path)
+    if rows is None and not path.exists():
+        from .library_processing import _note_key
+        try:
+            rows = [row for row in _legacy_issue_rows(config, job_id) if not _note_key(row)]
+        except (OSError, ValueError, AttributeError, TypeError):
+            return None
+    if rows is None or len(rows) != state['issue_count']:
+        return None
+    active = _active_issue_assets(contract, {row['asset_id'] for row in rows if type(row.get('asset_id')) is int})
+    reachable = _reachable_sources(contract, rows)
+    return [row for row in rows if not _resolved_issue(row, active, reachable, state)]
+
+
+def _project_pending_issues(contract, state):
+    """更新待处理提示，原任务的结果和问题日志供历史与导出继续读取。"""
+    pending = _pending_issue_rows(contract, state)
+    if pending is None:
+        state['retryable_asset_ids'] = _remaining_retry_ids(contract, state)
+        return
+    if len(pending) == state['issue_count']:
+        return
+    from .library_processing import ISSUE_PREVIEW_LIMIT, _error_fields, issue_summary
+    retry_ids = {row.get('asset_id') for row in pending if row.get('retryable', True)}
+    paused = sum(row.get('severity') == 'paused' for row in pending)
+    state.update(
+        issue_count=len(pending), paused_count=paused, issues_truncated=len(pending) > ISSUE_PREVIEW_LIMIT,
+        issue_preview=[{key: row[key] for key in _ISSUE_PREVIEW if key in row}
+                       for row in pending[:ISSUE_PREVIEW_LIMIT]],
+        retryable_asset_ids=[value for value in state.get('retryable_asset_ids', []) if value in retry_ids],
+        **_error_fields(issue_summary(len(pending), paused)),
+    )
+    if not pending:
+        state['archived'] = True
 
 
 def _retry_ids(previous, body):
@@ -628,7 +685,7 @@ def w_library_processing(contract, body, *, resume=False):
     if previous.get('status') in ACTIVE and not resume:
         return public_state(previous)
     if (body or {}).get('retry') is not None:
-        previous['retryable_asset_ids'] = _remaining_retry_ids(contract, previous)
+        _project_pending_issues(contract, previous)
     config, library_id, retry_ids, asset_ids, stage = _scoped_processing_request(
         contract, config, previous, body, resume)
     incremental = (body or {}).get('incremental', False)

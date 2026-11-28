@@ -7,12 +7,40 @@ import { fmtSize } from '@peach/legacy/core';
 import { requestErrorMessage } from '../../core/request-error';
 import { codedText, partsLabel, partsText, serverLabel, stageText, type TextPart } from '../../core/server-text';
 import { queryClient } from '../query';
+import type { DownloadsSnapshot } from '../bundle';
 import type { ProcessingSpeed } from '../library-processing/library-processing';
 import { interfaceLanguage, t } from '../../i18n';
 
 export const TASKS_URL = '/api/tasks';
 /** 整页共用这一个键：三段是同一次响应的三个字段。 */
 export const TASKS_KEY = ['tasks'] as const;
+export const BACKGROUND_ISSUES_URL = '/api/background-issues';
+export const BACKGROUND_ISSUES_KEY = ['background-issues'] as const;
+export const DOWNLOADS_URL = '/api/downloads';
+export const DOWNLOADS_KEY = ['downloads'] as const;
+
+export interface BackgroundIssue {
+  key: string;
+  title: string;
+  href: string;
+  /** 链接文案写明去处。 */
+  link_label: string;
+  /** 服务自己记下的起点；不记时为 null。 */
+  since: string | null;
+  /** 本轮服务首次读到问题的时刻。 */
+  noticed_at: string;
+  retry: string | null;
+  retry_available: boolean;
+}
+
+export const fetchBackgroundIssues = (signal?: AbortSignal) =>
+  apiGet<{ issues: BackgroundIssue[] }>(BACKGROUND_ISSUES_URL, signal);
+
+export const downloadsPageQuery = (page = 1, limit = 20, search = '') => ({
+  queryKey: [...DOWNLOADS_KEY, 'page', page, limit, search],
+  queryFn: ({ signal }: { signal: AbortSignal }) =>
+    apiGet<DownloadsSnapshot>(`${DOWNLOADS_URL}?limit=${limit}&page=${page}${search ? `&q=${encodeURIComponent(search)}` : ''}`, signal),
+});
 
 export type TaskControlAction = 'pause' | 'resume' | 'cancel';
 export type TaskControlState = 'running' | 'pausing' | 'paused' | 'cancelling';
@@ -120,8 +148,9 @@ export const pollInterval = (data: ActivityData | undefined): number =>
 export const RESULT_BUSY_POLL_MS = 5000;
 export const RESULT_IDLE_POLL_MS = SETTLED_POLL_MS;
 
-export const fetchTasks = (signal?: AbortSignal, page = 1, limit = 20) =>
-  apiGet<ActivityData>(page === 1 && limit === 20 ? TASKS_URL : `${TASKS_URL}?page=${page}&limit=${limit}`, signal);
+export const fetchTasks = (signal?: AbortSignal, page = 1, limit = 20, q = '') =>
+  apiGet<ActivityData>(page === 1 && limit === 20 && !q ? TASKS_URL
+    : `${TASKS_URL}?page=${page}&limit=${limit}${q ? `&q=${encodeURIComponent(q)}` : ''}`, signal);
 
 /** 每个页面常驻轮询的那一小份：结果版本、入库通知与在排在跑的任务（`running_tasks`）。完整任务列表只给任务中心。 */
 export { fetchResultUpdates, RESULT_UPDATES_KEY, type ResultUpdatesPayload as ResultUpdatesData } from '../../running-tasks';
@@ -135,6 +164,15 @@ export const setTaskSpeed = (id: number, speed: ProcessingSpeed) =>
 /** 首屏：取完数才画。中止时 `fetchQuery` 把 `AbortError` 抛回给挂载方，它据此放弃这一次。 */
 export async function prefetchTasks(signal: AbortSignal): Promise<void> {
   await queryClient.fetchQuery({ queryKey: TASKS_KEY, queryFn: () => fetchTasks(signal) });
+}
+
+export async function prefetchActivity(signal: AbortSignal): Promise<void> {
+  const tasks = prefetchTasks(signal);
+  const issues = queryClient.prefetchQuery({ queryKey: BACKGROUND_ISSUES_KEY, queryFn: () => fetchBackgroundIssues(signal) });
+  const downloads = downloadsPageQuery();
+  void queryClient.prefetchQuery({ ...downloads, queryFn: () => downloads.queryFn({ signal }) });
+  // 页首告警会改变首屏布局，末尾的云下载可以独立就绪。
+  await Promise.allSettled([tasks, issues]);
 }
 
 export const TRIGGER_LABELS: Record<string, string> = {
@@ -153,7 +191,7 @@ export const statusLabel = (status: string): string => STATUS_LABELS[status] || 
 const SUMMARY_LABELS: Record<string, string> = {
   checked: t('manage:taskSummary.checked'), total: t('manage:taskSummary.total'), scanned: t('manage:taskSummary.scanned'), identified: t('manage:taskSummary.recognized'),
   candidates: t('manage:taskSummary.metadata'), covers: t('manage:taskSummary.covers'), changed: t('manage:taskSummary.changed'), operation: t('manage:taskSummary.operation'),
-  ok: t('manage:taskSummary.found'), miss: t('manage:shared.notFound'), kept: t('manage:taskSummary.kept'), planned: t('manage:taskSummary.planned'), done: t('manage:taskSummary.processed'), added: t('manage:taskSummary.added'),
+  ok: t('manage:taskSummary.found'), miss: t('manage:taskSummary.noMatch'), kept: t('manage:taskSummary.kept'), planned: t('manage:taskSummary.planned'), done: t('manage:taskSummary.processed'), added: t('manage:taskSummary.added'),
   written: t('manage:taskSummary.saved'), removed: t('manage:taskSummary.removed'), issue_count: t('manage:backgroundIssues.title'),
   followups_duplicate: t('manage:taskSummary.followupsDuplicate'), followups_truncated: t('manage:taskSummary.followupsTruncated'),
   followups_depth_exceeded: t('manage:taskSummary.followupsTooDeep'), name: t('manage:shared.name'),

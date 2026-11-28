@@ -496,6 +496,24 @@ class SparkleUpdateTests(TestCase):
         with self.assertRaisesRegex(ValueError, "更新日志"):
             tool.verify(feed, version="0.53.0", dmg=dmg, url_prefix="https://example.test/v0.53.0/", head=50)
 
+    def test_signed_delta_is_listed_beside_the_full_update_for_one_source_version(self):
+        tool = load_script("sparkle_appcast")
+        feed, dmg = self.appcast()
+        delta = self.root / "Peach-0.53.0-macos-arm64-from-0.52.0.delta"
+        delta.write_bytes(b"delta")
+        prefix = "https://downloads.example.test/sparkle/deltas/"
+        tool.annotate(feed, "0.53.0", 50, document=APPCAST_CHANGELOG)
+        tool.add_delta(feed, "0.53.0", "0.52.0", delta, prefix, "cGF0Y2g=")
+        tool.add_delta(feed, "0.53.0", "0.52.0", delta, prefix, "cGF0Y2g=")
+        ns = "{" + tool.SPARKLE + "}"
+        item = ET.parse(feed).find("./channel/item")
+        self.assertTrue(item.find("enclosure").get("url").endswith(dmg.name))
+        entries = item.findall(f"{ns}deltas/enclosure")
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].get(f"{ns}deltaFrom"), "0.52.0")
+        self.assertEqual(entries[0].get(f"{ns}edSignature"), "cGF0Y2g=")
+        self.assertEqual(entries[0].get("url"), prefix + delta.name)
+
     def test_publish_checks_the_uploaded_feed_past_the_public_cache(self):
         """公开入口缓存一分钟：核对要取回刚上传的那份，不能读到裸地址上缓存的旧文件或首发前的 404。"""
         tool = load_script("sparkle_appcast")

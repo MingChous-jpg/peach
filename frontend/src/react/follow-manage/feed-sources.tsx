@@ -13,10 +13,10 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   createColumnHelper, createPaginatedRowModel, createSortedRowModel, flexRender, rowPaginationFeature,
-  rowSelectionFeature, rowSortingFeature, columnVisibilityFeature, tableFeatures, useTable,
+  rowSelectionFeature, rowSortingFeature, columnOrderingFeature, columnVisibilityFeature, tableFeatures, useTable,
   type RowSelectionState, type SortingState,
 } from '@tanstack/react-table';
-import { RiCheckboxLine, RiDeleteBinLine, RiExternalLinkLine, RiPauseLine, RiPlayLine, RiRefreshLine, RiRssLine } from '@remixicon/react';
+import { RiCheckboxLine, RiDeleteBinLine, RiExternalLinkLine, RiPauseLine, RiPlayLine, RiRefreshLine } from '@remixicon/react';
 
 import { avatarInner } from '@peach/card-art';
 import { mapLimit } from '@peach/legacy/core';
@@ -32,18 +32,19 @@ import {
 import { ChevronSortDown } from '@/components/foundations/icons/chevrons';
 
 import { errorMessage } from '../../api';
-import { skeletonHtml } from '../../ui-kit/skeleton';
+import { feedSourcesSkeleton } from '../../board-skeleton';
 import { DataTableFrame } from '../components/data-table-frame';
 import { useTablePreferences } from '../components/table-column-preferences';
+import { useRememberedPageSize } from '../components/page-size-preferences';
 import { TableColumnControls, TableColumnResizer } from '../components/table-column-controls';
 import { TableSelectionHeader } from '../components/table-selection-header';
 import { DataTableFooter, DataTableSort } from '../components/table-controls';
 import { cardClass } from '../components/card';
-import { EmptyState } from '../components/empty-state';
 import { LEGACY_AVATAR_IMG } from '../components/legacy-avatar';
 import { SiteIcon, SiteLabel } from '../components/source-label';
 import { ColumnFilterAvatar } from '../components/column-filter-avatar';
 import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import type { BulkAction, Receipt } from '../components/bulk-action';
 import { exitPageSelection } from '../components/page-selection';
 import { SelectionDock } from '../components/selection-dock';
@@ -58,37 +59,20 @@ import {
 import { codedText } from '../../core/server-text';
 import { t } from '../../i18n';
 import { useTableFilters } from '../components/use-table-filters';
+import { IndexSearch } from '../index/index-search';
 import { useRowWorkContext, type WorkContextOperation } from '../components/work-context-menu';
+import { FeedPageAlias } from './source-view';
+import { FEED_SOURCE_CARD, FEED_SOURCE_COLUMN_LABELS as COLUMN_LABELS, FEED_SOURCE_COLUMNS, FEED_SOURCE_FOOTER, FEED_SOURCE_TABLE } from './feed-source-layout';
 
 const feedTableFeatures = tableFeatures({
   rowPaginationFeature,
   rowSelectionFeature,
   rowSortingFeature,
   columnVisibilityFeature,
+  columnOrderingFeature,
   sortedRowModel: createSortedRowModel(),
   paginatedRowModel: createPaginatedRowModel(),
 });
-
-const COLUMN_LABELS: Record<string, string> = {
-  select: t('follow:shared.select'),
-  name: t('follow:shared.name'),
-  kind: t('follow:shared.type'),
-  origin: t('follow:followFeed.filterKindSource'),
-  status: t('follow:shared.status'),
-  interval: t('follow:feedSources.colInterval'),
-  fetched: t('follow:feedSources.colLastFetched'),
-  fresh: t('follow:feedSources.colLastAdded'),
-  actions: t('follow:shared.actions'),
-};
-
-const preferenceColumns = Object.entries(COLUMN_LABELS).map(([id, label]) => ({ id, label,
-  /* 来源那一格要放下站标、`video.dmm.co.jp` 与外链图标，160 会把站名压到图标底下。 */
-  width: id === 'select' ? 48 : id === 'name' ? 300 : id === 'actions' ? 208 : id === 'fetched' ? 200
-    : id === 'origin' ? 184 : 160,
-  min: id === 'select' ? 48 : id === 'actions' ? 200 : id === 'name' ? 300 : 112, max: id === 'select' ? 48 : id === 'name' ? 2000 : 800,
-  flex: id === 'name',
-  required: id === 'select' || id === 'name',
-}));
 
 const reload = () => queryClient.invalidateQueries({ queryKey: FEEDS_KEY, exact: true });
 
@@ -173,9 +157,8 @@ function confirmRemove(sources: FeedSource[], write: () => Promise<unknown>) {
   });
 }
 
-export function FeedSources({ readOnly, toast, onAdd, selection, selecting }: {
-  selecting?: boolean;
-  readOnly: boolean; toast: Receipt; onAdd(): void;
+export function FeedSources({ readOnly, toast, selection }: {
+  readOnly: boolean; toast: Receipt;
   selection?: {
     ids: ReadonlySet<number>;
     onChange: Dispatch<SetStateAction<ReadonlySet<number>>>;
@@ -184,16 +167,23 @@ export function FeedSources({ readOnly, toast, onAdd, selection, selecting }: {
 }) {
   const feeds = useQuery({ queryKey: FEEDS_KEY, queryFn: ({ signal }) => fetchFeeds(signal) });
   const action = useAction();
-  const preferences = useTablePreferences('jav-feeds', preferenceColumns);
+  const preferences = useTablePreferences(FEED_SOURCE_TABLE, FEED_SOURCE_COLUMNS);
   const data = feeds.data;
   const sources = useMemo(() => data?.sources ?? [], [data]);
   const [ownSelected, setOwnSelected] = useState<ReadonlySet<number>>(new Set<number>());
   const selected = selection?.ids ?? ownSelected;
   const setSelected = selection?.onChange ?? setOwnSelected;
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useRememberedPageSize(FEED_SOURCE_TABLE);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const filtered = useTableFilters(sources, {
+  /* 名字筛选在本页做：订阅名、站上挂的名字、人物名与来源地址都算，换词回到第 1 页。 */
+  const [query, setQuery] = useState('');
+  const searched = useMemo(() => {
+    const needle = query.toLocaleLowerCase();
+    return needle ? sources.filter(source => [feedName(source), source.name, source.page_name || '', source.entity_name || '', source.url]
+      .join(' ').toLocaleLowerCase().includes(needle)) : sources;
+  }, [sources, query]);
+  const filtered = useTableFilters(searched, {
     name: { values: feedName, option: (name, source) => ({ leading: source && <ColumnFilterAvatar
       person={{ ...source, id: source.entity_id, name }} /> }) },
     kind: { values: source => codedText(source, 'kind_label'), option: (_, source) => ({
@@ -266,6 +256,7 @@ export function FeedSources({ readOnly, toast, onAdd, selection, selecting }: {
 
   /* 列定义只建一次，行里的控件到点击那一刻再从这里取最新的处理器与只读态。 */
   const shared = useMemo(() => sharedEntities(sources), [sources]);
+  const tableTop = useRef<HTMLDivElement>(null);
   const handlers = useRef<RowHandlers>({
     readOnly, shared, busy: null, toggle: () => {}, fetch: () => {}, remove: () => {},
   });
@@ -312,9 +303,7 @@ export function FeedSources({ readOnly, toast, onAdd, selection, selecting }: {
               <FeedAvatar source={context.row.original} />
               {context.getValue()}
               {alias ? (
-                <span className="text-body-2-regular text-text-secondary" title={t('follow:feedSources.aliasTitle', { alias })}>
-                  {alias}
-                </span>
+                <FeedPageAlias name={alias} />
               ) : null}
             </span>
           );
@@ -389,14 +378,16 @@ export function FeedSources({ readOnly, toast, onAdd, selection, selecting }: {
     data: filtered.items,
     columns,
     getRowId: (row) => String(row.id),
-    state: { rowSelection, sorting, pagination: { pageIndex: win.page - 1, pageSize }, columnVisibility: preferences.visibility },
+    state: { rowSelection, sorting, pagination: { pageIndex: win.page - 1, pageSize },
+      columnOrder: preferences.columnOrder, columnVisibility: preferences.visibility },
     onColumnVisibilityChange: preferences.change,
     onSortingChange: (next) => { setSorting(next); setPage(1); },
     enableRowSelection: true,
     onRowSelectionChange: (updater) => {
-      selection?.onActivate();
       const next = typeof updater === 'function' ? updater(rowSelection) : updater;
-      setSelected(new Set(Object.entries(next).filter(([, on]) => on).map(([id]) => Number(id))));
+      const picked = new Set(Object.entries(next).filter(([, on]) => on).map(([id]) => Number(id)));
+      if (picked.size) selection?.onActivate();
+      setSelected(picked);
     },
   });
 
@@ -430,14 +421,16 @@ export function FeedSources({ readOnly, toast, onAdd, selection, selecting }: {
   });
   if (!data) {
     return feeds.error
-      ? <Note tone="error" title={t('follow:feedSources.loadFailed')}>{errorMessage(feeds.error)}</Note>
-      : <div dangerouslySetInnerHTML={{ __html: skeletonHtml(t('follow:feedSources.loading'), { fill: false }) }} />;
+      ? <QueryErrorNote titleKey="follow:feedSources.loadFailed" query={feeds} />
+      : <div role="status" aria-label={t('follow:feedSources.loading')} data-skeleton="">
+        <div aria-hidden="true" inert dangerouslySetInnerHTML={{ __html: feedSourcesSkeleton() }} />
+      </div>;
   }
 
   return (
     <div className="flex flex-col gap-3">
       <section aria-label={t('follow:feedSources.listLabel')}
-        className={cardClass({ padding: 'none', className: 'flex flex-col gap-4 px-6 py-5 max-sm:px-4' })} onKeyDown={menu.onKeyDown}>
+        className={cardClass({ padding: 'none', className: FEED_SOURCE_CARD })} onKeyDown={menu.onKeyDown}>
       {menu.menu}
       <div data-responsive-toolbar="">
         <div data-toolbar-heading="">
@@ -445,6 +438,7 @@ export function FeedSources({ readOnly, toast, onAdd, selection, selecting }: {
         <span className="text-body-2-regular text-text-secondary">{t('follow:feedSources.summary', { count: sources.length, unread: Number(data.unread) || 0 })}</span>
         </div>
         <div data-toolbar-actions="">
+        <IndexSearch label={t('follow:feedSources.search')} value={query} onQuery={value => { setQuery(value); setPage(1) }} />
         <Button onClick={check} disabled={readOnly} {...busyProps(action.busy === 'check')}>{t('follow:feedSources.fetchNow')}</Button>
         <TableColumnControls preferences={preferences} label={t('follow:feedSources.title')} />
         <DataTableSort label={t('follow:feedSources.title')} sorting={sorting} onChange={(next) => { setSorting(next); setPage(1); }}
@@ -479,8 +473,8 @@ export function FeedSources({ readOnly, toast, onAdd, selection, selecting }: {
         </SelectionDock>
 
       {sources.length ? (
-        <DataTableFrame follow preferences={preferences} onRowClick={(key) => toggleRow(Number(key))}
-          onRectangle={selecting ? (keys, add) => table.setRowSelection({
+        <DataTableFrame ref={tableTop} follow preferences={preferences} onRowClick={(key) => toggleRow(Number(key))}
+          rectangleSelecting={selected.size > 0} onRectangle={!bulk.isPending ? (keys, add) => table.setRowSelection({
             ...(add ? rowSelection : {}), ...Object.fromEntries(keys.map(key => [key, true])),
           }) : undefined}>
           <Table aria-label={t('follow:feedSources.title')} size="sm"
@@ -514,18 +508,13 @@ export function FeedSources({ readOnly, toast, onAdd, selection, selecting }: {
             </TableBody>
           </Table>
         </DataTableFrame>
-      ) : (
-        <EmptyState icon={RiRssLine} title={t('follow:feedSources.empty')} size="compact"
-          actions={!readOnly ? <Button variant="secondary" onClick={onAdd}>{t('follow:feedSources.add')}</Button> : undefined}>
-          {t('follow:feedSources.emptyHint')}
-        </EmptyState>
-      )}
+      ) : null}
       {sources.length ? (
         <DataTableFooter label={t('follow:feedSources.footerLabel')} total={win.total} unit={t('follow:feedSources.unit')}
-          pagination={{ pageIndex: win.page - 1, pageSize }}
+          pagination={{ pageIndex: win.page - 1, pageSize }} scrollTarget={tableTop}
           onChange={(next) => { setPageSize(next.pageSize); setPage(next.pageIndex + 1); }} />
       ) : null}
-      <footer className="-mx-6 -mb-5 flex flex-wrap items-center gap-2 border-t border-separator-border rounded-b-2xl bg-card-footer px-6 py-4 max-sm:-mx-4 max-sm:px-4">
+      <footer className={FEED_SOURCE_FOOTER}>
         <span role="status" className="mr-auto text-body-2-regular text-text-secondary">
           {t('follow:feedSources.footerSummary', { unread: Number(data.unread) || 0, enabled: sources.filter((source) => source.enabled).length, total: sources.length })}
         </span>

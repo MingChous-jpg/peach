@@ -143,14 +143,6 @@
   outline: 2px solid var(--tungsten);
   outline-offset: 2px;
 }
-/* 图片视图的下排多出布局与「仅显示图片」几枚键，窄屏放不下时整排横滚，同遗留层 `.followcount`，
-   不把页面撑宽。 */
-.peach-react [data-follow-filter-glass] > [data-filter-row="bottom"] {
-  overflow-x: auto;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: none;
-}
-.peach-react [data-follow-filter-glass] > [data-filter-row="bottom"]::-webkit-scrollbar { display: none; }
 /* 窄屏里横滚的是整排，排序键那格不再裁落影，左边那 2px 留边收掉，换一批键贴着读数排。 */
 @media (max-width: 760px) {
   .peach-react [data-follow-filter-glass] [data-entity-sorts] { padding-left: 0; }
@@ -413,8 +405,8 @@ body:not([data-density="dense"]) .peach-react [data-follow-list]:not([data-follo
  * 排在计数下面。 */
 .peach-react [data-follow-corner] {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: var(--pic-badge-inset);
+  right: var(--pic-badge-inset);
   z-index: 7;
   display: flex;
   flex-direction: column;
@@ -429,7 +421,7 @@ body:not([data-density="dense"]) .peach-react [data-follow-list]:not([data-follo
   min-height: 28px;
   padding: 4px 9px;
   border: 0;
-  border-radius: var(--control-radius);
+  border-radius: var(--pic-inner-radius);
   background: rgb(12 8 8 / .72);
   color: #fff;
   font: inherit;
@@ -495,7 +487,6 @@ body:not([data-density="dense"]) .peach-react [data-follow-list]:not([data-follo
   outline: 2px solid var(--tungsten);
   outline-offset: 2px;
 }
-.peach-react [data-follow-byline] a[data-follow-author]:hover { text-decoration: underline; }
 /* 作品卡的首字母用 Bahnschrift，关注卡同遗留层 `.fsourceavatar .favatar.none` 走正文字体。 */
 .peach-react [data-follow-avatar] > span:first-child {
   display: grid;
@@ -536,7 +527,7 @@ body:not([data-density="dense"]) .peach-react [data-follow-list]:not([data-follo
 .peach-react [data-follow-edition="voiced"] { color: var(--keep); background: color-mix(in srgb, var(--keep) 16%, transparent); }
 .peach-react [data-follow-edition="silent"] { color: var(--muted); border-style: dashed; }
 /* 来源与另见共用左上角的玻璃标记。 */
-.peach-react [data-follow-sources] { position: absolute; top: 6px; left: 6px; z-index: 2; display: flex; gap: 4px; max-width: calc(100% - 120px); }
+.peach-react [data-follow-sources] { position: absolute; top: var(--pic-badge-inset); left: var(--pic-badge-inset); z-index: 2; display: flex; gap: 4px; max-width: calc(100% - 120px); }
 .peach-react [data-follow-sources] [data-media-badge] { position: static; flex: none; }
 .peach-react [data-follow-sources] > [data-follow-badges] { flex: 0 1 auto; }
 .peach-react [data-follow-sources] [data-follow-seealso-label] { display: none; }

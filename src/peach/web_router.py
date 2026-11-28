@@ -32,6 +32,7 @@ from .taste_browsing import q_taste_signals
 from .web_catalog import (
     FACETS_TABLES,
     catalog_filter,
+    catalog_root_predicate,
     column_page,
     q_editions,
     q_facets,
@@ -67,12 +68,14 @@ from .web_downloads import (q_downloads, w_download_cancel, w_download_postproce
 from .web_resource_search import q_resource_search
 from .web_search import q_search_recommendations
 from .web_jav_detail import q_jav_detail, q_jav_resources, q_jav_reviews, w_jav_cover
+from .web_jav_catalog import q_jav_catalog
 from .web_jav_discovery import (q_jav_discoveries, q_jav_discovery_metadata, q_jav_releases,
                                 w_jav_discovery_metadata, w_jav_release_metadata)
 from .web_feeds import (
     q_feed_check,
     q_feed_discoveries,
     q_feed_lookup,
+    q_feed_suggest,
     q_feed_schedule,
     q_feeds,
     w_feed_check,
@@ -118,10 +121,11 @@ from .web_resource_sync import w_purge_missing, w_resource_sync_apply, w_resourc
 from .web_review import REVIEW_TABLES, q_review, q_review_counts, w_review_decision, w_review_genre
 from .web_auto_landings import q_auto_landings, w_auto_landing_revert
 from .web_settings import q_settings, w_settings
-from .web_library_shortcuts import q_library_shortcuts, w_library_shortcuts
+from .web_library_shortcuts import q_filter_queue, q_library_shortcuts, w_library_shortcuts
 from .web_tutorial import q_tutorial_progress, w_tutorial_progress
 from .web_folders import q_folders, w_folder_preview, w_folder_rule
 from .web_media_directory import q_media_directory
+from .web_file_browser import q_file_browser_trash, w_file_browser
 from .web_scraping import (
     q_scraping, q_scraping_amane_bridge, w_scraping_amane_check, w_scraping_amane_rebuild,
     w_scraping_check, w_scraping_check_all, w_scraping_cover, w_scraping_settings,
@@ -248,15 +252,19 @@ def _get_facets(contract, args):
     )
     # 首页与侧栏几组枚举筛选（来源、时长、画幅、产地、媒体库）的组合有限，按账本版本缓存；
     # 实体、详情、搜索词、标签与时长区间的键空间不封闭，照旧走 TTL 缓存。
+    if 'library' in filters:
+        library = repr(media_libraries.predicate(settings_file.active(), filters['library']))
+    elif state != 'trash' and asset_id is None:
+        library = repr(catalog_root_predicate(contract))
+    else:
+        library = ''
     if column:
-        return contract.cached_lru(f"column-facets{'-jav' if jav else ''}:{scope_key}", compute)
+        return contract.cached_lru(f"column-facets{'-jav' if jav else ''}:{scope_key}:{library}", compute)
     if (not (scope_kind or scope_name or asset_id is not None) and state in FACET_STATES
             and set(filters) <= FACET_ENUM_FILTERS):
-        library = (repr(media_libraries.predicate(settings_file.active(), filters['library']))
-                   if 'library' in filters else '')
         return contract.cached_until_changed(
-            f"facets{'-jav' if jav else ''}:{scope_key}", compute, library, tables=FACETS_TABLES)
-    return contract.cached(f"facets{'-jav' if jav else ''}:{scope_key}", compute)
+            f"facets{'-jav' if jav else ''}:{scope_key}:{library}", compute, tables=FACETS_TABLES)
+    return contract.cached(f"facets{'-jav' if jav else ''}:{scope_key}:{library}", compute)
 
 
 def _get_suggest(contract, args):
@@ -383,6 +391,7 @@ GET_HANDLERS = {
     "/api/media-processing": q_media_processing,
     "/api/folders": q_folders,
     "/api/media-directory": q_media_directory,
+    "/api/media-directory/trash": q_file_browser_trash,
     "/api/tasks": q_tasks,
     "/api/result-updates": q_result_updates,
     "/api/downloads": q_downloads,
@@ -393,6 +402,7 @@ GET_HANDLERS = {
     "/api/jav/discoveries": q_jav_discoveries,
     "/api/jav/discoveries/metadata": q_jav_discovery_metadata,
     "/api/jav/releases": q_jav_releases,
+    "/api/jav/catalog": q_jav_catalog,
     "/api/taste/signals": q_taste_signals,
     "/api/library-processing": q_library_processing,
     "/api/library-processing/issues": q_library_processing_issues,
@@ -404,11 +414,13 @@ GET_HANDLERS = {
     "/api/scraping/check-all": lambda contract, args: contract.source_check_job.snapshot() or {"status": "idle"},
     "/api/settings": q_settings,
     "/api/library-shortcuts": q_library_shortcuts,
+    "/api/library-shortcuts/queue": q_filter_queue,
     "/api/tutorial-progress": q_tutorial_progress,
     "/api/feeds": q_feeds,
     "/api/feeds/check": q_feed_check,
     "/api/feeds/discoveries": q_feed_discoveries,
     "/api/feeds/lookup": q_feed_lookup,
+    "/api/feeds/suggest": q_feed_suggest,
     "/api/feeds/schedule": q_feed_schedule,
     "/api/follow": q_follow,
     "/api/follow/credentials": q_follow_credentials,
@@ -513,6 +525,7 @@ POST_HANDLERS = {
     "/api/item-tag": w_item_tag,
     "/api/item-edit": w_item_edit,
     "/api/batch": w_batch,
+    "/api/media-directory": w_file_browser,
     "/api/ads/dispose-all": w_ads_dispose_all,
     "/api/ads/restore-all": w_ads_restore_all,
     "/api/search-history": w_search_history,
@@ -569,9 +582,9 @@ READ_ONLY_POST_ROUTES = frozenset({
 
 
 #: 用户在页面上点开才发的读请求：库外详情、评论与磁链、查找资源弹层、按名字搜 JavDB 演员。
-#: 只有这几条带登录账号的 Cookie（`scraping_access.with_account`），后台任务一律匿名取页。
+#: 用户主动打开的入口直接使用已保存会话。启用后备的后台来源先匿名取页。
 ACCOUNT_ROUTES = frozenset({"/api/resources/search", "/api/jav/detail", "/api/jav/reviews", "/api/jav/resources", "/api/wants/magnets",
-                            "/api/feeds/lookup"})
+                            "/api/feeds/lookup", "/api/feeds/suggest", "/api/jav/catalog"})
 
 
 def dispatch_api_get(contract: WebContract, path, args):

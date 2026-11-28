@@ -8,8 +8,7 @@
  * `.peach-react`，不占盒子。
  *
  * 浮条上的键是透明 `<button>`：尺寸、描边、字号与 17px 字形照 ADR-0031 的迁移前基线，全部写在
- * `batch-dock.css`；BoardUI `Button` 的 medium 档是 20px 字形、8px 内边距，对不上。危险键挂
- * `data-danger`，红色读 `../styles.css` 里全站那一份危险键规则。 */
+ * `batch-dock.css`；BoardUI `Button` 的 medium 档是 20px 字形、8px 内边距。 */
 import { useLayoutEffect, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 
@@ -60,7 +59,7 @@ function BatchDock({ host: at, props: view }: { host: BatchDockHost; props: Batc
       <SelectionDock label={t('manage:batchDock.label')} visible={view.count > 0} count={t('manage:batchDock.selected', { count: view.count })} actions={[]}>
         {batchActions(view.context, view.junkDismissed).map((action) => (
           <button key={`${action.group}:${action.operation}`} type="button" data-batch-group={action.group}
-            data-batch-action={action.operation} data-danger={action.danger ? '' : undefined}
+            data-batch-action={action.operation}
             onClick={(event) => at.run(action.group, action.operation, event.currentTarget)}>
             <svg aria-hidden viewBox="0 0 24 24"><use href={`#i-${action.glyph}`} /></svg>
             {action.label}

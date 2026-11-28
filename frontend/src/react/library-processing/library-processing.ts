@@ -257,9 +257,10 @@ export function busyText(state: LibraryProcessingData): string {
   return origin ? t('manage:scanFetch.busyOrigin', { origin }) : t('manage:scanFetch.busy');
 }
 
-/** 同一个键只由停靠栏一处驱动轮询，卡片与补全提示只读缓存。在跑两秒一次，失败退避，闲着不问。 */
+/** 停靠栏负责轮询，含等待来源恢复的未处理告警。 */
 export const pollInterval = withBackoff<LibraryProcessingData>((data) =>
-  (processingActive(data) ? RUNNING_POLL_MS : false));
+  (processingActive(data) ? RUNNING_POLL_MS
+    : data?.status === 'failed' && data.outcome === 'partial' && !data.archived ? 30_000 : false));
 
 const ACTION_LABELS: Record<string, string> = {
   scanning_files: t('manage:scanFetch.actionScanning'),
@@ -298,11 +299,12 @@ export function currentLine(state: LibraryProcessingData): string {
 }
 
 /** 已知总量显示实际完成数；扫描目录期间显示持续发现的文件数。 */
-export function processingLine(state: LibraryProcessingData): string {
+export function processingLine(state: LibraryProcessingData) {
   const count = state.total ? t('manage:scanFetch.progressCount', { progress: progressText(state.checked, state.total) })
     : state.current_action === 'scanning_files' || state.stage_code === 'library.scanFiles'
       ? t('manage:scanFetch.filesFound', { count: state.scanned || 0 }) : '';
-  return currentLine(state) + (count ? ` · ${count}` : '');
+  const status = currentLine(state);
+  return { status, count, label: status + (count ? ` · ${count}` : '') };
 }
 
 /** 折叠起来的问题清单：一句结论 + 逐条明细 + 完整日志的地址。没有问题时是 `null`。 */

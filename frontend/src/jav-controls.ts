@@ -3,10 +3,10 @@ export const JAV_SELECTION_EVENT = 'peach:jav-selection';
 let pendingTab = '';
 const tabOf = (search: string) => new URLSearchParams(search).get('tab') || '';
 
-export function requestJavSelection(search: string) {
+export function requestJavSelection(search: string, enter = false) {
   const tab = tabOf(search);
-  if (window.dispatchEvent(new CustomEvent(JAV_SELECTION_EVENT, { cancelable: true, detail: tab }))) {
-    pendingTab = pendingTab === tab ? '' : tab;
+  if (window.dispatchEvent(new CustomEvent(JAV_SELECTION_EVENT, { cancelable: true, detail: { tab, enter } }))) {
+    pendingTab = !enter && pendingTab === tab ? '' : tab;
   }
 }
 
@@ -23,7 +23,7 @@ export function javCardPage(path: string, search: string) {
   return path === '/jav' && ['releases', 'discover'].includes(tabOf(search));
 }
 
-/** 右上角多选开关在哪几个 JAV 页签上生效：卡片两页之外，「想要」也是浏览页，进多选模式后才显示勾选。 */
+/** JAV 作品与想要清单的选择集归当前页签，进多选模式后显示勾选。 */
 export function javSelectPage(path: string, search: string) {
-  return path === '/jav' && ['releases', 'discover', 'wants'].includes(tabOf(search));
+  return path === '/jav' && ['releases', 'discover', 'online', 'wants'].includes(tabOf(search));
 }

@@ -8,6 +8,7 @@
  * 重新出现，并标出新加入的那几份。保留过的组在「已保留」视图里，能逐组或成批取消保留。
  * 所有成批的动作都先弹窗，回执带撤销（`components/bulk-action.ts`）。 */
 import { useState, type ReactNode } from 'react';
+import { ImageWithFallback } from '../components/image-with-fallback';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { confirmModal, MEDIA_SOURCE_ICONS } from '@peach/legacy/ui';
 import { fmtDur, fmtSize, LOC } from '@peach/legacy/core';
@@ -21,10 +22,11 @@ import type { DuplicatesProps } from '../bundle';
 import { runBulkAction, type BulkAction, type BulkHost } from '../components/bulk-action';
 import { cardClass } from '../components/card';
 import { EmptyState } from '../components/empty-state';
-import { FilterGlassRows, FilterActionButton, SelectAllButton } from '../components/filter-glass';
+import { FilterGlassRows, FilterActionButton, FilterSearch, SelectAllButton } from '../components/filter-glass';
 import { useQueueSort } from '../components/queue-sort';
 import { SortKeys } from '../entity-filter/entity-filter-page';
 import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { enterPageSelection, exitPageSelection, usePageSelection } from '../components/page-selection';
 import { useRectangleSelection, type RectangleCommit } from '../components/rectangle-selection';
 import { SelectionDock } from '../components/selection-dock';
@@ -33,6 +35,7 @@ import { ComparisonText } from '../review/comparison-text';
 import { SourceLabel } from '../components/source-label';
 import { spriteGlyph } from '../components/sprite-glyph';
 import { TRASH_KEY } from '../data-cleanup/data-cleanup';
+import { duplicatesSkeleton } from '../../management-skeletons';
 import { cloudLocations, fetchMediaSources, MEDIA_SOURCES_KEY } from '../media-sources';
 import { queryClient } from '../query';
 import { SourceMark } from '../settings/section';
@@ -146,21 +149,23 @@ function FileRow({ file, reference, openItem, selected, onSelect, onTrash, busy 
       <button type="button" onClick={open} aria-label={t('cleanup:duplicates.previewFile', { name: file.name })}
         className="relative row-span-2 inline-grid aspect-16/10 w-full cursor-pointer place-items-center overflow-hidden rounded-2lg bg-media-placeholder text-text-secondary">
         <PLAY aria-hidden className="size-6" />
-        <img key={file.cover_version || thumbnail} src={file.has_cover ? coverUrl(file, 2) : thumbnail} alt="" loading="lazy"
-          data-drop="self" data-fallbacks={file.has_cover ? thumbnail : undefined}
+        <ImageWithFallback src={file.has_cover ? coverUrl(file, 2) : thumbnail} alt="" loading="lazy"
+          fallbacks={file.has_cover ? [thumbnail] : undefined}
           className="absolute inset-0 size-full object-contain" />
       </button>
-      <span className="flex min-w-0 items-center gap-2 max-duplicate-narrow:col-start-2 max-duplicate-narrow:-col-end-1">
+      <span className="flex min-w-0 items-start gap-2 max-duplicate-narrow:col-start-2 max-duplicate-narrow:-col-end-1">
         {onSelect ? <Checkbox slot={null} aria-label={t('cleanup:duplicates.selectFile', { name: file.name })}
           isSelected={selected} onChange={onSelect} /> : null}
-        <FilenameComparison value={file.name} reference={reference?.name} onOpen={open} />
-        {file.is_largest || file.is_longest || file.is_new
-          ? <span className="flex flex-none gap-1">
-              {file.is_new ? <i className={`${MARK} not-italic bg-background-primary-hover text-text-primary`}>{t('cleanup:duplicates.newCopy')}</i> : null}
-              {file.is_largest ? <i className={`${MARK} not-italic bg-background-primary-hover text-text-secondary`}>{t('cleanup:duplicates.largest')}</i> : null}
-              {file.is_longest ? <i className={`${MARK} not-italic bg-(--keep)/22 text-(--keep)`}>{t('cleanup:duplicates.longest')}</i> : null}
-            </span>
-          : null}
+        <span className="flex min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-1">
+          <FilenameComparison value={file.name} reference={reference?.name} onOpen={open} />
+          {file.is_largest || file.is_longest || file.is_new
+            ? <span className="flex max-w-full flex-wrap gap-1">
+                {file.is_new ? <i className={`${MARK} not-italic bg-background-primary-hover text-text-primary`}>{t('cleanup:duplicates.newCopy')}</i> : null}
+                {file.is_largest ? <i className={`${MARK} not-italic bg-background-primary-hover text-text-secondary`}>{t('cleanup:duplicates.largest')}</i> : null}
+                {file.is_longest ? <i className={`${MARK} not-italic bg-(--keep)/22 text-(--keep)`}>{t('cleanup:duplicates.longest')}</i> : null}
+              </span>
+            : null}
+        </span>
       </span>
       <span className={`${MONO} flex min-w-0 items-center gap-1.5`}>
         <SourceMark mark={MEDIA_SOURCE_ICONS[file.location] || 'database'} />
@@ -176,24 +181,28 @@ function FileRow({ file, reference, openItem, selected, onSelect, onTrash, busy 
   );
 }
 
-function DuplicateFileSelection({ children, commit }: { children: ReactNode; commit?: RectangleCommit | undefined }) {
-  const rectangle = useRectangleSelection(commit, '[data-duplicate-file][data-rectangle-key]');
+function DuplicateFileSelection({ children, commit, selecting }: { children: ReactNode; commit?: RectangleCommit | undefined; selecting: boolean }) {
+  const rectangle = useRectangleSelection(commit, { selecting, items: '[data-duplicate-file][data-rectangle-key]' });
   return <div {...rectangle}>{children}</div>;
 }
 
 export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
   const menu = useWorkContextMenu();
   const [view, setView] = useState<'pending' | 'kept'>('pending');
-  const duplicates = useQuery({ queryKey: DUPLICATES_KEY, queryFn: ({ signal }) => fetchDuplicates(signal) });
-  const kept = useQuery({ queryKey: KEPT_DUPLICATES_KEY, queryFn: ({ signal }) => fetchKeptDuplicates(signal), enabled: view === 'kept' });
+  /* 搜索词进查询键：带词的那一份另存，清空就回到首屏预取的那一份；换词时先留着上一份结果，不闪空。 */
+  const [query, setQuery] = useState('');
+  const duplicates = useQuery({ queryKey: query ? [...DUPLICATES_KEY, query] : DUPLICATES_KEY,
+    queryFn: ({ signal }) => fetchDuplicates(signal, query), placeholderData: previous => previous });
+  const kept = useQuery({ queryKey: query ? [...KEPT_DUPLICATES_KEY, query] : KEPT_DUPLICATES_KEY,
+    queryFn: ({ signal }) => fetchKeptDuplicates(signal, query), enabled: view === 'kept', placeholderData: previous => previous });
   const sources = useQuery({ queryKey: MEDIA_SOURCES_KEY, queryFn: ({ signal }) => fetchMediaSources(signal) });
   const [pending, setPending] = useState('');
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
   const [pickedFiles, setPickedFiles] = useState<ReadonlySet<number>>(new Set());
   const selecting = usePageSelection(() => { setPicked(new Set()); setPickedFiles(new Set()) });
-  const groupRectangle = useRectangleSelection(selecting && !pending
+  const groupRectangle = useRectangleSelection(!pending
     ? (keys, add) => setPicked(current => new Set([...(add ? current : []), ...keys])) : undefined,
-    '[data-duplicate-group-tools][data-rectangle-key]');
+    { selecting, items: '[data-duplicate-group-tools][data-rectangle-key]' });
   const host: BulkHost = { receipt: toast, failure: (cause) => failure(t('cleanup:duplicates.bulkFailed'), cause) };
   const dispose = useMutation({
     mutationFn: (ids: readonly number[]) => batchOperate(ids, 'dispose'),
@@ -238,13 +247,16 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
   /* 浮层上的排序键：按每组可回收的体积排，在本页排，不发请求。 */
   const order = useQueueSort<DuplicateGroup>('duplicates', { size: (group) => Number(group.reclaimable || 0) });
   const keptView = view === 'kept';
-  const data = keptView ? kept.data : duplicates.data;
-  const failed = keptView ? kept.error : duplicates.error;
+  const active = keptView ? kept : duplicates;
+  const data = active.data;
   if (!data) {
-    if (keptView && kept.isPending) return <div className="mx-auto w-full max-w-board" />;
+    /* 第一次切到「已保留」要读一趟：沿用整页那张骨架，不让浮层连同下面的分组一起空掉。 */
+    if (active.isPending) return <div role="status" aria-label={t('shell:spinner.loading')} aria-busy="true">
+      <div aria-hidden="true" inert dangerouslySetInnerHTML={{ __html: duplicatesSkeleton() }} />
+    </div>;
     return (
       <div className="mx-auto w-full max-w-board">
-        <Note tone="error" title={t('cleanup:duplicates.loadFailed')}>{failed ? errorMessage(failed) : t('cleanup:duplicates.listUnavailable')}</Note>
+        <QueryErrorNote titleKey="cleanup:duplicates.loadFailed" query={active} />
       </div>
     );
   }
@@ -277,6 +289,7 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
         count: ids.length, groups: chosenGroups.length, keep: KEEP_LABELS[rule] ?? KEEP_LABELS.largest, size: fmtSize(victimBytes(chosenGroups, ids)) })
         + t('shell:bulkAction.canUndo'),
       confirmLabel: t('cleanup:duplicates.moveToTrash'),
+      danger: rule === 'all',
       holdToConfirm: true,
       onConfirm: () => { setPending(key); return dispose.mutateAsync(ids) },
     });
@@ -298,7 +311,7 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
       body: t('cleanup:duplicates.selectedTrashBody', {
         count: ids.length, remaining: group.files.length - ids.length, size: fmtSize(victimBytes([group], ids)),
       }) + t('shell:bulkAction.canUndo'),
-      confirmLabel: t('cleanup:duplicates.moveToTrash'), holdToConfirm: true,
+      confirmLabel: t('cleanup:duplicates.moveToTrash'), danger: ids.length === group.files.length, holdToConfirm: true,
       onConfirm: () => { setPending(key); return dispose.mutateAsync(ids) },
     });
   };
@@ -322,12 +335,14 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
       ];
 
   return (
-    <div className="mx-auto w-full max-w-board pb-10.5" {...groupRectangle}>
+    <div className="mx-auto w-full max-w-board pb-10.5">
       {menu.menu}
+      {active.error ? <QueryErrorNote titleKey="cleanup:duplicates.loadFailed" query={active} /> : null}
       {/* 首页那副两排玻璃浮层：上排批量动作与换视图，下排读数加「全选本页」。 */}
       <FilterGlassRows label={keptView ? t('cleanup:duplicates.keptLabel') : t('cleanup:duplicates.bulkKeep')}
         topLabel={keptView ? t('cleanup:duplicates.keptLabel') : t('cleanup:duplicates.bulkKeep')}
-        attrs={{ 'data-catalog-frame': '', 'data-filter-frame': '', 'data-duplicates-frame': '' }} bottomClassName="min-h-12"
+        attrs={{ 'data-catalog-frame': '', 'data-filter-frame': '', 'data-duplicates-frame': '' }}
+        bottomClassName="min-h-12"
         top={keptView
           ? <>
               {groups.length
@@ -365,6 +380,8 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
             {' · '}{keptView ? t('cleanup:duplicates.keptDetail', { count: Number(data.files || 0) })
               : t('cleanup:duplicates.summaryDetail', { count: Number(data.files || 0), size: fmtSize(data.reclaimable) })}
           </span>
+          <FilterSearch label={t('cleanup:duplicates.search')} value={query}
+            onQuery={value => { setQuery(value); setPicked(new Set()); setPickedFiles(new Set()) }} />
           {groups.length ? selectPage : null}
         </span>
         <span data-entity-sorts=""><SortKeys sorts={order.sorts} onSort={order.onSort} /></span></>} />
@@ -377,7 +394,7 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
         ? <div className="mb-5"><Note tone="error" title={t('cleanup:duplicates.trashFailed')}>{errorMessage(dispose.error)}</Note></div>
         : null}
       {groups.length
-        ? groups.map((group, index) => {
+        ? <div data-rectangle-gutter="" className="flow-root" {...groupRectangle}>{groups.map((group, index) => {
             const one = [group];
             const key = (rule: string) => `${index}:${rule}`;
             const groupSelected = picked.has(groupKey(group));
@@ -425,7 +442,7 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
                       ? <Button variant="secondary" size="small" {...busy(key('unkeep'))}
                           onClick={() => keepOne(group, key('unkeep'), false)}>{t('cleanup:duplicates.unkeep')}</Button>
                       : <>
-                          <Button variant="danger" size="small" {...busy(key('files'))}
+                          <Button variant="secondary" size="small" {...busy(key('files'))}
                             disabled={pending !== '' || !group.files.some((file) => pickedFiles.has(file.id))}
                             onClick={() => runFiles(group, key('files'))}>
                             {t('cleanup:duplicates.trashSelectedFiles', { count: group.files.filter((file) => pickedFiles.has(file.id)).length })}
@@ -442,12 +459,12 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
                           ))}
                           <Button variant="secondary" size="small" {...busy(key('keep'))}
                             onClick={() => keepOne(group, key('keep'), true)}>{t('cleanup:duplicates.keepAll')}</Button>
-                          <Button variant="danger" size="small" {...busy(key('all'))}
+                          <Button variant="secondary" size="small" {...busy(key('all'))}
                             onClick={() => run({ groups: one, keep: 'all', key: key('all') })}>{t('cleanup:duplicates.trashGroup')}</Button>
                         </>}
                   </span>
                 </div>
-                <DuplicateFileSelection commit={selecting && !pending && !keptView
+                <DuplicateFileSelection selecting={selecting} commit={!pending && !keptView
                   ? (keys, add) => setPickedFiles(current => new Set([...(add ? current : []), ...keys.map(Number)])) : undefined}>
                   {group.files.map((file) => <FileRow key={file.id} file={file}
                   reference={group.files.find(other => other.id !== file.id)} openItem={openItem}
@@ -456,7 +473,10 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
                 </DuplicateFileSelection>
               </section>
             );
-          })
+          })}</div>
+        : query
+          ? <EmptyState icon={STACK} title={t('cleanup:duplicates.noMatches')}
+              actions={<Button size="small" onClick={() => setQuery('')}>{t('catalog:shared.clearFilters')}</Button>}>{null}</EmptyState>
         : keptView
           ? <EmptyState icon={STACK} title={t('cleanup:duplicates.keptEmptyTitle')}>{t('cleanup:duplicates.keptEmptyBody')}</EmptyState>
           : <EmptyState icon={STACK} title={t('cleanup:duplicates.emptyTitle')}>{t('cleanup:duplicates.emptyBody')}</EmptyState>}

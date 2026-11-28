@@ -6,6 +6,7 @@ import argparse
 import http.cookiejar
 import json
 from pathlib import Path
+import platform
 import shutil
 import socket
 import subprocess
@@ -14,14 +15,22 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from smoke_desktop import assert_amane_runtime, assert_requires_login, complete_first_run, smoke_environment, wait_health
+from smoke_desktop import (assert_amane_runtime, assert_playback_fixture_stream, assert_requires_login, assert_startup_capture,
+                           complete_first_run, playback_request, scan_playback_fixture, smoke_environment, wait_health)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("app", type=Path)
+    parser.add_argument("--source-archives", type=Path)
     args = parser.parse_args()
     app = args.app.resolve(strict=True)
+    if args.source_archives is not None:
+        from media_tool_bundle import validate
+
+        tools = app / "Contents/Resources/tools"
+        for tool in ("ffmpeg", "untrunc"):
+            validate(tools / tool, tool, architecture=platform.machine(), archive_root=args.source_archives)
     with tempfile.TemporaryDirectory(prefix="peach-macos-smoke-") as directory:
         root = Path(directory).resolve()
         shutil.copytree(app, root / "Peach.app", symlinks=True)
@@ -48,6 +57,7 @@ def main() -> int:
                 complete_first_run(opener, base, media, port, password, media_root="B:/")
                 process.terminate()
                 process.wait(timeout=20)
+                asset = scan_playback_fixture(executable, media, data, environment)
                 process = subprocess.Popen(command, cwd=root, env=environment, stdout=log, stderr=log)
                 health = wait_health(opener, base, process, log_path)
                 assert health["ledger_sync"] == "disabled", health
@@ -57,6 +67,7 @@ def main() -> int:
                     headers={"Origin": base})
                 with opener.open(request, timeout=10) as response:
                     assert response.status == 200
+                assert_startup_capture(opener, base)
                 assert_amane_runtime(opener, base, executable.parent.parent / 'Frameworks/tools/amane-runtime')
                 for path in ("/", "/dist/peach-app.js", "/dist/peach-app.css", "/api/items",
                              "/healthz?ready=1"):
@@ -74,9 +85,19 @@ def main() -> int:
                 with opener.open(request, timeout=15) as response:
                     assert json.load(response)["saved"]
                 assert (data / "config.previous.toml").is_file()
+                position = {"seconds": 0.25, "updated_at": 1}
+                memory_path = f"/api/player/memory?video=item:{asset}"
+                assert playback_request(opener, base, memory_path, {"position": position}, "PUT")["position"] == position
+                process.terminate()
+                process.wait(timeout=20)
+                process = subprocess.Popen(command, cwd=root, env=environment, stdout=log, stderr=log)
+                wait_health(opener, base, process, log_path)
+                assert playback_request(opener, base, memory_path)["position"] == position
+                assert_playback_fixture_stream(opener, base, asset)
                 print(json.dumps({"ok": True, "version": health.get("version"),
                     "checks": ["relocated-app", "no-development-tools", "first-run", "migrations",
-                               "standalone-ledger", "login", "frontend", "bundled-amane-runtime", "configuration-write"]}))
+                               "standalone-ledger", "login", "frontend", "bundled-amane-runtime", "configuration-write",
+                               "playback-position-after-restart"]}))
             except BaseException as error:
                 if isinstance(error, urllib.error.HTTPError):
                     print(error.read().decode("utf-8", "replace"))

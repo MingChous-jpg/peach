@@ -21,7 +21,7 @@ import httpx
 from filelock import FileLock, Timeout
 
 from . import (__version__, desktop_installer, distribution, release_signing, release_updates,
-               settings_file, update_packages)
+               settings_file, update_delta, update_packages)
 from .fsutil import atomic_write_text
 from .windows_update import replace_with_retry
 from . import update_tasks
@@ -105,7 +105,8 @@ def installation_pending() -> bool:
             and Path(data['target']).resolve() == Path(sys.executable).resolve().parent)
 
 
-def extract(archive: Path, destination: Path, progress, *, tool_files: set[str] | None = None) -> Path:
+def extract(archive: Path, destination: Path, progress, *, tool_files: set[str] | None = None,
+            require_app: bool = True) -> Path:
     destination = destination.resolve()
     with zipfile.ZipFile(archive) as package:
         entries = package.infolist()
@@ -128,9 +129,14 @@ def extract(archive: Path, destination: Path, progress, *, tool_files: set[str] 
             package.extract(item, destination)
             progress(index + 1, len(entries))
     root = destination / "Peach"
-    if tool_files is None and (not (root / "Peach.exe").is_file() or not (root / "_internal" / "standalone.txt").is_file()):
-        raise UserValueError("errors.standaloneUpdate.notStandalone")
+    if require_app and tool_files is None:
+        _require_standalone(root)
     return root
+
+
+def _require_standalone(root: Path) -> None:
+    if not (root / "Peach.exe").is_file() or not (root / "_internal/standalone.txt").is_file():
+        raise UserValueError("errors.standaloneUpdate.notStandalone")
 
 
 def download(url: str, archive: Path, size: int, digest: str, progress) -> None:
@@ -164,11 +170,17 @@ def _download_once(url: str, archive: Path, size: int, digest: str, progress) ->
 
 
 def prepare_tools(stage: Path, target: Path, transaction: Path, release: dict, data: dict,
-                  *, report=None, fetch=None) -> None:
+                  *, report=None, fetch=None, defer_optional=False) -> None:
     report, fetch = report or write, fetch or download
     manifest = update_packages.read_manifest(stage, release["latest_version"])
+    tools = manifest["tools"]
+    if defer_optional:
+        # 新装和未下载模型的轻量安装沿用按需模式。已有工具仍按摘要复用或升级。
+        tools = {key: bundle for key, bundle in tools.items()
+                 if key not in update_packages.SELF_PROVISIONED
+                 or (target / update_packages.TOOL_PATHS[key][0]).is_dir()}
     missing = []
-    for tool, bundle in manifest["tools"].items():
+    for tool, bundle in tools.items():
         if update_packages.matches(stage, bundle["files"]):
             continue
         if update_packages.matches(target, bundle["files"]):
@@ -197,7 +209,7 @@ def prepare_tools(stage: Path, target: Path, transaction: Path, release: dict, d
             destination = update_packages.checked_path(stage, name)
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(update_packages.checked_path(extracted, name), destination)
-    for tool, bundle in manifest["tools"].items():
+    for tool, bundle in tools.items():
         if not update_packages.matches(stage, bundle["files"]):
             raise UserValueError("errors.standaloneUpdate.toolReuseFailed", {"tool": tool})
 
@@ -236,7 +248,11 @@ def signed_release(release: dict) -> dict:
         raise UserValueError("errors.standaloneUpdate.signatureFailed")
     full = release.get("full_url")
     full = digests.get(full.rsplit("/", 1)[1]) if isinstance(full, str) else None
-    return dict(release, asset_digest="sha256:" + digests[name], full_digest=full and "sha256:" + full)
+    signed = dict(release, asset_digest="sha256:" + digests[name], full_digest=full and "sha256:" + full)
+    delta = signed.pop("delta", None)
+    if delta and (verified := digests.get(delta["url"].rsplit("/", 1)[-1])):
+        signed["delta"] = {**delta, "digest": "sha256:" + verified}
+    return signed
 
 
 def checked_asset(digest: object, size: object, label: str | dict) -> tuple[str, int]:
@@ -256,12 +272,52 @@ def fetch_package(url: str, size: int, digest: str, transaction: Path, name: str
     write(data, state="verifying", progress=66, **message_fields("jobMessage.standaloneUpdate.verifying"))
     write(data, state="extracting", **message_fields("jobMessage.standaloneUpdate.extracting"))
     shutil.rmtree(transaction / "stage", ignore_errors=True)
-    stage = extract(archive, transaction / "stage", lambda done, count: write(data, progress=67 + round(done / count * 8)))
+    stage = extract(archive, transaction / "stage", lambda done, count: _stage_progress(data, 67, 8, done, count))
+    _require_version(stage, version)
+    archive.unlink()
+    return stage
+
+
+def _stage_progress(data: dict, start: int, span: int, done: int, count: int) -> None:
+    progress = start + round(done / count * span)
+    if data.get("progress") != progress:
+        write(data, progress=progress)
+
+
+def _require_version(stage: Path, version: str) -> None:
     from .buildinfo import read_build_info
+
     info = read_build_info(stage / "_internal")
     if not info or info.version != version:
         raise UserValueError("errors.standaloneUpdate.versionMismatch")
+
+
+def _fetch_delta(delta: dict, target: Path, transaction: Path, version: str, data: dict) -> Path:
+    checksum, size = checked_asset(delta.get("digest"), delta.get("size"), {"code": "labels.standaloneUpdate.updatePackage"})
+    archive = transaction / "delta.zip"
+    write(data, total=size)
+    download(delta["url"], archive, size, checksum,
+             lambda count: write(data, downloaded=count, progress=round(count / size * 65, 1)))
+    write(data, state="extracting", progress=66, **message_fields("jobMessage.standaloneUpdate.extracting"))
+    stage = extract(archive, transaction / "stage",
+                    lambda done, count: _stage_progress(data, 66, 4, done, count), require_app=False)
+    update_delta.reassemble(target, stage, __version__, version, max_bytes=MAX_EXPANDED,
+                            progress=lambda done, count: _stage_progress(data, 70, 5, done, count))
+    _require_standalone(stage)
+    _require_version(stage, version)
+    archive.unlink()
     return stage
+
+
+def _preferred_package(release: dict, target: Path, transaction: Path, digest: str, data: dict) -> Path:
+    version, size = release["latest_version"], release["asset_size"]
+    if delta := release.get("delta"):
+        try:
+            return _fetch_delta(delta, target, transaction, version, data)
+        except (OSError, ValueError, zipfile.BadZipFile, httpx.HTTPError) as exc:
+            write(data, state="downloading", total=data["downloaded"] + size,
+                  **message_fields("jobMessage.standaloneUpdate.packageUnusable", {"error": nested_message(exc)}))
+    return fetch_package(release["asset_url"], size, digest, transaction, "package", version, data)
 
 
 def prepare(data: dict, lock: FileLock) -> None:
@@ -282,11 +338,11 @@ def prepare(data: dict, lock: FileLock) -> None:
         version = release["latest_version"]
         write(data, transaction=str(transaction), target=str(target), version=version,
               total=total, downloaded=0, state="downloading", **message_fields("jobMessage.standaloneUpdate.downloading"))
-        stage = fetch_package(release["asset_url"], total, digest, transaction, "package", version, data)
+        stage = _preferred_package(release, target, transaction, digest, data)
         if release.get("package_kind") == "update":
             write(data, state="preparing", **message_fields("jobMessage.standaloneUpdate.reusingTools"))
             try:
-                prepare_tools(stage, target, transaction, release, data)
+                prepare_tools(stage, target, transaction, release, data, defer_optional=True)
             except (ValueError, KeyError, TypeError, FileNotFoundError) as exc:
                 # 清单格式、工具集合或工具包与本版更新器对不上：完整包自带全部工具，不经清单。
                 try:
@@ -301,13 +357,25 @@ def prepare(data: dict, lock: FileLock) -> None:
         desktop_installer.carry_uninstaller(target, stage)
         # 助手从自己的目录运行，正式目录与暂存目录都不会被它的 DLL 句柄占用。
         helper = transaction / "helper"
-        shutil.copytree(target, helper, ignore=shutil.ignore_patterns("*.log"))
+        _copy_update_helper(target, helper)
         write(data, stage=str(stage), helper=str(helper), state="ready", progress=100,
               **message_fields("jobMessage.standaloneUpdate.ready"))
     except Exception as exc:
         write(data, state="error", progress=0, **_failure(exc))
     finally:
         lock.release()
+
+
+def _copy_update_helper(installed: Path, helper: Path) -> None:
+    """更新助手只运行 Python 应用，媒体工具由切换后的应用目录提供。"""
+    ignore_logs = shutil.ignore_patterns("*.log")
+
+    def ignore(directory, names):
+        if Path(directory) == installed:
+            return set(names) - {"Peach.exe", "_internal"}
+        return ignore_logs(directory, names)
+
+    shutil.copytree(installed, helper, ignore=ignore)
 
 
 def start() -> dict:

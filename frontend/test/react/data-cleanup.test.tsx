@@ -26,7 +26,7 @@ import { hasResourceRoots, RESOURCE_SCAN_KEY, type ResourceScanState } from '../
 import { IDLE_REPAIR } from '../../src/react/media-repair/media-repair';
 import type { MediaSourcesData } from '../../src/react/media-sources';
 import { queryClient } from '../../src/react/query';
-import { actionOrder, buttonNamed, choose, click, mount, settle, type } from './render';
+import { actionOrder, buttonNamed, choose, click, mount, pending, settle, type } from './render';
 
 afterEach(() => {
   queryClient.clear();
@@ -76,7 +76,7 @@ function serve(routes: Record<string, Route>) {
       return { ok: false, status: 404, json: async () => ({}) };
     }
     const route = routes[key];
-    const answer = typeof route === 'function' ? (route as (b: unknown, m: string) => unknown)(body, method) : route;
+    const answer = await (typeof route === 'function' ? (route as (b: unknown, m: string) => unknown)(body, method) : route);
     if (answer && typeof answer === 'object' && FAIL in answer) {
       const { status, body: payload } = answer as ReturnType<typeof failWith>;
       return { ok: false, status, json: async () => payload };
@@ -212,6 +212,8 @@ describe('读数卡', () => {
 });
 
 describe('资源同步', () => {
+  const writer = { readOnly: false, readOnlyMessage: '', writerUrl: '' };
+
   it('首页不读取资源扫描，进入二级页后才按已配置根目录读取', async () => {
     expect(hasResourceRoots(withRoots)).toBe(true);
     expect(hasResourceRoots(withoutRoots)).toBe(false);
@@ -252,15 +254,16 @@ describe('资源同步', () => {
   it('扫完来源一行、待删三样一行；清理是危险确认，正文写明永久删除，确认后才发 apply', async () => {
     const seen = confirmWith(true);
     const toast = vi.fn();
+    const rescan = pending<unknown>();
     const server = serve({
-      '/api/resource-sync/scan': scanned,
+      '/api/resource-sync/scan': (body: { status_only?: boolean }) => body.status_only ? scanned : rescan.answer,
       '/api/resource-sync/apply': applyRoute({
         purged: 4, blocked: [], dirs_removed: 3, dir_errors: 0, cache_removed: 2, bytes_reclaimed: 1048576 * 5,
         cache_blocked: [],
       }),
       '/api/items?state=trash&limit=1': { total: 0, bytes: 0 },
     });
-    const host = await wrap(<ResourceSyncCard toast={toast} />);
+    const host = await wrap(<ResourceSyncCard toast={toast} writeAccess={writer} />);
     await settle();
     expect(host.textContent).toContain('本地磁盘');
     expect(host.querySelector('[data-connection-tone="warning"]')?.textContent).toBe('离线');
@@ -283,6 +286,14 @@ describe('资源同步', () => {
     await settle();
     expect(toast).toHaveBeenCalledWith('已清理失效条目');
     expect(host.textContent).toContain('已永久删除 4 条失效记录和 3 个空文件夹，清理 2 个缓存，释放 5 MB。');
+
+    await click(buttonNamed('重新扫描', host));
+    expect(buttonNamed('扫描中', host)?.getAttribute('aria-busy')).toBe('true');
+    expect(host.textContent).not.toContain('已永久删除 4 条失效记录');
+    expect(buttonNamed('清理失效条目', host)).toBeNull();
+    await rescan.release(failWith(400, { detail: '本次扫描未能启动' }));
+    expect(host.textContent).toContain('本次扫描未能启动');
+    expect(host.textContent).not.toContain('已永久删除 4 条失效记录');
   });
 
   it('其余来源仍在扫描时显示已确认来源，任务失败也保留这些结果', async () => {
@@ -315,7 +326,7 @@ describe('资源同步', () => {
       }),
       '/api/items?state=trash&limit=1': { total: 0, bytes: 0 },
     });
-    const host = await wrap(<ResourceSyncCard toast={vi.fn()} />);
+    const host = await wrap(<ResourceSyncCard toast={vi.fn()} writeAccess={writer} />);
     await settle();
     expect(host.textContent).toContain('将标为已消失');
     expect(host.textContent).toContain('2 项带个人记录');
@@ -340,7 +351,7 @@ describe('资源同步', () => {
       }),
       '/api/items?state=trash&limit=1': { total: 0, bytes: 0 },
     });
-    const host = await wrap(<ResourceSyncCard toast={toast} />);
+    const host = await wrap(<ResourceSyncCard toast={toast} writeAccess={writer} />);
     await settle();
     await click(buttonNamed('清理失效条目', host));
     await settle();
@@ -456,12 +467,14 @@ describe('链接管理', () => {
 
   it('失效与未访问成功分两张表；删除是危险确认，确认了才带着这一趟的检查号发', async () => {
     const seen = confirmWith(true);
+    const start = pending<unknown>();
+    const running = { ok: true, status: 'running', job_id: 'prune-1', checked: 1, total: 3 };
     let started = false;
     const server = serve({
       '/api/links': stats, '/api/links/check': checked,
       '/api/links/prune': (_body: unknown, method: string) => {
-        if (method === 'POST') started = true;
-        return started ? { ok: true, status: 'running', job_id: 'prune-1' } : { status: 'idle' };
+        if (method === 'POST') return start.answer;
+        return started ? running : { status: 'complete', checked: 7, total: 7 };
       },
     });
     const host = await wrap(<LinkManager />);
@@ -474,6 +487,12 @@ describe('链接管理', () => {
     expect(seen[0]!.danger).toBe(true);
     expect(seen[0]!.body).toBe('将删除 1 条失效链接，删除前会再检查一次。不能撤销。');
     expect(server.posts('/api/links/prune')).toEqual([{ confirm: true, check_id: 'check-3', background: true }]);
+    expect(host.textContent).toContain('正在重验并删除失效链接');
+    expect(host.querySelector('[role="progressbar"]')).toBeNull();
+    started = true;
+    await start.release(running);
+    expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('1');
+    expect(host.querySelector('[role="progressbar"]')?.getAttribute('aria-valuemax')).toBe('3');
   });
 
   it('取消确认就不发删除', async () => {
@@ -626,6 +645,23 @@ describe('孤儿记录', () => {
 });
 
 describe('整理', () => {
+  it('文件整理状态读取失败时不展示旧进度，重新读取状态不会另起任务', async () => {
+    let unavailable = true;
+    const server = serve({ '/api/organize': () => unavailable ? failWith(503, { detail: '无法读取检查点' }) : organizeIdle });
+    queryClient.setQueryData(['organize'], { ...organizeIdle, status: 'running', message: '旧的整理进度' });
+    const host = await wrap(<OrganizeCard toast={vi.fn()} failure={vi.fn()} />);
+    await act(async () => { await queryClient.refetchQueries({ queryKey: ['organize'] }) });
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('无法读取文件整理任务的状态');
+    expect(host.textContent).not.toContain('旧的整理进度');
+    expect(buttonNamed('预览', host)?.disabled).toBe(true);
+    unavailable = false;
+    await click(buttonNamed('重试', host));
+    await settle();
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(buttonNamed('预览', host)?.disabled).toBe(false);
+    expect(server.posts('/api/organize')).toEqual([]);
+  });
+
   it('每个参数都能插入模板，默认追加到文件名并把光标留在参数后', async () => {
     serve({ '/api/organize': organizeIdle });
     queryClient.setQueryData(['organize'], organizeIdle);

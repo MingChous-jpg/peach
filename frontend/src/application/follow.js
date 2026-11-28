@@ -26,7 +26,7 @@ import { clearOverlayBackground, holdOverlayBackground, overlayState, takeOverla
 import { presentPost } from '../history/page-title';
 import { loadingState } from './loading.js';
 import { t } from '../i18n';
-export const followState = { followFilter: undefined, followAuthors: undefined, followProviders: undefined, followTags: undefined, followWorks: undefined, followMediaView: undefined, FOLLOW_FEED_SORTS: undefined, FOLLOW_RANDOM_SORT: undefined, followSort: undefined, followDir: undefined, followSeed: undefined, followDurMin: undefined, followDurMax: undefined, followContentSkeletonHtml: undefined, followSkeletonHtml: undefined, followFeedHelpers: undefined, followFeedActions: undefined, followFeedProps: undefined, followFeedShell: undefined, followDetailActions: undefined, FOLLOW_MANAGE_TABS: undefined, followSidebarFilters: undefined };
+export const followState = { followFilter: undefined, followAuthors: undefined, followProviders: undefined, followTags: undefined, followWorks: undefined, followMediaView: undefined, FOLLOW_FEED_SORTS: undefined, FOLLOW_RANDOM_SORT: undefined, followSort: undefined, followDir: undefined, followSeed: undefined, followDurMin: undefined, followDurMax: undefined, followQuery: '', followContentSkeletonHtml: undefined, followSkeletonHtml: undefined, followFeedHelpers: undefined, followFeedActions: undefined, followFeedProps: undefined, followFeedShell: undefined, followDetailActions: undefined, FOLLOW_MANAGE_TABS: undefined, followSidebarFilters: undefined };
 
 export function followCheckToast(report){
   const rows=report.results||[];
@@ -43,7 +43,7 @@ export function readFollowView(){return followState.controller.read()}
 export function followView(){
   return {status:followState.followFilter,media:followState.followMediaView,author:[...followState.followAuthors][0]||'',
     provider:[...followState.followProviders][0]||'',work:[...followState.followWorks][0]||'',tags:[...followState.followTags],
-    durMin:followState.followDurMin,durMax:followState.followDurMax,sort:followState.followSort,dir:followState.followDir,seed:followState.followSeed};
+    durMin:followState.followDurMin,durMax:followState.followDurMax,q:followState.followQuery||'',sort:followState.followSort,dir:followState.followDir,seed:followState.followSeed};
 }
 
 export function adoptFollowView(view){
@@ -52,7 +52,7 @@ export function adoptFollowView(view){
   followState.followProviders=new Set(view.provider?[view.provider]:[]);
   followState.followWorks=new Set(view.work?[view.work]:[]);
   followState.followTags=new Set(view.tags);
-  followState.followDurMin=view.durMin||0;followState.followDurMax=view.durMax||0;
+  followState.followDurMin=view.durMin||0;followState.followDurMax=view.durMax||0;followState.followQuery=view.q||'';
   followState.followSort=view.sort;followState.followDir=view.dir;followState.followSeed=view.seed;
 }
 
@@ -71,10 +71,10 @@ export function shuffleFollowFeed(){followState.controller.shuffle()}
 
 export function enterFollow(fresh=false){followState.controller.enter(fresh)}
 
-export async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=false){
+export async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=false,resume=null){
   if(push){
     if(!location.pathname.startsWith('/posts/')&&!preserveReturn)writeShell({followDetailReturnPath:location.pathname+location.search});
-    requestOverlay(`/posts/${+id}`,'follow',()=>openFollowDetail(id,false,mediaIndex,preserveReturn));
+    requestOverlay(`/posts/${+id}`,'follow',()=>openFollowDetail(id,false,mediaIndex,preserveReturn,resume));
     return;
   }
   releaseHoverPreviews();
@@ -91,7 +91,7 @@ export async function openFollowDetail(id,push=true,mediaIndex=null,preserveRetu
   const stage=await loadStage(mediaState.stageHost);
   await stage.open({kind:'follow',id,mediaIndex,mediaView:followState.followMediaView,
     relatedLimit:preferencesState.appSettings.relatedLimit>0?+preferencesState.appSettings.relatedLimit:0,
-    helpers:followState.followFeedHelpers,actions:followState.followDetailActions,resume:push?null:urlResume()});
+    helpers:followState.followFeedHelpers,actions:followState.followDetailActions,resume:resume??(push?null:urlResume())});
   scheduleStickySurfaces();
 }
 

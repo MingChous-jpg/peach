@@ -24,6 +24,7 @@
 import asyncio
 import logging
 import sqlite3
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -38,7 +39,7 @@ from starlette.middleware.gzip import DEFAULT_EXCLUDED_CONTENT_TYPES, GZipMiddle
 
 from . import (__version__, browser_transport, distribution, feeds, interface_text, ledger_backups, tunnel, web_contract,
                web_feeds, web_follow, web_settings)
-from . import routes_api, routes_auth, routes_configuration, routes_jav_browser, routes_media, routes_pages, routes_subtitles
+from . import routes_api, routes_auth, routes_configuration, routes_feedback, routes_jav_browser, routes_media, routes_pages, routes_subtitles
 from .buildinfo import frozen_build
 from .config import LOCATION_ROOT_DECLARATIONS, MEDIA_ROOT_DECLARATIONS, PeachSettings
 from .ffmpeg import FFmpegResolver
@@ -174,8 +175,9 @@ class FirstSetupSourceMiddleware:
 
 #: 启动迁移期间，需要账本的请求回 503 时带的那一句（ADR-0159）；前端认这个 code 立即查一次更新状态。
 LEDGER_MIGRATING_CODE = "api.ledger.migrating"
-#: 迁移期间照常回应、且不碰账本的两个接口：服务状态与页面顶部横幅的更新状态。
-MIGRATION_OPEN_PATHS = frozenset({"/healthz", "/api/client-updates"})
+#: 迁移期间照常回应的接口只处理服务状态与用户主动提交的反馈。
+MIGRATION_OPEN_PATHS = frozenset({"/healthz", "/api/client-updates", routes_feedback.PATH,
+                                  routes_feedback.ENVIRONMENT_PATH, routes_feedback.DIAGNOSTICS_PATH})
 
 
 class LedgerMigration:
@@ -332,14 +334,12 @@ def _restore_task_center(contract) -> None:
         LOGGER.info("task center requeued %s followup(s)", len(requeued))
 
 
-#: 开机在后台先算一遍的聚合：口味、复核、垃圾复核、关注的全部条目与筛选项各要几秒到
-#: 十几秒，都按账本版本号缓存（`WebContract.cached_until_changed`），算好一次就一直用到
-#: 账本或文件真的变了。排在前面的是每页都碰到的几份：形状名单、作品分组快照（目录、
-#: 索引、筛选项都建在它上面）、统计与搜索推荐池，重启后第一个打开页面的人不再等它们一起冷算。
+#: 首页与导航共用的聚合在休息时先准备，常用页面首次打开即可使用。
 WARM_AGGREGATES = (("/api/entity/shapes", {}), ("/api/items", {"limit": "60"}), ("/api/stats", {}),
-                   ("/api/search/recommendations", {}),
-                   ("/api/taste", {"window": "all"}), ("/api/review", {}), ("/api/ads", {}),
-                   ("/api/follow", {}))
+                   ("/api/search/recommendations", {}))
+#: 独立页面的聚合平时按需加载。资源充足时可在本机启用它们的后台预计算。
+OPTIONAL_AGGREGATES = (("/api/taste", {"window": "all"}), ("/api/review", {}),
+                       ("/api/ads", {}), ("/api/follow", {}))
 #: 关停时最多等在算的那份预热这么久（秒）：比存储卷探测的期限长一点，正常都等得到它放下连接；
 #: 等不到就不再等，免得一份卡住的预热让服务停不下来。
 WARMUP_STOP_SECONDS = 15.0
@@ -442,7 +442,9 @@ async def _warm_ledger_aggregates(ledger_ready: bool, contract, stopping: asynci
     """走和真实请求同一条分派，缓存键一致，页面第一次打开就是现成的。"""
     if not ledger_ready:
         return
-    for path, args in WARM_AGGREGATES:
+    from . import background_work
+    optional = await asyncio.to_thread(background_work.enabled, contract.follow_state_root)
+    for path, args in WARM_AGGREGATES + (OPTIONAL_AGGREGATES if optional else ()):
         if stopping.is_set():
             return
         try:
@@ -459,6 +461,47 @@ async def _stop_warmup(warmup: asyncio.Task) -> None:
     except TimeoutError:
         LOGGER.warning("Aggregate warmup still running after %ss at shutdown; not waiting for it",
                        WARMUP_STOP_SECONDS)
+
+
+async def _activate_startup_ledger(activation, configured: bool) -> bool:
+    from . import startup_diagnostics
+
+    with startup_diagnostics.stage("activate_ledger") as outcome:
+        ready = await activation.start()
+        if configured and not ready:
+            outcome("unavailable")
+    return ready
+
+
+async def _record_startup_mounts(monitor: MountReachability) -> None:
+    from . import startup_diagnostics
+
+    # 后台探测有结果后再留记录，网页启动无需等待挂载。
+    deadline = time.monotonic() + monitor.timeout + monitor.retry_delay + 1
+    while True:
+        counts = monitor.status_counts()
+        if not counts.get("checking") or time.monotonic() >= deadline:
+            await asyncio.to_thread(startup_diagnostics.mount_results, counts)
+            return
+        await asyncio.sleep(0.25)
+
+
+def _start_mount_monitor(monitor: MountReachability) -> asyncio.Task | None:
+    from . import startup_diagnostics
+
+    with startup_diagnostics.stage("mount_monitor"):
+        monitor.start()
+    return asyncio.create_task(_record_startup_mounts(monitor)) if startup_diagnostics.active() else None
+
+
+async def _stop_startup_mount_report(report: asyncio.Task | None) -> None:
+    if report is None:
+        return
+    report.cancel()
+    try:
+        await report
+    except asyncio.CancelledError:
+        pass
 
 
 def _server_error_headers(request: Request, error: Exception, status_code=500):
@@ -600,6 +643,7 @@ def _health_payload(request, settings, resolver, browser_transport, *, details: 
     migration = app.state.ledger_migration
     mounts = app.state.mount_reachability.summary()
     corrupted = app.state.database.corrupted
+    repairs = getattr(app.state, "upgrade_repairs", None)
     components = health_components(settings, mounts, migrating=migration.running, known_corruption=corrupted)
     return {"ok": True, "service": "peach-api", "version": __version__,
             "checks": components if details else {
@@ -624,6 +668,7 @@ def _health_payload(request, settings, resolver, browser_transport, *, details: 
             # 采集用的浏览器窗口正等着人点验证的站，供排查时看一眼；窗口本身就是提醒，不另弹通知（ADR-0065）。
             **({
                 "media_mounts": mounts,
+                "media_capacity_paused": bool(repairs and repairs.media_paused()),
                 "mdns_service": mdns.name if mdns is not None else None,
                 "mdns_service_host": mdns.hostname if mdns is not None else None,
                 "mdns_address": mdns.address if mdns is not None else None,
@@ -638,14 +683,10 @@ def _health_payload(request, settings, resolver, browser_transport, *, details: 
 
 def _readiness_response(app, settings, *, details: bool):
     """`/healthz?ready=1`：迁移进行中直接报未就绪，不碰账本；其余照 `health.readiness` 核对。"""
-    from .health import readiness
-    migration = app.state.ledger_migration
-    deferred = getattr(app.state, 'ledger_background_deferred', False)
-    result = readiness(settings, background_ready=None if deferred else getattr(app.state, "ledger_background_ready", None),
-                       migrating=migration.running, known_corruption=app.state.database.corrupted)
-    result["background_deferred"] = deferred
+    from .health import app_readiness
+    result = app_readiness(app, settings)
     if details:
-        result["ledger_migration"] = migration.payload()
+        result["ledger_migration"] = app.state.ledger_migration.payload()
     return JSONResponse(result, status_code=200 if result["ready"] else 503, headers={"Cache-Control": "no-store"})
 
 
@@ -712,6 +753,7 @@ def create_app(
     repository = LedgerRepository(database)
     from .mount_reachability import source_roots
     mount_reachability = MountReachability(source_roots())
+    contract.mount_reachability = mount_reachability
     from .network_reachability import NetworkReachability
     from .web_library_processing import retry_after_network_recovery
     network_reachability = NetworkReachability(
@@ -858,6 +900,8 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        from . import startup_diagnostics
+
         # asyncio 异常处理器由 `listening.serve` 装在 uvicorn 的事件循环上：它要拿着 uvicorn
         # 的 Server，才能在监听被标准库关掉后重新监听。
         # 握手要等 cloudflared 连上边缘，断网时会等满 `wait_timeout`；放在后台，本机访问
@@ -867,9 +911,10 @@ def create_app(
                     follow_backfill, _app.state.cover_repair)
         activation = _LedgerActivation(_app, settings, contract, services, automatic_updates, sharing)
         _app.state.ledger_activation = activation
-        ledger_ready = await activation.start()
+        ledger_ready = await _activate_startup_ledger(activation, settings.configured)
+        mount_report = None
         if settings.configured:
-            mount_reachability.start()
+            mount_report = _start_mount_monitor(mount_reachability)
             # javdb 的节拍和独立采集脚本共用数据根里的同一个文件，两边同时跑也不超过它的速率上限。
             from .library_processing import share_source_limits
             share_source_limits(settings.follow_state_root)
@@ -878,13 +923,17 @@ def create_app(
         aggregate_warmup = asyncio.create_task(_warm_ledger_aggregates(ledger_ready, contract, aggregate_stop))
         if mdns is not None:
             try:
-                await asyncio.to_thread(mdns.start)
+                with startup_diagnostics.stage("mdns"):
+                    await asyncio.to_thread(mdns.start)
             except Exception:
                 mdns.status = "unavailable"
                 logging.getLogger(__name__).exception("mDNS publication failed")
+        resource_sampling = asyncio.create_task(_app.state.runtime_diagnostics.run())
         try:
             yield
         finally:
+            resource_sampling.cancel()
+            await _stop_startup_mount_report(mount_report)
             # 外部播放器的最后一段观看要赶在账本收尾前落下。
             await asyncio.to_thread(_app.state.playback_trackers.stop)
             await activation.stop()
@@ -935,6 +984,8 @@ def create_app(
     app.state.settings = settings
     app.state.database = database
     app.state.ledger_migration = LedgerMigration()
+    from .runtime_diagnostics import MediaDeliveryTimings, RuntimeDiagnostics
+    app.state.runtime_diagnostics = RuntimeDiagnostics()
     app.state.web_contract = contract
     app.state.library_sharing = sharing
     app.state.seed_sharing = seed_sharing
@@ -1057,6 +1108,7 @@ def create_app(
     app.add_middleware(LedgerMigrationGate)
     app.add_middleware(FirstSetupSourceMiddleware)
     app.add_middleware(ResponseHeadersMiddleware)
+    app.add_middleware(MediaDeliveryTimings, diagnostics=app.state.runtime_diagnostics)
 
     # JSON 契约、页面脚本与样式是仅有的几类大文本响应，压下去省的字节最多：
     # `/api/items`、主界面 bundle 与样式都通过内容类型选择压缩。
@@ -1083,6 +1135,7 @@ def create_app(
     app.include_router(routes_auth.router)
     app.include_router(routes_pages.router)
     app.include_router(routes_configuration.router)
+    app.include_router(routes_feedback.router)
     app.include_router(routes_jav_browser.create_router(routes_configuration.local_only))
     app.state.local_only = routes_configuration.local_only
     app.include_router(routes_media.router)

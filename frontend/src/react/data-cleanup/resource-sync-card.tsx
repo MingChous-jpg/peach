@@ -9,20 +9,23 @@
 import { confirmModal, MEDIA_SOURCE_ICONS } from '@peach/legacy/ui';
 import { fmtSize } from '@peach/legacy/core';
 
-import { Button } from '@/components/base/buttons/button';
+import { Button, ButtonLink } from '@/components/base/buttons/button';
 
 import { errorMessage } from '../../api';
 import { RESOURCE_SYNC_TEXT } from '../../cleanup-tool-skeletons';
 import { useBackgroundJob } from '../background-job';
 import { Fieldset, FieldsetTitle } from '../components/fieldset';
 import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { ConnectionStatus } from '../components/connection-status';
 import { StatusLabel } from '../components/status-label';
 import { TaskProgress } from '../components/task-progress';
+import { AnimatedNumber } from '../components/animated-number';
 import { activityKind } from '../../activity-kinds';
 import { spriteGlyph } from '../components/sprite-glyph';
 import { PlainStat, plainStatClass } from '../components/stat-card';
 import { queryClient } from '../query';
+import type { WriterAccess } from '../router/shell-actions';
 import { SourceMark } from '../settings/section';
 import { busyProps } from '../settings/use-action';
 import { TRASH_KEY } from './data-cleanup';
@@ -36,8 +39,8 @@ import { t } from '../../i18n';
 
 const COMPARE = spriteGlyph('git-compare');
 const AGAIN = spriteGlyph('rotate-cw');
-const DISCONNECTED = t('cleanup:shared.reconnecting');
 const APPLY_LABEL = t('cleanup:resourceSync.cleanUpDead');
+const STATUS_NOTE = 'px-6 py-3';
 
 /* 结果读数两行各自按卡数等分：来源几个都不折出半行。窄了照顶上那排读数折两列、一列。 */
 const RESULT_ROW = 'inline-grid w-full grid-flow-col auto-cols-fr gap-4 max-plain-stat-pair:grid-flow-row'
@@ -83,7 +86,7 @@ function ScanResult({ scan, partial = false }: { scan: ResourceScanState; partia
 }
 
 export function ResourceSyncCard(
-  { toast }: { toast(message: string, options?: { warning?: boolean }): void },
+  { toast, writeAccess }: { toast(message: string, options?: { warning?: boolean }): void; writeAccess?: WriterAccess },
 ) {
   const apply = useBackgroundJob<ResourceApplyState, string>({
     queryKey: RESOURCE_APPLY_KEY,
@@ -108,10 +111,11 @@ export function ResourceSyncCard(
     onStarted: () => apply.dismiss(),
   });
 
-  const state = scan.job;
+  const state = scan.start.isPending ? undefined : scan.job;
   const scanning = scan.running || scan.start.isPending;
   const cleaning = apply.running || apply.start.isPending;
   const actionsReady = !!scan.job && !!apply.job;
+  const canApply = actionsReady && writeAccess?.readOnly === false;
   const scanned = state?.status === 'complete' || state?.status === 'failed';
   const label = scanning ? t('cleanup:resourceSync.scanning') : scanned ? t('cleanup:resourceSync.scanAgain') : t('cleanup:resourceSync.checkFiles');
 
@@ -125,7 +129,7 @@ export function ResourceSyncCard(
     onConfirm: () => apply.start.mutateAsync(payload.scan_id || ''),
   });
 
-  const done = apply.outcome;
+  const done = scan.start.isPending || scan.start.isError ? null : apply.outcome;
   const receipt = (out: ResourceApplyState) => {
     const partial = applyLeftovers(out).left > 0;
     return (
@@ -137,7 +141,11 @@ export function ResourceSyncCard(
   let progress = null;
   let result = null;
   if (done?.status === 'failed') {
-    result = <Note tone="error" title={t('cleanup:resourceSync.cleanupIncomplete')}>{jobText(done, 'error') || t('cleanup:shared.checkTaskLogFiles')}</Note>;
+    result = <Note tone="error" title={t('cleanup:resourceSync.cleanupIncomplete')} action={
+      <ButtonLink href="/tasks" size="small" variant="secondary">
+        <span data-copy-key="shell.routeTitle.tasks">{t('shell:routeTitle.tasks')}</span>
+      </ButtonLink>
+    }>{jobText(done, 'error') || t('cleanup:shared.checkTaskLogFiles')}</Note>;
   } else if (done) {
     result = receipt(done);
   } else if (apply.running) {
@@ -145,11 +153,13 @@ export function ResourceSyncCard(
   } else if (scan.start.isError) {
     result = <Note tone="error" title={t('cleanup:resourceSync.scanFailed')}>{errorMessage(scan.start.error)}</Note>;
   } else if (scan.query.isError && state) {
-    result = <Note tone="neutral" title={t('cleanup:shared.taskStatus')}>{DISCONNECTED}</Note>;
+    result = <QueryErrorNote titleKey="cleanup:resourceSync.scanStatusUnavailable" query={scan.query} className={STATUS_NOTE} />;
   } else if (state?.status === 'running') {
     const line = scanLine(state);
     progress = (
-      <TaskProgress embedded kind={activityKind('resource-scan')} label={line} value={state.completed_sources} total={state.total_sources} />
+      <TaskProgress embedded kind={activityKind('resource-scan')} label={line}
+        labelContent={state.total_sources ? <AnimatedNumber value={line} /> : line}
+        value={state.completed_sources} total={state.total_sources} />
     );
     if (state.sources?.length) result = <ScanResult scan={state} partial />;
   } else if (state?.status === 'failed') {
@@ -168,7 +178,7 @@ export function ResourceSyncCard(
         <ScanResult scan={state} />
         {changes
           ? <Note tone="neutral" title={t('cleanup:resourceSync.toClean')} action={
-              <Button variant="danger" disabled={!actionsReady} {...busyProps(cleaning)} onClick={() => { if (actionsReady) runApply(state) }}>
+              <Button variant="secondary" disabled={!canApply} {...busyProps(cleaning)} onClick={() => { if (canApply) runApply(state) }}>
                 {cleaning ? t('cleanup:resourceSync.applyingButton') : APPLY_LABEL}
               </Button>
             }>{applyPlanText(state)}</Note>
@@ -184,20 +194,27 @@ export function ResourceSyncCard(
 
   return (
     <section id="resource-sync" aria-labelledby="resource-sync-title" className="flex scroll-mt-20 flex-col gap-4">
+      {writeAccess?.readOnly ? <Note tone="warning" action={writeAccess.writerUrl
+        ? <ButtonLink variant="secondary" size="small" href={writeAccess.writerUrl}><span data-copy-key="cleanup.resourceSync.goToPrimary">{t('cleanup:resourceSync.goToPrimary')}</span></ButtonLink>
+        : undefined}>{writeAccess.readOnlyMessage}</Note> : null}
       <Fieldset layout="split" labelledBy="resource-sync-title" footer={
         <Button data-resource-scan leadingIcon={scanned && !scanning ? AGAIN : COMPARE} disabled={!actionsReady} {...busyProps(scanning)}
           onClick={() => { if (actionsReady && !scanning) scan.start.mutate() }}>{label}</Button>
       }>
         <FieldsetTitle id="resource-sync-title" gap="small">{t('cleanup:tools.resourceSync')}</FieldsetTitle>
-        {scan.query.isPending || apply.query.isPending ? <div role="status" aria-label={t('cleanup:resourceSync.statusLoading')} data-skeleton="" className="skeleton-sheen h-6 rounded-md" /> : null}
-        {!scan.job && scan.query.isError ? <Note tone="error">{t('cleanup:resourceSync.scanStatusUnavailable')}</Note> : null}
-        {!apply.job && apply.query.isError ? <Note tone="error">{t('cleanup:resourceSync.applyStatusUnavailable')}</Note> : null}
         <p className="max-w-190 text-body-2-regular leading-5 text-text-secondary">
           {RESOURCE_SYNC_TEXT}
         </p>
-        <div aria-live="polite" className="mt-4 empty:hidden">{progress}</div>
+        <div aria-live="polite" className="mt-4 flex flex-col gap-2 empty:hidden">
+          {scan.query.isPending || apply.query.isPending ? <div role="status" aria-label={t('cleanup:resourceSync.statusLoading')} data-skeleton="" className="skeleton-sheen h-6 rounded-md" /> : null}
+          {progress}
+        </div>
       </Fieldset>
-      <div aria-live="polite" className="flex flex-col gap-4 empty:hidden">{result}</div>
+      <div aria-live="polite" className="flex flex-col gap-4 empty:hidden">
+        {!scan.job && scan.query.isError ? <QueryErrorNote titleKey="cleanup:resourceSync.scanStatusUnavailable" query={scan.query} className={STATUS_NOTE} /> : null}
+        {apply.query.isError ? <QueryErrorNote titleKey="cleanup:resourceSync.applyStatusUnavailable" query={apply.query} className={STATUS_NOTE} /> : null}
+        {result}
+      </div>
     </section>
   );
 }

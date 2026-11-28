@@ -21,6 +21,18 @@ import { queryClient } from '../query';
 import type { FollowJobView } from '../../jobs';
 import { t } from '../../i18n';
 
+const pendingItemWrites = new Set<number>();
+
+export function beginFollowItemWrite(id: number): boolean {
+  if (pendingItemWrites.has(id)) return false;
+  pendingItemWrites.add(id);
+  return true;
+}
+
+export function finishFollowItemWrite(id: number): void {
+  pendingItemWrites.delete(id);
+}
+
 /* ── 地址栏那一组 ── */
 
 /** 状态那一排。已看那一档不摆：看过就归档，要再翻出来是「全部」的事。 */
@@ -50,6 +62,8 @@ export interface FollowView {
   /** 时长两端（秒），同首页的 `dur_min`／`dur_max`；0 是这一端不限。 */
   durMin: number;
   durMax: number;
+  /** 页头查找框的词，服务端按标题、来源名、标签筛；缺省是不筛。 */
+  q?: string;
   sort: FollowSort;
   dir: 'asc' | 'desc';
   /** 服务端随机排序的种子，只在 `sort` 为 `rand` 时进请求。 */
@@ -74,6 +88,7 @@ export function followPageUrl(view: FollowView, offset: number): string {
     + (view.work ? `&work=${csv([view.work])}` : '')
     + (view.durMin ? `&dur_min=${view.durMin}` : '')
     + (view.durMax ? `&dur_max=${view.durMax}` : '')
+    + (view.q ? `&q=${encodeURIComponent(view.q)}` : '')
     + (view.sort !== 'new' ? `&sort=${view.sort}` : '')
     + (view.sort === FOLLOW_RANDOM_SORT ? `&seed=${view.seed}` : '')
     + (view.dir !== 'desc' ? `&dir=${view.dir}` : '');

@@ -1,7 +1,7 @@
 /** 主界面根：同一模块图和路由树，资源跟随根的生命周期。 */
 import { useLayoutEffect, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { flushSync } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { initializeApplication } from '../application/initialize.js';
 import { connectApplication, disposeApplicationResidents } from './application-residents';
 import { renewApplicationEffects, type ApplicationEffects } from '../application/effects';
@@ -13,6 +13,7 @@ import { releaseAllManagedRoutes } from '../history';
 import { RouterRoot, ROUTER_ROOT_OPTIONS } from './router/router';
 import type { ShellActions } from './router/shell-actions';
 import { ResultUpdates } from './result-updates';
+import { NotificationCenter } from './notification-center';
 import { InterfaceLocale } from './interface-locale';
 
 interface ApplicationResources { effects: ApplicationEffects; owners: number }
@@ -58,7 +59,12 @@ export function Application() {
       queueMicrotask(() => finalizeResources(current));
     };
   }, []);
-  return <RouterRoot actions={actions} processing background={actions ? <ResultUpdates openItem={actions.openItem} /> : null} />;
+  const notificationHost = document.getElementById('notificationCenter');
+  return <RouterRoot actions={actions} processing background={actions ? <>
+    <ResultUpdates openItem={actions.openItem} navigate={actions.navigate} />
+    {notificationHost instanceof HTMLButtonElement
+      ? createPortal(<NotificationCenter actions={actions} trigger={notificationHost} />, notificationHost) : null}
+  </> : null} />;
 }
 const roots = new WeakMap<Element, Root>();
 export function mountApplication(host: Element): Root {

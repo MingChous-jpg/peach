@@ -13,13 +13,14 @@ import { reopenPostSetupTutorial } from './tutorial.js';
 import { runtimeConfigurable, selectMode, state, writeShell } from './../shell/index';
 import { indexPath, indexState, onlineAuthorRingHtml, openFollowAuthorFromIndex, openFollowTagFromIndex, routeFollowManage, showIndexContainer, showIndexTags } from './index.js';
 import { censorOn, loadSourceStatus, preferencesState, wireAllDrag } from './preferences.js';
-import { mountBatchDock, selectCardRectangle, setSelectMode } from './selection.js';
+import { mountBatchDock, runCatalogBatchFor, selectCardRectangle, setSelectMode } from './selection.js';
 import { releaseHoverPreviews } from './../card-art/hover';
 import { bootEntry, peachHistory } from './../history/index';
 import { $ } from '../core';
 import { dropBars } from './../catalog-bars';
 import { isOverlayPath, overlayTarget } from './../history/overlay';
 import { navigationLinkPath } from './../history/links';
+import { isPreferencePath, preferenceSection } from './../history/settings-route';
 import { scrollToAnchor } from '../ui-kit/anchor-scroll';
 import { loadRouter, settingsPanelApi } from '../react/application-residents';
 import { applicationEffects } from './effects';
@@ -51,9 +52,15 @@ if(isFeedNewPath(decodeURIComponent(location.pathname))){
 }
 mountSidebar();
 compositionState.shellActions = {
-  openSettings:section=>openSettings(section,true),
+  openSettings:(section,anchor)=>openSettings(section,true,anchor),
   closeSettings:()=>settingsPanelApi()?.close(false),
   openItem:id=>void openItem(id),
+  resumePlayback:(kind,id,time)=>{
+    const resume={time,autoplay:true};
+    if(kind==='follow')void openFollowDetail(id,true,null,false,resume);
+    else void openItem(id,true,null,null,false,null,null,resume);
+  },
+  catalogFileAction:(operation,ids,button)=>runCatalogBatchFor(operation,ids,button),
   openEntity:(kind,name)=>void openEntity(kind,name),
   /* 点一个内容标签是「回目录并按它筛选」：整页换成目录仍归壳，页面只说点了哪个键。 */
   openTag:key=>{closeStats();toggleTag(key)},
@@ -63,6 +70,8 @@ compositionState.shellActions = {
     if(target){
       const kind=target.kind==='queue'?'item':target.kind;
       requestOverlay(url.pathname+url.search+url.hash,kind,()=>openOverlayTarget(target));
+    }else if(url.hash&&isPreferencePath(url.pathname)&&!isPreferencePath(location.pathname)){
+      void openSettings(preferenceSection(url.pathname),false,url.hash,url.search);
     }else if(url.hash&&url.pathname===location.pathname&&url.search===location.search&&!isOverlayPath(location.pathname)){
       navigationState.route(path);
       const seq=peachHistory.navigation.seq;
@@ -96,6 +105,7 @@ compositionState.shellActions = {
   openFollowAuthor:openFollowAuthorFromIndex,
   openFollowTag:openFollowTagFromIndex,
   openPlaylist:(id,resume)=>void openPlaylist(id,resume,true),
+  playSavedFilter:id=>void openQueue('filter',id,null,true,null,{autoplay:true}),
   canFlip:()=>!selectMode&&!censorOn()&&!window.__scrolling&&!catalogState.reduceMotion(),
   /* 页面元素挂上、开始取数之前报一次：收起上一页留下的面，再铺开这一页那一侧。 */
   surfaceChanged:(kind,path)=>{

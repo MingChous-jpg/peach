@@ -1,6 +1,7 @@
 /* 浏览器异常只记录到当前 Peach 主机。失败不再生成新的错误请求。 */
 import { browserDiagnostics, detailedBrowserDiagnostics, playbackDiagnostics } from './browser-diagnostics';
 import { t } from './i18n';
+import { reportSlowLoad, requestTiming } from './slow-load';
 let installed = false;
 const errorNames = new Set(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError', 'AggregateError', 'DOMException']);
 /* 正式包的文件名：主包入口、页面包与主包按页拆出的 chunk（ADR-0118），与服务端 `diagnostic_browser.SHIPPED` 同一口径。 */
@@ -24,6 +25,12 @@ export function installErrorReporting(): void {
   if (installed || typeof window === 'undefined') return;
   installed = true;
   if (!/^\/(?:login|setup)(?:\/|$)/.test(location.pathname)) {
+    const navigation = () => {
+      const entry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      if (entry) reportSlowLoad('page-load', entry.domContentLoadedEventEnd, requestTiming(entry));
+    };
+    if (document.readyState === 'complete') navigation();
+    else window.addEventListener('load', navigation, { once: true });
     void detailedBrowserDiagnostics().then(browser => fetch('/api/diagnostics/client-error', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
       body: JSON.stringify({ kind: 'context', message: t('shell:errorReport.browserSnapshot'), browser }),

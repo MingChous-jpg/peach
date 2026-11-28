@@ -20,7 +20,7 @@ import { MEDIA_SOURCE_ICONS } from '@peach/legacy/ui';
 import { settingsPath } from '@peach/history';
 import { ButtonLink } from '@/components/base/buttons/button';
 
-import { errorMessage } from '../../api';
+import { statsSkeleton } from '../../management-skeletons';
 import type { StatsProps } from '../bundle';
 import { BarCard } from '../charts/bar-card';
 import { CHART_COLORS } from '../charts/chart-card';
@@ -28,7 +28,7 @@ import { ActivityHeat } from '../charts/heat-card';
 import { cardClass } from '../components/card';
 import { EmptyState } from '../components/empty-state';
 import { ExpandableRanking } from '../components/expandable-ranking';
-import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { ConnectionStatus } from '../components/connection-status';
 import { StatusLabel } from '../components/status-label';
 import { Page } from '../components/page';
@@ -336,7 +336,8 @@ export function StatsPage(props: StatsProps) {
   if (!data) {
     return (
       <Page>
-        <Note tone="error" title={t('manage:stats.loadFailedTitle')}>{stats.error ? errorMessage(stats.error) : t('manage:stats.loadFailedHint')}</Note>
+        {stats.isPending ? <div data-skeleton="" dangerouslySetInnerHTML={{ __html: statsSkeleton() }} />
+          : <QueryErrorNote titleKey="manage:stats.loadFailedTitle" query={stats} />}
       </Page>
     );
   }
@@ -346,8 +347,10 @@ export function StatsPage(props: StatsProps) {
   const bytes = data.by_loc.reduce((sum, row) => sum + row.bytes, 0);
   const coverage = known(data.tag_cov) ? percentText(data.tag_cov, data.attribution.videos) : t('manage:shared.notFound');
   const covered = `${fmtCount(data.tag_cov)} / ${data.attribution.videos.toLocaleString()}`;
+  const showBreakdowns = videos > 0 || data.top_tags.length > 0 || data.recent.length > 0 || data.tag_source.length > 0;
   return (
     <Page>
+      {stats.error ? <QueryErrorNote titleKey="manage:stats.loadFailedTitle" query={stats} /> : null}
       <Tabs defaultSelectedKey="inventory" className="flex flex-col gap-4">
         <TabList aria-label={t('manage:stats.viewsLabel')} className={STAT_STRIP}>
           <MetricTab id="inventory" label={t('manage:statsSkeleton.collection')} icon={RiDatabase2Line} accent={0}
@@ -388,7 +391,7 @@ export function StatsPage(props: StatsProps) {
         </TabPanel>
       </Tabs>
       {/* 旧 `.insightpanel`：整块一张 16px 的填充卡，页签是卡内顶上那条分段控件。 */}
-      <Tabs defaultSelectedKey="tags" className={`${cardClass({ padding: 'none' })} flex flex-col`}>
+      {showBreakdowns ? <Tabs defaultSelectedKey="tags" className={`${cardClass({ padding: 'none' })} flex flex-col`}>
         <div className="px-4 pt-3">
           <SegmentedTabList aria-label={t('manage:stats.breakdownsLabel')} className={SEGMENTED_TRACK}>
             <Tab id="tags" className={SEGMENT}>{t('manage:statsSkeleton.contentTags')}</Tab>
@@ -401,7 +404,7 @@ export function StatsPage(props: StatsProps) {
         <TabPanel id="sources" className="px-4 pt-3.5 pb-4">
           <TagSources sources={data.tag_source} videos={data.attribution.videos} />
         </TabPanel>
-      </Tabs>
+      </Tabs> : null}
     </Page>
   );
 }

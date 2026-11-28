@@ -76,6 +76,7 @@ const unfilled = () => state({
 const field = (host: HTMLElement, label: string) =>
   [...host.querySelectorAll('label')].find((node) => node.textContent?.trim() === label)
     ?.closest('[data-input-size]')?.querySelector('input') ?? null;
+const enterCloudToken = (host: HTMLElement) => type(field(host, 'CloudDrive2 API 令牌'), 'fixture-token');
 
 it('五种下载版本默认显示为馆藏徽章，保存顺序后可以恢复默认排序', async () => {
   const order = ['chinese-subtitles', 'uncensored', 'uncensored-crack', 'uncensored-leak', 'censored'];
@@ -101,6 +102,10 @@ it('空检查报告不保留分隔区，只有错误时直接显示原因', asyn
   vi.stubGlobal('fetch', fetcher);
   const host = await mount(<DownloadSettings initial={state({ media_sources: ['guangya'] })} receipt={vi.fn()} />);
   const form = section(host, '云下载')!;
+  await click(buttonNamed('检查连接', host));
+  expect(fetcher).not.toHaveBeenCalled();
+  expect(field(host, 'CloudDrive2 API 令牌')?.getAttribute('aria-invalid')).toBe('true');
+  await enterCloudToken(host);
   await click(buttonNamed('检查连接', host));
   await settle();
   expect(form.querySelectorAll('dl')).toHaveLength(0);
@@ -171,6 +176,7 @@ it('检查报出缺的权限、目标目录与剩余配额，保存与账号密�
   }
   expect(buttonNamed('用浏览器登录', host)?.className).not.toContain('bg-button-primary');
   expect(buttonNamed('检查连接', host)?.className).not.toContain('bg-button-primary');
+  await enterCloudToken(host);
   await click(buttonNamed('检查连接', host));
   await settle();
   expect(host.textContent).toContain('缺 取消离线任务');
@@ -193,7 +199,7 @@ it('地址留空时检查把探测到的本机地址填回表单，保存配置�
   await settle();
   expect(sentBody(fetcher)).toMatchObject({ clouddrive_address: '' });
   expect(field(host, 'CloudDrive2 地址')?.value).toBe('http://127.0.0.1:29798');
-  expect(host.textContent).toContain('探测到 http://127.0.0.1:29798，保存配置后生效');
+  expect(host.textContent).toContain('找到服务地址 http://127.0.0.1:29798，保存后生效');
   expect(fetcher).toHaveBeenCalledTimes(1);
   fetcher.mockImplementation(async () => ({ ok: true, status: 200, json: async () => blank }));
   await submit(section(host, '云下载'));
@@ -210,6 +216,7 @@ it('目标目录与 PikPak 根留空时检查按推送发现填回，保存配�
   vi.stubGlobal('fetch', fetcher);
   const host = await mount(<DownloadSettings initial={unfilled()} receipt={vi.fn()} />);
   expect(field(host, '115 目标目录')?.placeholder).toBe('留空时根据媒体库目录自动填写');
+  await enterCloudToken(host);
   await click(buttonNamed('检查连接', host));
   await settle();
   expect(sentBody(fetcher)).toMatchObject({ target: '', pikpak_root: '', pikpak_account: false });
@@ -225,10 +232,13 @@ it('目标目录与 PikPak 根留空时检查按推送发现填回，保存配�
 });
 
 it('用户填过的目标目录不被建议值覆盖', async () => {
-  vi.stubGlobal('fetch', fetchMock(200, report({ suggested_target: { path: '/115open/云下载', exists: true } })));
+  const fetcher = fetchMock(200, report({ suggested_target: { path: '/115open/云下载', exists: true } }));
+  vi.stubGlobal('fetch', fetcher);
   const host = await mount(<DownloadSettings initial={state()} receipt={vi.fn()} />);
+  await enterCloudToken(host);
   await click(buttonNamed('检查连接', host));
   await settle();
+  expect(sentBody(fetcher)).toMatchObject({ target: '/115/云下载' });
   expect(field(host, '115 目标目录')?.value).toBe('/115/云下载');
   expect(host.textContent).not.toContain('根据媒体库目录填入');
 });
@@ -238,11 +248,13 @@ it('在账号框里填了 PikPak 账号或已登录时，检查才问 PikPak 根
   vi.stubGlobal('fetch', fetcher);
   const host = await mount(<DownloadSettings initial={unfilled()} receipt={vi.fn()} />);
   await type(field(host, '账号'), 'me@example.com');
+  await enterCloudToken(host);
   await click(buttonNamed('检查连接', host));
   await settle();
   expect(sentBody(fetcher)).toMatchObject({ pikpak_account: true });
   const signedIn = await mount(<DownloadSettings receipt={vi.fn()}
     initial={state({ pikpak: { logged_in: true, username: 'me@example.com', remember: false, method: 'password' } })} />);
+  await enterCloudToken(signedIn);
   await click(buttonNamed('检查连接', signedIn));
   await settle();
   expect(sentBody(fetcher, 1)).toMatchObject({ pikpak_account: true });
@@ -267,6 +279,7 @@ it('推出的目录不存在时标成无效，点了「新建这个目录」才�
   vi.stubGlobal('fetch', fetcher);
   const receipt = vi.fn();
   const host = await mount(<DownloadSettings initial={unfilled()} receipt={receipt} />);
+  await enterCloudToken(host);
   await click(buttonNamed('检查连接', host));
   await settle();
   const input = field(host, '115 目标目录');
@@ -377,6 +390,7 @@ it('保存的响应不带检查报告时收起上一次的报告', async () => {
   const fetcher = fetchMock(200, report({ folder: { path: '/115/云下载', can_offline: true, cloud: '115open' } }));
   vi.stubGlobal('fetch', fetcher);
   const host = await mount(<DownloadSettings initial={state()} receipt={vi.fn()} />);
+  await enterCloudToken(host);
   await click(buttonNamed('检查连接', host));
   await settle();
   expect(host.textContent).toContain('/115/云下载 可以离线下载');

@@ -19,20 +19,24 @@ import { useQuery } from '@tanstack/react-query';
 import { Chip } from '@/components/base/badges/chip';
 import { LinkButton } from '@/components/base/buttons/link-button';
 
-import { apiGet, errorMessage } from '../../api';
+import { apiGet } from '../../api';
+import { taskRunSectionsSkeleton } from '../../board-skeleton';
 import { cardClass } from '../components/card';
 import { CodeBlock } from '../components/code-block';
 import { EmptyState } from '../components/empty-state';
 import { IssueRow } from '../components/issue-row';
 import { NameLink } from '../components/name-link';
 import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { Page } from '../components/page';
-import { TaskProgress } from '../components/task-progress';
+import { TaskProgress, TaskStage } from '../components/task-progress';
+import { AnimatedNumber } from '../components/animated-number';
 import { activityKind } from '../../activity-kinds';
 import { DataTableFooter } from '../components/table-controls';
 import { Disclosure } from '../settings/section';
 import { BackgroundIssues } from './background-issues';
 import { DownloadsPanel } from './downloads-panel';
+import { IndexSearch } from '../index/index-search';
 import { ErrorDetails, ErrorExcerpt } from './error-excerpt';
 import { TaskControlFeedback, TaskControls } from './task-controls';
 import { TaskIcon } from './task-icon';
@@ -84,7 +88,7 @@ function StatusBadge({ run }: { run: TaskRunPayload }) {
  * 后继是独立的一轮，有自己的状态和结果，但单独摆出来就读不出「它是谁派的」——
  * 而那恰恰是这一屏上唯一需要解释的东西：用户没点过补头像，它却在跑。
  * 条间线写在每个 li 自己身上，第一条那根同时充当与卡片正文的分隔。 */
-function FollowupList({ rows }: { rows: TaskRunPayload[] }) {
+function FollowupList({ rows, visible }: { rows: TaskRunPayload[]; visible: boolean }) {
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
   const { pageSize } = pagination;
   const current = Math.min(pagination.pageIndex, Math.max(0, Math.ceil(rows.length / pageSize) - 1));
@@ -106,13 +110,13 @@ function FollowupList({ rows }: { rows: TaskRunPayload[] }) {
                   ? <span className="min-w-0 break-words text-caption-1-regular text-text-secondary">{detail}</span>
                   : null}
               </div>
-              <TaskControls run={row} />
+              <TaskControls run={row} visible={visible} />
             </div>
             <TaskResources run={row} />
             {/* 排队中的那些还没有结果：空的「技术详情」展开只有一对花括号。 */}
             {Object.keys(row.result_summary || {}).length
               ? <div className="w-full min-w-0">
-                  <Disclosure summary={t('manage:taskCenter.technicalDetails')} contentClassName="pb-2.5">
+                  <Disclosure findable summary={t('manage:taskCenter.technicalDetails')} contentClassName="pb-2.5">
                     <CodeBlock code={JSON.stringify(row.result_summary, null, 2)} language="json"
                       label={t('manage:taskCenter.taskTechnicalDetails', { task: taskName(row) })} />
                   </Disclosure>
@@ -130,8 +134,8 @@ function FollowupList({ rows }: { rows: TaskRunPayload[] }) {
 /** 一轮任务一张卡。失败时整张卡的框线换成 danger 色，不给结束原因那行字上色——
  *  一屏十几行里逐行读红字，比看一眼哪张卡的框是红的慢得多。 */
 function RunCard(
-  { run, meta, children, error, issues, followups, followupTotal = 0, badge, resourceActive, controlled }:
-  { run: TaskRunPayload; meta: string; children?: ReactNode; error?: string; issues?: ReactNode;
+  { run, meta, progress, children, error, issues, followups, followupTotal = 0, badge, resourceActive, controlled }:
+  { run: TaskRunPayload; meta: string; progress?: ReactNode; children?: ReactNode; error?: string; issues?: ReactNode;
     followups?: TaskRunPayload[]; followupTotal?: number; badge?: ReactNode; resourceActive?: boolean;
     controlled?: TaskRunPayload[] },
 ) {
@@ -173,6 +177,7 @@ function RunCard(
           </div>
           <TaskControls run={run} runs={controlled} />
         </div>
+        {progress}
         <p className="text-caption-1-regular text-text-secondary">{meta}</p>
         <TaskResources run={run} active={resourceActive} />
         {/* 文件名常有上百字：单行末尾省略，番号在开头，完整名称在悬停提示里。不用 data-middle-truncate：
@@ -188,7 +193,7 @@ function RunCard(
       {/* 问题详情、错误详情、任务明细、技术详情都是可展开的明细，同样排成卡片底部带分隔线的一行，按这个顺序。 */}
       {issues ? <div className="border-t border-separator-border">{issues}</div> : null}
       {errorHead && errorFull !== errorHead ? <div className="border-t border-separator-border">
-        <Disclosure row summary={t('manage:taskCenter.errorDetails')} contentClassName="pb-5">
+        <Disclosure row findable summary={t('manage:taskCenter.errorDetails')} contentClassName="pb-5">
           <ErrorDetails label={t('manage:taskCenter.taskErrorDetails', { task: taskName(run) })}>{errorFull}</ErrorDetails>
         </Disclosure>
       </div> : null}
@@ -196,17 +201,17 @@ function RunCard(
         <Disclosure row summary={t('manage:taskCenter.taskDetailsCount', { count: total })}
           contentClassName="pb-5"
           isOpen={detailOpen} onOpenChange={setDetailOpen}>
-          {detail.error ? <Note tone="error">{errorMessage(detail.error)}</Note> : null}
+          {detail.error ? <QueryErrorNote titleKey="manage:taskCenter.detailLoadFailed" query={detail} /> : null}
           {shown < total
             ? <p className="text-caption-1-regular text-text-secondary">{t('manage:taskCenter.showingCount', { count: shown })}</p>
             : null}
-          <FollowupList rows={listed} />
+          <FollowupList rows={listed} visible={detailOpen} />
         </Disclosure>
       </div> : null}
       {/* 摘要里只有开跑时写下的作品时，它已经链接在卡片上，不再单列一块技术详情。 */}
       {Object.keys(run.result_summary || {}).some((key) => !(subject && SUBJECT_KEYS.has(key)))
         ? <div className="border-t border-separator-border">
-        <Disclosure row summary={t('manage:taskCenter.technicalDetails')} contentClassName="pb-5">
+        <Disclosure row findable summary={t('manage:taskCenter.technicalDetails')} contentClassName="pb-5">
           <CodeBlock code={JSON.stringify(run.result_summary, null, 2)} language="json"
             label={t('manage:taskCenter.taskTechnicalDetails', { task: taskName(run) })} />
         </Disclosure>
@@ -222,18 +227,20 @@ function RunningRun({ run, followups, followupTotal }:
   const control = run.control?.state;
   const stopping = control && control !== 'running';
   const label = stopping ? CONTROL_LABELS[control] : progressLabel(run) || t('manage:taskCenter.inProgress');
+  const progress = total > 0 ? t('manage:taskCenter.progressItems', { progress: progressText(current, total) }) : '';
+  const phase = `${control || run.status}:${run.progress_params?.stage || run.progress_code || ''}`;
+  const stage = <TaskStage phase={phase}>{label}</TaskStage>;
   const elapsed = elapsedText(run.elapsed_seconds);
   const meta = [TRIGGER_LABELS[run.trigger] || run.trigger, elapsed && t('manage:taskCenter.runningFor', { elapsed })]
     .filter(Boolean).join(' · ');
   return (
-    <RunCard run={run} meta={meta} followups={followups} followupTotal={followupTotal}>
-      {/* 暂停、取消这些控制态不是在推进：有总量照画停住的横条，没有总量只写状态，不画动画。 */}
-      {stopping && !(total > 0) ? <p data-copy-key={`tasks.control.state.${control}`}
-            className="text-caption-1-regular text-text-secondary">{label}</p>
+    <RunCard run={run} meta={meta} followups={followups} followupTotal={followupTotal}
+      progress={stopping && !(total > 0) ? <p data-copy-key={`tasks.control.state.${control}`}
+          className="text-caption-1-regular text-text-secondary">{label}</p>
         : <TaskProgress embedded kind={activityKind(run.task_key, String(run.progress_params?.stage || '') || null)}
-            label={total > 0 ? `${label} · ${t('manage:taskCenter.progressItems', { progress: progressText(current, total) })}` : label}
-            value={Math.min(current, total)} total={total} />}
-    </RunCard>
+            label={progress ? `${label} · ${progress}` : label}
+            labelContent={progress ? <>{stage} · <AnimatedNumber value={progress} /></> : stage}
+            value={Math.min(current, total)} total={total} />} />
   );
 }
 
@@ -267,7 +274,7 @@ function SettledRun(
        elapsed && t('manage:taskCenter.took', { elapsed })]).filter(Boolean).join(' · ');
   return (
     <RunCard run={run} meta={meta} error={runError(run)} followups={followups} followupTotal={followupTotal} controlled={runs}
-      issues={issues.length ? <Disclosure row summary={t('manage:taskCenter.issueDetailsCount', { count: issues.length })} contentClassName="pb-5">
+      issues={issues.length ? <Disclosure row findable summary={t('manage:taskCenter.issueDetailsCount', { count: issues.length })} contentClassName="pb-5">
         <ErrorDetails label={t('manage:taskCenter.issueDetails')}>
         {/* 与数据管理的问题清单同一种分层：名字一层，来源与问题类别跟在名字后面用次级色，原因再低一档。 */}
         <ul className="flex min-w-0 flex-col whitespace-normal" data-task-issues="">
@@ -322,23 +329,29 @@ function WorkingRun(
   const settled = tally.total ? tally.settled : followups.filter((row) => !isActive(row)).length;
   const failed = tally.total ? tally.failed
     : followups.filter((row) => row.status === 'failed' || row.status === 'interrupted').length;
+  const progress = t('manage:taskCenter.processedProgress', { progress: progressText(settled, total) });
+  const failure = failed ? t('manage:taskCenter.failedSuffix', { count: failed }) : '';
   const meta = [TRIGGER_LABELS[run.trigger] || run.trigger,
     runs.length > 1 ? t('manage:taskCenter.batches', { count: runs.length }) : '',
     t('manage:taskCenter.startedAt', { time: momentText(oldest.started_at || oldest.finished_at) })].filter(Boolean).join(' · ');
   return (
     <RunCard run={run} meta={meta} followups={followups} followupTotal={total} resourceActive controlled={runs}
-      badge={run.control ? <StatusBadge run={run} /> : <Chip color="blue">{t('manage:taskStatus.running')}</Chip>}>
-      <TaskProgress embedded kind={activityKind(run.task_key)} value={settled} total={total}
-        label={`${t('manage:taskCenter.processedProgress', { progress: progressText(settled, total) })}${failed ? t('manage:taskCenter.failedSuffix', { count: failed }) : ''}`} />
-    </RunCard>
+      badge={run.control ? <StatusBadge run={run} /> : <Chip color="blue">{t('manage:taskStatus.running')}</Chip>}
+      progress={<TaskProgress embedded kind={activityKind(run.task_key)} value={settled} total={total}
+        label={progress + failure} labelContent={<><AnimatedNumber value={progress} />{failure}</>} />} />
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   const id = useId();
   return (
     <section aria-labelledby={id} className="flex min-w-0 flex-col gap-3">
-      <h3 id={id} className="text-title-2-medium text-text-primary">{title}</h3>
+      {action
+        ? <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <h3 id={id} className="text-title-2-medium text-text-primary">{title}</h3>
+            {action}
+          </div>
+        : <h3 id={id} className="text-title-2-medium text-text-primary">{title}</h3>}
       {children}
     </section>
   );
@@ -359,20 +372,35 @@ function RunList({ live = false, paginate = true, children }: { live?: boolean; 
 }
 
 export function ActivityPage() {
+  return <Page>
+    <TaskControlFeedback>
+      <BackgroundIssues />
+      <TaskRuns />
+      <DownloadsPanel />
+    </TaskControlFeedback>
+  </Page>;
+}
+
+function TaskRuns() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  // 查找只收窄「最近完成」：服务端在全部历史里找，命中的那几轮连同后继一起回来。
+  const [search, setSearch] = useState('');
   const tasks = useQuery({
-    queryKey: page === 1 && pageSize === 20 ? TASKS_KEY : [...TASKS_KEY, 'page', page, pageSize],
-    queryFn: ({ signal }) => fetchTasks(signal, page, pageSize),
+    queryKey: page === 1 && pageSize === 20 && !search ? TASKS_KEY : [...TASKS_KEY, 'page', page, pageSize, search],
+    queryFn: ({ signal }) => fetchTasks(signal, page, pageSize, search),
     refetchInterval: tasksInterval,
     placeholderData: (previous) => previous,
   });
   const [lastData, setLastData] = useState(tasks.data);
   if (tasks.data && tasks.data !== lastData) setLastData(tasks.data);
   const data = tasks.data || lastData;
-  const problem = tasks.error ? errorMessage(tasks.error) : '';
-  // 首屏就没拿到数据：只剩这一条，不画空的三段。
-  if (!data) return <Page><Note tone="error">{problem || t('manage:taskCenter.loadFailed')}</Note></Page>;
+  if (!data) {
+    if (tasks.error) return <QueryErrorNote titleKey="manage:taskCenter.loadFailed" query={tasks} />;
+    return <div role="status" aria-label={t('manage:manageSkeleton.loadingPage')} data-skeleton="">
+      <div className="flex flex-col gap-8" inert aria-hidden="true" dangerouslySetInnerHTML={{ __html: taskRunSectionsSkeleton() }} />
+    </div>;
+  }
 
   const allFinished = data.finished || [];
   const parents = data.working_parents || [];
@@ -410,16 +438,13 @@ export function ActivityPage() {
   const workingGroups = foldByKind(working, (run) => run.control?.state || '')
     .sort((left, right) => right.run.id - left.run.id);
   const newest = latestOfKind(allRuns);
-  const quiet = !running.length && !working.length && !skipped.length && !finished.length;
+  const quiet = !running.length && !working.length && !skipped.length && !finished.length && !search;
   return (
-    <Page>
-      {problem ? <Note tone="error">{problem}</Note> : null}
-      <TaskControlFeedback />
+    <>
+      {tasks.error ? <QueryErrorNote titleKey="manage:taskCenter.loadFailed" query={tasks} /> : null}
       {data.available === false
         ? <Note tone="warning">{data.message || t('manage:taskCenter.tableNotReady')}</Note>
         : null}
-      {/* 后台服务此刻的问题排在最前：它们不会自己跑完，要人去处理。 */}
-      <BackgroundIssues />
       {quiet
         ? <EmptyState icon={RiHistoryLine} title={t('manage:taskCenter.emptyTitle')}>
             {t('manage:taskCenter.emptyText')}
@@ -444,8 +469,11 @@ export function ActivityPage() {
                     <SettledRun key={run.id} run={run} latest={newest.has(run.id)} followups={byParent.get(run.id)} />))}</RunList>
                 </Section>
               : null}
-            {finished.length || Boolean(data.finished_total)
-              ? <Section title={t('manage:taskCenter.recentlyCompleted')}>
+            {finished.length || Boolean(data.finished_total) || search
+              ? <Section title={t('manage:taskCenter.recentlyCompleted')}
+                  action={<IndexSearch label={t('manage:taskCenter.search')} value={search}
+                    onQuery={(value) => { setSearch(value); setPage(1) }} />}>
+                  {search && !data.finished_total ? <Note tone="neutral">{t('manage:taskCenter.noMatches')}</Note> : null}
                   {finished.length
                     ? <RunList paginate={false}>{folds.map(({ run, runs }) => {
                         const tally = followupTally(counts, runs);
@@ -463,8 +491,6 @@ export function ActivityPage() {
                 </Section>
               : null}
           </>}
-      {/* 离线下载跑在网盘那头，自己一张表、自己轮询；任务中心为空时它照样在。 */}
-      <DownloadsPanel />
-    </Page>
+    </>
   );
 }

@@ -8,7 +8,7 @@ import os
 import re
 import zipfile
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from itertools import islice
 from pathlib import Path
 
@@ -181,6 +181,77 @@ def _log_candidates(directory: Path, entries: list) -> list[Path]:
     return candidates + _recent(directory, 'errors-*.log', 8, entries) + _recent(directory, 'crash-*.log', 4, entries)
 
 
+def _log_tail(stream, size: int) -> str:
+    stream.seek(max(0, size - TAIL_BYTES))
+    text = stream.read(TAIL_BYTES).decode('utf-8', errors='replace')
+    return text.partition('\n')[2] if size > TAIL_BYTES else text
+
+
+def _feedback_error_site(frames) -> str:
+    """只保留最内层代码的文件名与行号。"""
+    if not isinstance(frames, list) or not frames or not isinstance(frames[-1], dict):
+        return ""
+    file, number = frames[-1].get("file"), frames[-1].get("line")
+    if (isinstance(file, str) and re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]{0,47}\.py", file)
+            and type(number) is int and 0 < number < 100_000):
+        return f" · {file}:{number}"
+    return ""
+
+
+def feedback_error_summary(directory: Path) -> str | None:
+    """最近 30 分钟的错误与慢加载技术摘要。"""
+    from .diagnostic_context import performance_timing
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(minutes=30)
+    reports = []
+    timings = []
+    unavailable = []
+    for path in _recent(directory, 'errors-*.log', 4, unavailable):
+        try:
+            if path.is_symlink() or not path.resolve().is_relative_to(directory.resolve()) or not path.is_file():
+                continue
+            with path.open('rb') as stream:
+                lines = _log_tail(stream, stream.seek(0, os.SEEK_END)).splitlines()
+        except OSError:
+            unavailable.append(path)
+            continue
+        for line in lines:
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(entry, dict):
+                continue
+            stamp = entry.get("at")
+            stage = entry.get("stage")
+            if not isinstance(stamp, str) or not isinstance(stage, str) or not re.fullmatch(r"[a-zA-Z][\w.-]{0,35}", stage, re.ASCII):
+                continue
+            try:
+                at = datetime.fromisoformat(stamp)
+            except ValueError:
+                continue
+            if at.tzinfo is None or not since <= at <= now:
+                continue
+            if stage == 'browser-performance':
+                phase = entry.get('phase')
+                sample = performance_timing(phase, entry) if isinstance(phase, str) else None
+                if sample:
+                    pending = '+' if sample.get('pending') else ''
+                    timings.append((at, f"{at.astimezone(timezone.utc):%H:%M:%S} UTC · {phase} · "
+                                         f"{sample['elapsed_ms']:.0f}{pending} ms"))
+                continue
+            errors = entry.get("exception")
+            error = errors[0].get("type") if isinstance(errors, list) and errors and isinstance(errors[0], dict) else entry.get("level")
+            if not isinstance(error, str) or not re.fullmatch(r"(?:ERROR|CRITICAL|[a-zA-Z_]\w{0,47}(?:Error|Exception))", error, re.ASCII):
+                continue
+            location = _feedback_error_site(entry.get("frames"))
+            reports.append((at, f"{at.astimezone(timezone.utc):%H:%M:%S} UTC · {stage} · {error}{location}"))
+    if unavailable and not (reports or timings):
+        return None
+    return "\n".join(line for _, line in sorted(set(reports), reverse=True)[:3]
+                     + sorted(set(timings), reverse=True)[:3])
+
+
 def _archive_files(archive, directory, candidates, prefix, entries, *, structured=False):
     for path in dict.fromkeys(candidates):
         try:
@@ -196,12 +267,7 @@ def _archive_files(archive, directory, candidates, prefix, entries, *, structure
                     content, details = (_structured_jsonl(stream, size) if path.suffix == '.jsonl'
                                         else _structured_json(stream))
                 else:
-                    stream.seek(max(0, size - TAIL_BYTES))
-                    raw = stream.read(TAIL_BYTES)
-                    text = raw.decode('utf-8', errors='replace')
-                    if size > TAIL_BYTES:
-                        text = text.partition('\n')[2]
-                    content = redact_log(text)
+                    content = redact_log(_log_tail(stream, size))
                     details = {'status': 'included', 'truncated': size > TAIL_BYTES}
             name = path.relative_to(directory).as_posix()
             if not structured or content:
@@ -256,6 +322,33 @@ def _archive_scraping(archive, config, entries, *, progress, cancelled, include_
     return state
 
 
+def _shared_report_fields(report):
+    """诊断包保留系统检查与近期样本，媒体挂载明细留在本机诊断页。"""
+    if not report:
+        return {}
+    checks = {key: {field: value.get(field) for field in ("status", "reason", "action")}
+              for key, value in report.get("checks", {}).items() if key != "media_mounts"}
+    detail_fields = {'database': ('state',), 'schema': ('schema', 'version', 'pending', 'mismatched', 'unknown_versions'),
+                     'security': ('exposed', 'protected'), 'port': ('port', 'state'), 'tasks': ('id', 'finished_at')}
+    for key, names in detail_fields.items():
+        if key in checks:
+            details = report['checks'][key].get('details', {})
+            checks[key]['details'] = {name: details[name] for name in names if name in details}
+    mounts = report.get('checks', {}).get('media_mounts', {}).get('details', {})
+    source_fields = ('source', 'status', 'reason', 'last_check_at', 'elapsed_s', 'last_success_at', 'cooldown_until')
+    facts = {
+        'checks': checks,
+        'mounts': {'state': mounts.get('state'), 'sources': [
+            {key: row.get(key) for key in ('state', 'online', 'message', 'checked_at')}
+            for row in mounts.get('sources', []) if isinstance(row, dict)]},
+        'sources': [{key: row.get(key) for key in source_fields}
+                    for row in report.get('sources', []) if isinstance(row, dict)],
+    }
+    if 'runtime_diagnostics' in report:
+        facts['runtime_diagnostics'] = report['runtime_diagnostics']
+    return facts
+
+
 def bundle_to(destination, *, report: dict | None = None, config=None, browser: dict | None = None,
               progress=lambda **values: None, cancelled=lambda: False, include_scraping=True):
     facts = {"created_at": datetime.now(timezone.utc).isoformat(), "system": error_reporting.system_facts()}
@@ -287,25 +380,7 @@ def bundle_to(destination, *, report: dict | None = None, config=None, browser: 
             processing_directory, generated_directory = root / 'state', root / 'generated'
         except Exception:
             pass
-    if report:
-        # 报告分享仅保留系统检查，库清单、媒体挂载明细和来源原文留在本机页面。
-        facts["checks"] = {key: {field: value.get(field) for field in ("status", "reason", "action")}
-                           for key, value in report.get("checks", {}).items()
-                           if key not in ("media_mounts",)}
-        detail_fields = {'database': ('state',), 'schema': ('schema', 'version', 'pending', 'mismatched', 'unknown_versions'),
-                         'security': ('exposed', 'protected'), 'port': ('port', 'state'), 'tasks': ('id', 'finished_at')}
-        for key, names in detail_fields.items():
-            if key in facts['checks']:
-                details = report['checks'][key].get('details', {})
-                facts['checks'][key]['details'] = {name: details[name] for name in names if name in details}
-        mounts = report.get('checks', {}).get('media_mounts', {}).get('details', {})
-        facts['mounts'] = {'state': mounts.get('state'), 'sources': [
-            {key: row.get(key) for key in ('state', 'online', 'message', 'checked_at')}
-            for row in mounts.get('sources', []) if isinstance(row, dict)]}
-        source_fields = ('source', 'status', 'reason', 'last_check_at', 'elapsed_s',
-                         'last_success_at', 'cooldown_until')
-        facts['sources'] = [{key: row.get(key) for key in source_fields}
-                            for row in report.get('sources', []) if isinstance(row, dict)]
+    facts.update(_shared_report_fields(report))
     entries = []
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for index, directory in enumerate(dict.fromkeys(directories)):
@@ -319,6 +394,8 @@ def bundle_to(destination, *, report: dict | None = None, config=None, browser: 
             except OSError as error:
                 entries.append({'name': '<logs>', 'status': type(error).__name__})
         if processing_directory is not None:
+            from . import startup_diagnostics
+            facts["startup_diagnostics"] = startup_diagnostics.snapshot(processing_directory)
             try:
                 _archive_state(archive, processing_directory, entries)
             except OSError as error:

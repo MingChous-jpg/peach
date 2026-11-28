@@ -308,10 +308,11 @@ describe('顶栏搜索', () => {
       const { page, posts } = opened;
       await typeQuery(opened);
       assert.deepEqual(await active(page), [], '刚画出来就有选中');
-      for (const [key, want] of [['ArrowDown', '七海ひな'], ['ArrowDown', '七海の夏'], ['ArrowDown', '七海ひな'],
+      for (const [key, want] of [['ArrowUp', '七海の夏'], ['ArrowDown', '七海ひな'], ['ArrowDown', '七海の夏'], ['ArrowDown', '七海ひな'],
         ['ArrowUp', '七海の夏']] as const) {
         await page.keyboard.press(key);
         assert.deepEqual(await active(page), [want], `${key} 之后选中的不对`);
+        assert.equal(await page.locator(`${MENU} [role="status"][aria-atomic="true"]`).textContent(), want);
       }
       assert.equal(await page.locator('#q').inputValue(), SUGGEST.q, '上下键不该改输入框里的字');
       await page.keyboard.press('Enter');
@@ -399,6 +400,23 @@ describe('顶栏搜索', () => {
       await page.keyboard.press('Enter');
       await page.waitForFunction(() => new URLSearchParams(location.search).get('q') === '七海');
       assert.deepEqual(posts, [{ query: '七海' }]);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('搜索记录删除失败后保留原记录并显示原因', async () => {
+    const opened = await openSearch(browser, { history: ['保留的记录'] });
+    try {
+      const { page } = opened;
+      await page.route(/\/api\/search-history/, route => route.request().method() === 'POST'
+        ? route.fulfill({ status: 409, json: { error: 'read-only' } }) : route.fallback());
+      await page.locator('#q').click();
+      const remove = page.locator(`${MENU} [data-remove-history="保留的记录"]`);
+      await remove.click();
+      const notice = page.locator(MENU).getByRole('alert');
+      await notice.getByText('未能删除搜索记录', { exact: true }).waitFor();
+      assert.equal(await remove.isVisible(), true);
     } finally {
       await opened.close();
     }

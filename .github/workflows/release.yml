@@ -164,6 +164,8 @@ jobs:
           New-Item -ItemType Directory -Path release | Out-Null
           & ./.venv/Scripts/python.exe scripts/package_windows_release.py --source dist/Peach --output release --version '${{ steps.version.outputs.version }}' --lite-installer
           if ($LASTEXITCODE -ne 0) { throw '发行包拆分失败' }
+          & ./.venv/Scripts/python.exe scripts/windows_update_delta.py --output release --version '${{ steps.version.outputs.version }}'
+          if ($LASTEXITCODE -ne 0) { Write-Warning 'Windows 增量包未通过生成或重组校验，本版使用完整更新包' }
           Copy-Item 'dist/Peach-${{ steps.version.outputs.version }}-windows-x64-setup.exe' release/
           Copy-Item dist/ffmpeg-corresponding-source.zip release/
           Copy-Item dist/untrunc-corresponding-source.zip release/
@@ -211,7 +213,7 @@ jobs:
       - name: 从应用更新包与独立工具包重建并验证运行
         shell: pwsh
         run: |
-          python smoke_split_update.py --version '${{ needs.windows.outputs.version }}' --destination split-candidate --prepare-with-app
+          python smoke_split_update.py --version '${{ needs.windows.outputs.version }}' --destination split-candidate --prepare-with-app --defer-face-models
           if ($LASTEXITCODE -ne 0) { throw '拆分制品与完整包不一致' }
           python smoke_desktop.py split-candidate/Peach/Peach.exe
           if ($LASTEXITCODE -ne 0) { throw '拆分制品运行验收失败' }
@@ -294,7 +296,23 @@ jobs:
           cache-dependency-glob: uv.lock
       - name: 创建原生架构构建环境
         run: |
-          uv sync --locked --all-extras --python python
+          sync_args=(--locked --all-extras --python python)
+          if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
+            # Intel 没有 cryptography 官方 wheel。静态链接避免 PyInstaller 合并 Python 与
+            # cryptography 各自使用的同名 OpenSSL dylib。
+            OPENSSL_DIR="$(brew --prefix openssl@3)"
+            export OPENSSL_DIR OPENSSL_STATIC=1
+            sync_args+=(--no-cache --no-binary-package cryptography)
+          fi
+          uv sync "${sync_args[@]}"
+          if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
+            binding="$(.venv/bin/python -c 'from cryptography.hazmat.bindings import _rust; print(_rust.__file__)')"
+            dependencies="$(otool -L "$binding")"
+            if grep -Eq '/lib(ssl|crypto)(\.[0-9]+)*\.dylib' <<< "$dependencies"; then
+              echo "Intel cryptography 必须静态链接 OpenSSL" >&2
+              exit 1
+            fi
+          fi
           uv pip check --python .venv/bin/python
           npm ci --prefix frontend
       - name: 安装固定版本的媒体编译工具
@@ -336,6 +354,7 @@ jobs:
           retention-days: 7
           path: |
             release/*.dmg
+            release/*-corresponding-source.zip
             scripts/smoke_macos.py
             scripts/smoke_desktop.py
 
@@ -387,7 +406,7 @@ jobs:
           test -f "$mount/Peach.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle"
           test ! -e "$mount/Peach.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices"
           lipo "$mount/Peach.app/Contents/MacOS/Peach" -verify_arch '${{ matrix.arch }}'
-          python scripts/smoke_macos.py "$mount/Peach.app"
+          python scripts/smoke_macos.py "$mount/Peach.app" --source-archives release
 
   release:
     name: GitHub 预发布
@@ -421,7 +440,7 @@ jobs:
         run: |
           set -euo pipefail
           uv sync --locked --python python
-          cp macos-candidates/release/*.dmg release/
+          cp macos-candidates/release/*.dmg macos-candidates/release/*-corresponding-source.zip release/
           (cd release && sha256sum ./*.zip ./*-setup.exe ./*.dmg > SHA256SUMS.txt)
           # 源码没有发布公钥且没配私钥时跳过；公钥已随源码发出却缺私钥时失败，不发布未签名的版本。
           printf '%s' "$PEACH_RELEASE_SIGNING_KEY" | .venv/bin/python scripts/sign_release.py --sums release/SHA256SUMS.txt
@@ -477,6 +496,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           prefix="https://github.com/$GH_REPO/releases/download/$GITHUB_REF_NAME/"
           feeds=()
+          deltas=()
           for arch in arm64 x86_64; do
             folder="build/feed/$arch"
             feed="$folder/macos-$arch.xml"
@@ -496,9 +516,16 @@ jobs:
               --dmg "$folder/Peach-$version-macos-$arch.dmg" --url-prefix "$prefix" | .venv/bin/python -c 'import json,sys; print(json.load(sys.stdin)["signature"])')"
             printf '%s' "$SPARKLE_ED_PRIVATE_KEY" | build/sparkle/bin/sign_update --ed-key-file - \
               --verify "$folder/Peach-$version-macos-$arch.dmg" "$signature"
+            if delta="$(printf '%s' "$SPARKLE_ED_PRIVATE_KEY" | .venv/bin/python scripts/macos_update_delta.py \
+              --appcast "$feed" --dmg "$folder/Peach-$version-macos-$arch.dmg" --tools build/sparkle/bin \
+              --version "$version" --arch "$arch" --delta-url-prefix "$PEACH_R2_PUBLIC_BASE/sparkle/deltas/")"; then
+              if [ -n "$delta" ]; then deltas+=(--delta "$delta"); fi
+            else
+              echo "::warning::macOS $arch 增量包未通过校验，本版使用完整磁盘映像"
+            fi
             feeds+=("$feed")
           done
-          .venv/bin/python scripts/sparkle_appcast.py publish "${feeds[@]}"
+          .venv/bin/python scripts/sparkle_appcast.py publish "${feeds[@]}" "${deltas[@]}"
 
   # 下载镜像：连不上 GitHub 的客户端从 `downloads.peach.video/releases.json` 取更新（`release_updates`）。
   # 转存的是已公开 Release 的同一份制品与签过名的摘要；镜像只留最新三个版本，更老的目录由脚本删除。

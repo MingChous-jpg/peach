@@ -1,13 +1,270 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import type { Browser } from 'playwright-core';
+import type { ReleaseResult } from '../src/react/jav/jav.ts';
 import { launch, layout, settle, visit, VIEWPORTS } from './harness.ts';
 import { ITEM, openItemPage } from './item-fixture.ts';
+import { mediaFramesIn } from './media-frames.ts';
 
 describe('JAV 推荐与加载结构', () => {
   let browser: Browser;
   before(async () => { browser = await launch(); });
   after(async () => { await browser?.close(); });
+  it('在线目录核验封面，列表显示完整番号及对应艺人', { timeout: 60_000 }, async () => {
+    const opened = await visit(browser, '/', VIEWPORTS[0]!);
+    const { page } = opened;
+    const catalog = Promise.withResolvers<void>();
+    try {
+      const code = 'SAMPLE-012345';
+      const cast = Array.from({ length: 80 }, (_, index) => ({
+        name: index ? `演员 ${index + 1}` : '首位俳優（旧名、来源别名）', dmm_id: String(index + 100),
+        ...(index === 0 ? { source_name: '首位俳優（旧名、来源别名）', source_zh_cn: '首位演员' } : {}),
+        source_url: `https://www.dmm.co.jp/digital/videoa/-/list/=/article=actress/id=${index + 100}/`,
+        source_avatar_url: index === 1 ? undefined : `/img/cast-${index}.png`,
+      }));
+      const works = ['unpublished', 'missing', 'available', 'issued'].map(id => ({
+        id, code: id === 'available' ? code : id.toUpperCase(), title: id, date: '2026-12-01', pre_order: id !== 'issued',
+        url: `https://video.dmm.co.jp/av/content/?id=${id}`,
+        cover_url: id === 'unpublished' ? '' : `/cover-image?catalog=${id}`,
+        people: id === 'available' ? cast : [],
+        studio: id === 'available' ? { id: '3152', entity_id: 42, name: '规范厂牌', source_name: '来源厂牌', has_logo: false } : null,
+        tags: id === 'available' ? [
+          { id: '5016', name: '规范标签', source_name: '来源标签' },
+          { id: '5017', name: '规范标签', source_name: '来源别名' },
+        ] : [],
+        duration: null,
+      }));
+      const probes: string[] = [];
+      await page.route('**/img/cast-*.png', route => route.fulfill({ contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="gray"/></svg>' }));
+      await page.route('**/api/jav/catalog?*', async route => {
+        await catalog.promise;
+        await route.fulfill({ json: { items: works, total: 4, page: 1, pages: 1, size: 24, performer_options: [] } });
+      });
+      await page.route('**/cover-image?catalog=*', route => {
+        const id = new URL(route.request().url()).searchParams.get('catalog')!;
+        if (route.request().method() === 'HEAD') probes.push(id);
+        return id === 'missing' ? route.fulfill({ status: 404 }) : route.fulfill({ status: 200, contentType: 'image/jpeg' });
+      });
+      const mode = (value: 'cards' | 'list') => page.locator(`[data-filter-row="bottom"] label:has(input[value="${value}"])`);
+      await page.goto(new URL('/jav?tab=online', page.url()).href, { waitUntil: 'domcontentloaded' });
+      await page.locator('[data-online-status="all"]').waitFor();
+      if (!(await mode('cards').locator('input').isChecked())) await mode('cards').click();
+      const skeletonCard = page.locator('[data-skeleton="jav-online-cards"] [data-jav-skeleton-card]').first();
+      await skeletonCard.waitFor();
+      assert.equal(await skeletonCard.locator('[data-jav-skeleton-action]').count(), 1);
+      await mode('list').click();
+      const skeletonRow = page.locator('[data-catalog-table] [data-list-skeleton-row]').first();
+      await skeletonRow.waitFor();
+      const columnWidths = () => page.locator('[data-catalog-table] th').evaluateAll(
+        cols => cols.filter(col => !col.hasAttribute('data-table-space')).map(col => Math.round(col.getBoundingClientRect().width)));
+      const waitingWidths = await columnWidths();
+      assert.equal(waitingWidths.length, 7);
+      catalog.resolve();
+      await page.locator('[data-catalog-table] [data-release-row]').first().waitFor();
+      assert.deepEqual(await columnWidths(), waitingWidths);
+      const onlineTable = page.locator('[data-online-catalog-table]');
+      assert.equal(await onlineTable.locator('thead .react-aria-ColumnResizer').count(), 7);
+      const columnKeys = () => onlineTable.locator('thead th[data-key]:not([data-table-space])').evaluateAll(
+        headers => headers.map(header => header.getAttribute('data-key')));
+      await onlineTable.getByRole('button', { name: '显示列', exact: true }).click();
+      const columnMenu = page.getByRole('dialog', { name: '在线目录显示列' });
+      await columnMenu.getByRole('checkbox', { name: '番号', exact: true }).press('Space');
+      await page.keyboard.press('Escape');
+      await onlineTable.locator('th[data-key="code"]').waitFor();
+      assert.equal((await columnKeys()).at(-1), 'code');
+      const codeFilter = onlineTable.locator('[data-table-column-filter="online-column-code"]');
+      await codeFilter.hover();
+      const headerCue = await codeFilter.evaluate(node => ({
+        decoration: getComputedStyle(node).textDecorationLine,
+        fill: getComputedStyle(node, '::before').backgroundColor,
+      }));
+      assert.equal(headerCue.decoration, 'none');
+      assert.notEqual(headerCue.fill, 'rgba(0, 0, 0, 0)');
+      await codeFilter.click();
+      await page.getByRole('textbox', { name: '搜索番号', exact: true }).waitFor();
+      await page.keyboard.press('Escape');
+      await mode('cards').click();
+      await page.getByText('available', { exact: true }).first().waitFor();
+      const onlineCard = page.locator(`[data-jav-card][data-rectangle-key="${code}"]`);
+      await onlineCard.getByRole('button', { name: '规范标签', exact: true }).waitFor();
+      assert.equal(await onlineCard.getByRole('button', { name: '首位演员', exact: true }).innerText(), '首位演员');
+      await page.locator('[data-catalog-tier="performers"]').getByRole('button', { name: /首位演员/ }).waitFor();
+      assert.equal(await onlineCard.locator('a[href="/studios/42"]').count(), 1);
+      assert.equal(await page.locator('[data-filter-tag-strip]').getByRole('button', { name: /规范标签/ }).count(), 1);
+      await page.locator('[data-table-column-filter="online-tags"]').click();
+      const tags = page.getByRole('dialog', { name: '标签' });
+      await tags.getByRole('button', { name: /规范标签.*来源别名/ }).waitFor();
+      assert.deepEqual(await tags.locator('[data-filter-option]').evaluateAll(options =>
+        options.map(option => option.getAttribute('data-filter-option'))), ['5016', '5017']);
+      await page.keyboard.press('Escape');
+      for (const filter of ['online-performer', 'online-studio', 'online-tags']) {
+        await page.locator(`[data-filter-row="bottom"] [data-table-column-filter="${filter}"]`).waitFor();
+      }
+      await page.locator('[data-filter-row="bottom"] [data-sort-controls="javOnline"]').waitFor();
+      const release = page.locator('[data-filter-row="bottom"]').getByRole('button', { name: '发行时间', exact: true });
+      assert.equal(await release.count(), 1);
+      await release.click();
+      const dateMenu = page.locator('[data-sort-direction-menu]');
+      await dateMenu.getByRole('button', { name: '开始日期', exact: true }).waitFor();
+      await dateMenu.getByRole('button', { name: '结束日期', exact: true }).waitFor();
+      await dateMenu.locator('[data-filter-option="asc"]').waitFor();
+      await page.keyboard.press('Escape');
+      assert.deepEqual(probes.sort(), ['available', 'issued', 'missing']);
+      assert.equal(await page.getByText('missing', { exact: true }).count(), 0);
+      assert.equal(await page.getByText('unpublished', { exact: true }).count(), 0);
+      await page.locator('[data-online-status="released"]').click();
+      await page.getByText('issued', { exact: true }).first().waitFor();
+      assert.equal(await page.getByText('available', { exact: true }).count(), 0);
+      await page.locator('[data-online-status="preOrder"]').click();
+      await page.getByText('available', { exact: true }).first().waitFor();
+      assert.equal(await page.getByText('issued', { exact: true }).count(), 0);
+      assert.equal(probes.length, 3);
+      await mode('list').click();
+      const row = page.locator('[data-release-row]').filter({ has: page.getByText(code, { exact: true }) });
+      await row.waitFor();
+      const sourceLabel = row.getByRole('link', { name: 'DMM', exact: true }).locator('[data-external-link-label]');
+      await page.mouse.move(0, 0);
+      assert.equal(await sourceLabel.evaluate(node => getComputedStyle(node).textDecorationLine), 'none');
+      await sourceLabel.hover();
+      assert.equal(await sourceLabel.evaluate(node => getComputedStyle(node).textDecorationLine), 'underline');
+      assert.equal(await row.getByRole('button', { name: '规范标签', exact: true }).count(), 1);
+      assert.equal(await row.getByRole('button', { name: '来源标签', exact: true }).count(), 0);
+      assert.equal(await row.locator('a[href="/studios/42"]').count(), 1);
+      const geometry = await row.evaluate(el => {
+        const code = el.querySelector<HTMLElement>('[data-list-code]')!;
+        const person = el.querySelector<HTMLElement>('[data-media-who]')!;
+        const avatars = [...el.querySelectorAll('[data-media-avatar]')].filter(face => face.getBoundingClientRect().width > 0);
+        return { fullCode: code.scrollWidth <= code.clientWidth + 1,
+          oneLine: code.getBoundingClientRect().height <= parseFloat(getComputedStyle(code).lineHeight) + 1,
+          separate: avatars.at(-1)!.getBoundingClientRect().right <= person.getBoundingClientRect().left,
+          overlapping: avatars[1]!.getBoundingClientRect().left < avatars[0]!.getBoundingClientRect().right,
+          count: avatars.length, photo: avatars[0]!.querySelector('img')?.getAttribute('src'), person: person.textContent };
+      });
+      assert.ok(geometry.count >= 2 && geometry.count <= 5, JSON.stringify(geometry));
+      const { count, ...alignment } = geometry;
+      assert.deepEqual(alignment, { fullCode: true, oneLine: true, separate: true, overlapping: true, photo: '/img/cast-0.png', person: '首位演员' });
+      const avatars = row.locator('[data-media-avatars]');
+      await avatars.hover();
+      const hovered = await avatars.evaluate(el => {
+        const fallback = el.children[1]!;
+        return { fill: getComputedStyle(fallback).backgroundColor, shape: getComputedStyle(fallback).borderRadius,
+          separate: el.lastElementChild!.getBoundingClientRect().right <= el.parentElement!.querySelector('[data-media-who]')!.getBoundingClientRect().left };
+      });
+      assert.equal(hovered.shape, '50%');
+      assert.doesNotMatch(hovered.fill, /rgba|\/|transparent/);
+      assert.equal(hovered.separate, true);
+      assert.equal(await row.locator('[data-media-who]').getAttribute('title'), cast[0]!.name);
+      const people = row.locator('[data-list-people]');
+      for (const dark of [false, true]) {
+        await page.evaluate(dark => {
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+          document.documentElement.classList.toggle('dark', dark);
+          for (const animation of document.getAnimations()) {
+            if (animation.effect?.getComputedTiming().endTime !== Infinity) animation.finish();
+          }
+        }, dark);
+        const frames = (await mediaFramesIn(people)).filter(frame => !frame.skipped);
+        assert.equal(frames.length, count);
+        assert.ok(frames.every(frame => frame.delta >= 4), JSON.stringify({ dark, frames }));
+        const ratios = await people.evaluate(cell => {
+          const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+          const read = (backgrounds: string[]) => {
+            context.clearRect(0, 0, 1, 1);
+            for (const color of backgrounds) {
+              context.fillStyle = color;
+              context.fillRect(0, 0, 1, 1);
+            }
+            const [r, g, b] = [...context.getImageData(0, 0, 1, 1).data].map(value => {
+              const channel = value / 255;
+              return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+            });
+            return r! * 0.2126 + g! * 0.7152 + b! * 0.0722;
+          };
+          const table = cell.closest('[data-board-data-table]')!;
+          return [...cell.querySelectorAll('[data-media-avatar]:not(:has(img)) > span, [data-media-who], [data-media-credit-action], [data-cast-trigger] > button')]
+            .map(node => {
+              const layers = ['#fff'];
+              for (let parent: Element | null = node; parent && parent !== table.parentElement; parent = parent.parentElement) {
+                layers.splice(1, 0, getComputedStyle(parent).backgroundColor);
+              }
+              const background = read(layers);
+              const foreground = read([...layers, getComputedStyle(node).color]);
+              return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+            });
+        });
+        assert.ok(ratios.length >= 4 && ratios.every(ratio => ratio >= 4.5), JSON.stringify({ dark, ratios }));
+      }
+      const castTrigger = row.getByRole('button', { name: /等 80 人/ });
+      const actor = people.locator('[data-media-who]');
+      await actor.hover();
+      const artistCue = await actor.evaluate(node => {
+        const style = getComputedStyle(node, '::before');
+        return { fill: style.backgroundColor, decoration: getComputedStyle(node).textDecorationLine,
+          radius: parseFloat(style.borderRadius), overflow: getComputedStyle(node).overflow };
+      });
+      assert.ok(artistCue.radius > 0);
+      assert.equal(artistCue.overflow, 'visible');
+      await castTrigger.hover();
+      const hoverCue = await castTrigger.evaluate(node => ({
+        decoration: getComputedStyle(node).textDecorationLine,
+        fill: getComputedStyle(node, '::before').backgroundColor,
+      }));
+      assert.equal(hoverCue.decoration, 'none');
+      assert.notEqual(hoverCue.fill, 'rgba(0, 0, 0, 0)');
+      assert.equal(artistCue.fill, hoverCue.fill);
+      assert.equal(artistCue.decoration, hoverCue.decoration);
+      const narrow = await people.evaluate(cell => {
+        const width = cell.getBoundingClientRect().width;
+        (cell as HTMLElement).style.width = `${Math.min(112, width)}px`;
+        const name = cell.querySelector('[data-media-who] > span')!;
+        const label = cell.querySelector('[data-cast-trigger] > button')!;
+        const nameText = document.createRange();
+        nameText.selectNodeContents(name);
+        const right = cell.getBoundingClientRect().right + 1;
+        const result = { faces: [...cell.querySelectorAll('[data-media-avatar]')].filter(face => face.getBoundingClientRect().width > 0).length,
+          nameFits: [...nameText.getClientRects()].every(rect => rect.right <= right), countFits: label.getBoundingClientRect().right <= right };
+        (cell as HTMLElement).style.removeProperty('width');
+        return result;
+      });
+      assert.ok(narrow.faces < count && narrow.nameFits && narrow.countFits, JSON.stringify(narrow));
+      await castTrigger.click();
+      const names = page.getByRole('dialog', { name: '艺人', exact: true }).locator('li');
+      assert.equal(await names.count(), 80);
+      assert.equal(await castTrigger.getAttribute('aria-expanded'), 'true');
+      assert.notEqual(await castTrigger.evaluate(node => getComputedStyle(node, '::before').backgroundColor), hoverCue.fill);
+      assert.match(await names.last().innerText(), /演员 80/);
+      assert.deepEqual(await names.first().locator('button, a').evaluateAll(controls =>
+        controls.map(control => control.getAttribute('aria-label'))),
+      ['筛选「首位演员」', '订阅新作 · 首位演员', '打开女优页：首位演员']);
+      await page.keyboard.press('Escape');
+      await names.first().waitFor({ state: 'hidden' });
+      const nameCell = row.getByRole('rowheader');
+      await nameCell.scrollIntoViewIfNeeded();
+      const start = await nameCell.evaluate(cell => {
+        const { left, top } = cell.getBoundingClientRect();
+        const x = left + 24, y = top + 8;
+        return { x, y, hit: cell.contains(document.elementFromPoint(x, y)) };
+      });
+      assert.ok(start.hit, '框选从视口内的作品列开始');
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(start.x + 8, start.y + 38, { steps: 4 });
+      await page.locator('[data-card-selection-rectangle]').waitFor();
+      await page.mouse.up();
+      const checked = row.getByRole('checkbox', { name: new RegExp(code) });
+      await checked.waitFor();
+      assert.equal(await checked.isChecked(), true);
+      await mode('cards').click();
+      const card = page.locator(`[data-jav-card][data-rectangle-key="${code}"]`);
+      assert.equal(await card.locator('[data-media-check]').getAttribute('aria-pressed'), 'true');
+      await page.keyboard.press('Escape');
+      await card.locator('[data-media-check]').waitFor({ state: 'detached' });
+    } finally {
+      catalog.resolve();
+      await opened.close();
+    }
+  });
   for (const viewport of VIEWPORTS) it(`${viewport.name}：关闭馆藏详情保留探索页与筛选位置`, { timeout: 60_000 }, async () => {
     const opened = await openItemPage(browser, '/', viewport, { ready: '[data-media-grid]' });
     const { page } = opened;
@@ -25,11 +282,20 @@ describe('JAV 推荐与加载结构', () => {
       });
       await page.goto(new URL('/jav?tab=discover', page.url()).href);
       const section = page.getByRole('region', { name: '为你推荐', exact: true });
-      const search = page.getByRole('searchbox', { name: '筛选推荐', exact: true });
+      const search = page.getByRole('combobox', { name: '筛选推荐', exact: true });
       await section.locator('[data-jav-card]').first().waitFor();
-      await page.getByRole('button', { name: '馆藏探索', exact: true }).click();
+      const top = section.locator('[data-filter-row="top"]');
+      const bottom = section.locator('[data-filter-row="bottom"]');
+      assert.equal(await top.locator('[data-table-column-filter]').count(), 0);
+      assert.equal(await top.locator('[data-catalog-view]').count(), 2);
+      assert.deepEqual(await bottom.locator('[data-table-column-filter]').evaluateAll(nodes =>
+        nodes.map(node => node.getAttribute('data-table-column-filter'))),
+      ['jav-discover-performers', 'jav-discover-studios', 'jav-discover-tags']);
+      await top.getByRole('button', { name: '馆藏探索', exact: true }).click();
       await page.getByRole('button', { name: '按发行日期排序', exact: true }).click();
-      await section.locator('[data-catalog-tag="恋足"]').click();
+      await page.locator('[data-sort-direction-menu] [data-filter-option="desc"]').click();
+      await section.locator('[data-table-column-filter="jav-discover-tags"]').click();
+      await page.locator('[data-filter-option="恋足"]').click();
       await search.fill('PCH');
       await section.evaluate(node => { (node as HTMLElement).dataset.returnProbe = 'kept' });
       const count = reads.length;
@@ -42,6 +308,17 @@ describe('JAV 推荐与加载结构', () => {
       });
       await page.waitForFunction(() => new URLSearchParams(location.search).get('q') === 'PCH');
       await released();
+      const display = (value: 'list' | 'cards') => bottom.locator(
+        `[data-entity-sorts] label:has(input[value="${value}"])`);
+      assert.equal(await bottom.locator('[data-catalog-summary] input[value="list"]').count(), 0);
+      await display('list').click();
+      const discoverTable = section.locator('[data-discover-table]');
+      await discoverTable.locator('tbody [data-list-name]').first().waitFor();
+      assert.equal(await discoverTable.locator('[data-release-row]').count(), 20);
+      assert.equal(await discoverTable.locator('thead [data-table-column-filter="discover-column-tags"]').count(), 1);
+      assert.equal(new URL(page.url()).searchParams.get('tag'), '恋足');
+      await display('cards').click();
+      await section.locator('[data-jav-card]').first().waitFor();
       for (const exit of ['close', 'escape', 'back']) {
         const link = section.locator('[data-jav-card]').nth(8).locator('[data-jav-cover-box]');
         await link.scrollIntoViewIfNeeded();
@@ -67,9 +344,11 @@ describe('JAV 推荐与加载结构', () => {
         await page.waitForFunction(() => location.pathname === '/jav' && !document.querySelector('#stage[open]'));
         assert.equal(await drawer(), drawerOpen, `${exit} 关闭详情时侧栏不能跟着收起`);
         assert.equal(await search.inputValue(), 'PCH');
-        assert.equal(await section.locator('[data-entity-tag="library"]').getAttribute('aria-pressed'), 'true');
-        assert.equal(await section.locator('[data-catalog-tag="恋足"]').getAttribute('aria-pressed'), 'true');
-        assert.equal(await section.locator('[data-entity-sort="release_date"]').getAttribute('aria-pressed'), 'true');
+        assert.equal(await section.locator('[data-catalog-view="library"]').getAttribute('aria-pressed'), 'true');
+        await section.locator('[data-table-column-filter="jav-discover-tags"]').click();
+        assert.equal(await page.locator('[data-filter-option="恋足"]').getAttribute('aria-pressed'), 'true');
+        await page.keyboard.press('Escape');
+        assert.equal(await section.locator('[data-entity-sort="release_date"]').getAttribute('data-sort-current'), 'true');
         assert.equal(await section.getAttribute('data-return-probe'), 'kept');
         assert.equal(reads.length, count, JSON.stringify(reads));
         await released();
@@ -133,7 +412,7 @@ describe('JAV 推荐与加载结构', () => {
           { id: 778, code: 'DEMO-778', title: '很长的作品标题用于检查截断与卡片等高'.repeat(8), performers: '來源姓名' },
           { id: 779, code: 'DEMO-779', title: '短标题', performers: '來源姓名' },
         ].map((item, index) => ({ ...item, performer_refs: [{ id: 42, name: '规范姓名', has_image: false }],
-          link: 'https://example.com/work', release_date: '2010-10-01', has_cover: false, wanted: false,
+          link: 'https://example.com/work', release_date: '2010-10-01', has_cover: false, wanted: false, studio: '示例厂牌',
           score: 1, tags: ['恋足'], reasons: ['常看的女优：规范姓名'],
           ...(index === 0 ? { has_cover: true } : index === 1 ? { cover_url: 'https://example.com/sleeve.svg' } : {}),
           poster_box: { x0: 800, y0: 50, x1: 1460, y1: 950, px: [1480, 1000], method: 'manual' },
@@ -149,22 +428,16 @@ describe('JAV 推荐与加载结构', () => {
       assert.ok(cover && Math.abs(cover.width / cover.height - 0.75) < 0.02, '大图封面占位应与馆藏正封同一比例');
       const skeletonWidth = await page.locator('[data-skeleton="jav-discover"]').first().boundingBox();
       const skeletonCard = await page.locator('[data-jav-skeleton-card]').first().boundingBox();
-      const searchBox = await page.locator('[data-index-search]').boundingBox();
       const main = await page.locator('#main').boundingBox();
       assert.ok(skeletonWidth && main && skeletonWidth.width >= main.width - 40);
       const pendingFilter = await page.locator('[data-jav-filter]').boundingBox();
+      const pendingTiers = await page.locator('[data-catalog-tiers]').boundingBox();
       const pendingBottom = await page.locator('[data-jav-filter] [data-filter-row="bottom"]').boundingBox();
-      const pendingSize = await page.locator('[data-jav-filter] [data-entity-layout]').boundingBox();
+      const pendingSize = await page.locator('[data-jav-filter] [data-entity-layout]:not([aria-label="馆藏显示方式"])').boundingBox();
       const pendingShortcut = await page.locator('[data-jav-filter] [data-shortcuts-trigger]').boundingBox();
       assert.ok(pendingShortcut && pendingShortcut.width === 32 && pendingShortcut.height === 32, JSON.stringify(pendingShortcut));
-      const tagPlaceholders = page.locator('[data-jav-filter] [data-catalog-tags] [data-skeleton="tag"]');
-      assert.equal(await tagPlaceholders.count(), 6);
-      const pendingTags = await tagPlaceholders.evaluateAll(nodes => nodes.map(node => {
-        const style = getComputedStyle(node), box = node.getBoundingClientRect();
-        return { height: box.height, y: box.y, pointer: style.pointerEvents, position: style.position, overflow: style.overflow };
-      }));
-      assert.ok(pendingTags.every(chip => chip.height === 32 && chip.y === pendingTags[0].y && chip.pointer === 'none'), JSON.stringify(pendingTags));
-      assert.ok(pendingTags.every(chip => chip.position === 'relative' && chip.overflow === 'hidden'), '标签光效在各自占位内定位和裁切');
+      const filterTrigger = page.locator('[data-jav-filter] [data-table-column-filter="jav-discover-tags"]');
+      const pendingTagHeight = await filterTrigger.evaluate(node => node.getBoundingClientRect().height);
       const avatarShape = await page.locator('[data-jav-skeleton-avatar]').first().evaluate(node => {
         const style = getComputedStyle(node); return { width: style.width, height: style.height, radius: style.borderRadius };
       });
@@ -174,13 +447,17 @@ describe('JAV 推荐与加载结构', () => {
       assert.deepEqual(await page.locator('[data-jav-skeleton-card]').first().locator('[data-jav-skeleton-text]').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).height)), ['14px', '14px', '18px', '18px']);
       assert.equal(await page.locator('[data-jav-skeleton-cover]').first().evaluate(node => getComputedStyle(node).borderRadius),
         await page.locator('#main').evaluate(node => getComputedStyle(node).getPropertyValue('--surface-radius').trim()));
-      assert.equal(await page.locator('[data-jav-filter] [data-entity-sep]').count(), 1);
+      assert.equal(await page.locator('[data-jav-filter] [data-filter-row="bottom"] [data-entity-sep]').count(), 1);
+      const waitingTags = page.locator('[data-jav-filter] [data-filter-tag-strip][data-loading]');
+      assert.equal(await waitingTags.count(), 1);
+      assert.equal(await waitingTags.evaluate(node => getComputedStyle(node).overflowX), 'clip');
+      assert.equal(await waitingTags.evaluate(node => node.hasAttribute('data-overlay-scrollbar')), false);
       assert.equal(await page.locator('[data-jav-filter] [data-entity-sort]').count(), 5);
       assert.equal(await page.locator('[data-jav-filter]').getByText('正在读取', { exact: true }).count(), 0);
       await page.screenshot({ path: `../build/jav-discover-pending-${viewport.name}.png` });
       release();
       await page.getByRole('heading', { name: 'DEMO-777 演示新作', exact: true }).waitFor();
-      const search = page.getByRole('searchbox', { name: '筛选推荐', exact: true });
+      const search = page.getByRole('combobox', { name: '筛选推荐', exact: true });
       const cards = page.getByRole('region', { name: '为你推荐', exact: true }).locator('article');
       assert.equal(await cards.count(), 3);
       assert.equal(await cards.first().locator('[data-media-who]').textContent(), '规范姓名');
@@ -225,17 +502,20 @@ describe('JAV 推荐与加载结构', () => {
         assert.ok(Math.abs(frame.top - frame.y) <= 1 && Math.abs(frame.height - frame.expectedHeight) <= 1, JSON.stringify(frame));
       }
       const liveFilter = await page.locator('[data-jav-filter]').boundingBox();
+      const liveTiers = await page.locator('[data-discover-tiers]').boundingBox();
+      assert.ok(pendingTiers && liveTiers && Math.abs(pendingTiers.y - liveTiers.y) <= 1
+        && Math.abs(pendingTiers.height - liveTiers.height) <= 1, JSON.stringify({ pendingTiers, liveTiers }));
+      assert.ok(await page.locator('[data-discover-tiers] [data-catalog-tier="performers"] button').count());
+      assert.ok(await page.locator('[data-discover-tiers] [data-catalog-tier="studios"] button').count());
       const liveBottom = await page.locator('[data-jav-filter] [data-filter-row="bottom"]').boundingBox();
-      const liveSize = await page.locator('[data-jav-filter] [data-entity-layout]').boundingBox();
+      const liveSize = await page.locator('[data-jav-filter] [data-entity-layout]:not([aria-label="馆藏显示方式"])').boundingBox();
       const liveShortcut = await page.locator('[data-jav-filter] [data-shortcuts-trigger]').boundingBox();
       for (const [pending, live] of [[pendingFilter, liveFilter], [pendingBottom, liveBottom], [pendingSize, liveSize], [pendingShortcut, liveShortcut]]) {
         assert.ok(pending && live && Math.abs(pending.y - live.y) <= 1 && Math.abs(pending.height - live.height) <= 1, JSON.stringify({ pending, live, pendingBottom, liveBottom, pendingSize, liveSize, pendingShortcut, liveShortcut }));
       }
       const controls = await page.locator('[data-jav-filter] [data-entity-sorts]').boundingBox();
       assert.ok(liveSize && controls && liveSize.x >= controls.x && liveSize.x + liveSize.width <= controls.x + controls.width);
-      assert.equal(await page.locator('[data-jav-filter] [data-catalog-tag]').first().evaluate(node => getComputedStyle(node).borderStyle), 'dashed');
-      assert.equal(await tagPlaceholders.count(), 0);
-      assert.equal(await page.locator('[data-jav-filter] [data-catalog-tag]').first().evaluate(node => node.getBoundingClientRect().height), pendingTags[0].height);
+      assert.equal(await filterTrigger.evaluate(node => node.getBoundingClientRect().height), pendingTagHeight);
       const heights = await cards.evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
       if (!viewport.mobile) assert.ok(Math.max(...heights) - Math.min(...heights) <= 1, JSON.stringify(heights));
       if (viewport.mobile) {
@@ -244,7 +524,8 @@ describe('JAV 推荐与加载结构', () => {
       } else {
         assert.ok(skeletonCard && Math.abs(skeletonCard.height - heights[0]!) <= 2, JSON.stringify({ skeletonCard, heights }));
       }
-      assert.deepEqual(await page.locator('[data-index-search]').boundingBox(), searchBox, '页头筛选框骨架与接管后同一位置');
+      assert.equal(await page.locator('[data-jav-filter] [data-filter-search]').count(), 1, '发现分区的查找在筛选浮层里');
+      assert.equal(await page.locator('#javLibraryHeader [data-index-search]').count(), 0, '有浮层的分区页头不再另摆筛选框');
       assert.equal(await cards.nth(1).locator('h3').evaluate(node => getComputedStyle(node).webkitLineClamp), '2');
       const lookup = page.getByRole('button', { name: '查找资源', exact: true }).first();
       assert.notEqual(await lookup.evaluate(node => getComputedStyle(node).backgroundColor),
@@ -306,4 +587,97 @@ describe('JAV 推荐与加载结构', () => {
       await page.screenshot({ path: `../build/jav-discover-${viewport.name}.png` });
     } finally { release(); await opened.close(); }
   });
+
+  for (const viewport of VIEWPORTS) {
+    it(`新作的显示方式在下排，加载前后两排头像贴齐浮层（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      let release!: () => void;
+      const held = new Promise<void>(resolve => { release = resolve; });
+      const opened = await visit(browser, '/jav?tab=releases', viewport, async page => {
+        await page.route('**/api/jav/releases?*', async route => {
+          await held;
+          const data: ReleaseResult = {
+            items: [{
+              id: 777, code: 'DEMO-777', title: '演示新作', performers: '样本艺人', studio: '样本厂牌',
+              release_date: '2026-01-01', link: '', cover_url: '', has_cover: false, wanted: false, tags: ['样本标签'],
+            }],
+            total: 1, candidate_total: 1, page: 1, size: 24,
+            facets: { performers: [{ name: '样本艺人', count: 1 }], studios: [{ name: '样本厂牌', count: 1, has_logo: false }],
+              tags: [{ name: '样本标签', count: 1 }] },
+          };
+          await route.fulfill({ json: data });
+        });
+      });
+      const { page } = opened;
+      try {
+        const frame = page.locator('[data-jav-filter]:visible').last();
+        const bottom = frame.locator('[data-filter-row="bottom"]');
+        const mode = bottom.locator('[role="radiogroup"][aria-label="馆藏显示方式"]');
+        const geometry = () => frame.evaluate(node => {
+          const filter = node.getBoundingClientRect();
+          const tiers = node.previousElementSibling!.getBoundingClientRect();
+          return { gutter: Math.round(filter.left - tiers.left), gap: Math.round(filter.top - tiers.bottom) };
+        });
+        await mode.waitFor();
+        assert.deepEqual(await geometry(), { gutter: 16, gap: 0 });
+        release();
+        await frame.locator('[data-filter-row="top"]').getByRole('button', { name: /样本标签/ }).waitFor();
+        await settle(page);
+        await mode.waitFor();
+        assert.deepEqual(await geometry(), { gutter: 16, gap: 0 });
+        assert.equal(await frame.getByRole('radiogroup', { name: '馆藏显示方式' }).count(), 1);
+        const list = mode.locator('label:has(input[value="list"])');
+        await list.click();
+        await page.locator('[data-release-table]').waitFor();
+        assert.equal(await list.locator('input').isChecked(), true);
+      } finally {
+        release();
+        await opened.close();
+      }
+    });
+
+    it(`换分区时页头是同一棵：页签底板滑过去，标题与页签原地不动（${viewport.name}）`, { timeout: 60_000 }, async () => {
+      const opened = await visit(browser, '/jav', viewport, async page => {
+        await page.route('**/api/jav/releases?*', route => route.fulfill({ json: {
+          items: [], total: 0, candidate_total: 0, page: 1, size: 24, facets: { performers: [], studios: [], tags: [] } } }));
+      });
+      const { page } = opened;
+      try {
+        const header = page.locator('#javLibraryHeader');
+        const selected = (name: string) => header.getByRole('tab', { name, exact: true, selected: true });
+        await selected('馆藏').waitFor();
+        await settle(page);
+        // 冒烟默认减少动态效果；底板的过渡要在正常设置下读。
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await page.evaluate(() => {
+          const list = document.querySelector('#javLibraryHeader [role="tablist"]')!;
+          list.setAttribute('data-kept', '');
+          list.querySelector('[data-pill-thumb]')!.setAttribute('data-kept', '');
+        });
+        const read = () => page.evaluate(() => {
+          const shown = (node: Element) => node.getClientRects().length > 0;
+          const titles = [...document.querySelectorAll('h2[data-page-title]')].filter(node => shown(node) && node.textContent === 'JAV');
+          const list = [...document.querySelectorAll('[role="tablist"][aria-label="JAV 分区"]')].filter(shown);
+          const thumb = list[0]?.querySelector<HTMLElement>(':scope > [data-pill-thumb]');
+          return {
+            titles: titles.length, title: Math.round(titles[0]?.getBoundingClientRect().top ?? -1),
+            lists: list.length, tabs: Math.round(list[0]?.getBoundingClientRect().top ?? -1),
+            kept: !!list[0]?.hasAttribute('data-kept') && !!thumb?.hasAttribute('data-kept'),
+            glides: !!thumb && parseFloat(getComputedStyle(thumb).transitionDuration) > 0,
+          };
+        });
+        const home = await read();
+        assert.deepEqual({ titles: home.titles, lists: home.lists, kept: home.kept, glides: home.glides },
+          { titles: 1, lists: 1, kept: true, glides: true });
+        for (const [name, path] of [['新作', '/jav?tab=releases'], ['发现', '/jav?tab=discover'], ['想要', '/jav?tab=wants'], ['馆藏', '/?jav=1']] as const) {
+          await header.getByRole('tab', { name, exact: true }).click();
+          await page.waitForURL(url => url.pathname + url.search === path);
+          await selected(name).waitFor();
+          assert.deepEqual(await read(), home, `点了「${name}」就该是同一排页签、同一个位置，不等正文`);
+          await page.waitForFunction(() => !document.querySelector('#stats [data-skeleton^="board"]') && scrollY === 0);
+          assert.deepEqual(await read(), home, `「${name}」正文落地后页头不动`);
+          assert.equal(await header.locator('[data-index-search]').count(), name === '想要' ? 1 : 0, `「${name}」页头的筛选框：只有没有筛选浮层的分区留在页头`);
+        }
+      } finally { await opened.close(); }
+    });
+  }
 });

@@ -19,8 +19,9 @@ import zipfile
 if str(Path(__file__).resolve().parents[1] / "src") not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from peach.interface_text import dev as t  # noqa: E402
-from smoke_desktop import (artifact_processes, assert_requires_login, complete_first_run,
-                           smoke_directory, smoke_environment, stop_tray, wait_for, wait_health)
+from smoke_desktop import (artifact_processes, assert_playback_fixture_stream, assert_requires_login,
+                           complete_first_run, playback_request, scan_playback_fixture, smoke_directory,
+                           smoke_environment, stop_tray, wait_for, wait_health)
 
 
 APP_KEY = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\{02D9748A-78F6-4866-AC75-918177194DAB}_is1"
@@ -105,6 +106,29 @@ def uninstall_and_verify(application: Path, data: Path, media: Path, original: d
     print(json.dumps({"ok": True, "phase": "uninstall-keeps-data"}), flush=True)
 
 
+def _seed_resume(opener, base: str, asset: int, version: str):
+    # 0.63.0 之前从账本的离开比例恢复位置。
+    exact = tuple(map(int, version.split("-")[0].split("."))) >= (0, 63, 0)
+    position = {"seconds": 0.25, "updated_at": 1}
+    memory_path = f"/api/player/memory?video=item:{asset}"
+    if exact:
+        assert playback_request(opener, base, memory_path, {"position": position}, "PUT")["position"] == position
+    else:
+        receipt = playback_request(opener, base, "/api/activity",
+                                   {"id": asset, "position": 0.25, "duration": 1, "delta": 0.25})
+        assert receipt["leave_ratio"] == 0.25, receipt
+    return exact, memory_path, position
+
+
+def _verify_resume(opener, base: str, asset: int, exact: bool, memory_path: str, position: dict) -> str:
+    if exact:
+        assert playback_request(opener, base, memory_path)["position"] == position
+    else:
+        assert playback_request(opener, base, f"/api/item?id={asset}")["leave_ratio"] == 0.25
+    assert_playback_fixture_stream(opener, base, asset)
+    return "playback-position" if exact else "legacy-leave-ratio"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=t("smoke_overlay_upgrade.description"))
     parser.add_argument("--from-version", required=True)
@@ -160,6 +184,7 @@ def main() -> int:
             finally:
                 setup.terminate()
                 setup.wait(timeout=15)
+            asset = scan_playback_fixture(executable, media, data, environment)
             with closing(sqlite3.connect(data / "database/ledger.db")) as connection, connection:
                 connection.execute("CREATE TABLE overlay_upgrade_fixture(value TEXT)")
                 connection.execute("INSERT INTO overlay_upgrade_fixture VALUES ('retained')")
@@ -169,6 +194,7 @@ def main() -> int:
                 stdout=log, stderr=log)
             try:
                 verify(opener, base, data, media, original, password, args.from_version, "", log_path)
+                exact, memory_path, position = _seed_resume(opener, base, asset, args.from_version)
                 if args.kind == "installer":
                     # 让安装器停止正在运行的旧版，并通过登记记住的目录原位安装。
                     install(new, application, installer_environment, root / "install-new.log", reuse=True)
@@ -188,10 +214,12 @@ def main() -> int:
                     stdout=log, stderr=log)
                 health = verify(opener, base, data, media, original, password,
                     args.to_version, args.to_commit, log_path)
+                resume_check = _verify_resume(opener, base, asset, exact, memory_path, position)
                 print(json.dumps({"ok": True, "phase": "overlay", "kind": args.kind,
                     "data_location": args.data_location,
                     "version": health["version"], "build_commit": health["build_commit"],
-                    "checks": ["config", "password", "ledger", "media", "data-root", "login", "ready", "items"]}), flush=True)
+                    "checks": ["config", "password", "ledger", "media", "data-root", "login", "ready", "items",
+                               resume_check]}), flush=True)
             finally:
                 stop_tray(executable, root, environment, log, launcher)
             if args.kind == "installer":

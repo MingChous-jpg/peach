@@ -37,12 +37,13 @@ from .routes_auth import (FIRST_ACCESS_DENIED_CODE, login_mode, origin_allowed, 
                           set_auth_cookie, sessions as access_sessions)
 from .web_entry import field_errors, runtime_fact_entries
 from .user_messages import UserFacingError, UserOSError, UserTimeoutError, UserValueError, error_detail, message_fields
-from .web_local_access import local_client, managed_configuration
-from . import (interface_text, release_updates, standalone_update, peach_proxy, desktop_startup, desktop_uninstall,
+from .web_local_access import local_client, loopback_client, managed_configuration
+from . import (interface_text, release_updates, standalone_update, peach_proxy, desktop_alerts, desktop_startup, desktop_uninstall,
                docker_update, media_tools, listening)
 
 router = APIRouter()
 _SAVE_LOCK = threading.Lock()
+_BROWSER_LOGIN_LOCK = threading.Lock()
 RELOAD_NAME = onboarding.RELOAD_NAME
 #: 直接由 CLI 管理的服务使用设置文件：配置页不能编辑时给的那句话。
 FILE_MANAGED_NOTICE = "labels.configuration.fileManagedNotice"
@@ -70,8 +71,9 @@ def local_only(request: Request) -> None:
 def _diagnostics_report(request: Request):
     from . import diagnostics
     state = request.app.state
-    return diagnostics.report(state.settings, state.mount_reachability.summary(),
-                              known_corruption=state.database.corrupted)
+    report = diagnostics.report(state.settings, state.mount_reachability.summary(),
+                                known_corruption=state.database.corrupted)
+    return {**report, 'runtime_diagnostics': state.runtime_diagnostics.snapshot()}
 
 
 @router.get("/api/diagnostics")
@@ -91,8 +93,27 @@ def library_diagnostic_rows(request: Request, args: dict[str, str] = Depends(req
     if key not in library_diagnostics.GROUP_CODES:
         raise UserValueError("api.catalog.invalidColumnFilters")
     data = library_diagnostics.library(request.app.state.settings, settings_file.active(),
-                                       {key: args.get("column_filters")})
+                                       {key: args.get("column_filters")}, show_ignored=args.get("view") == "ignored")
     return data["groups"][key]
+
+
+@router.get("/api/diagnostics/startup")
+def startup_diagnostic_status(request: Request, _args=Depends(require_auth)):
+    from . import startup_diagnostics
+
+    local_only(request)
+    result = startup_diagnostics.snapshot(settings_file.active().directory("state"))
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/api/diagnostics/library/ignored")
+def library_diagnostic_ignored(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
+    from . import library_diagnostics
+    local_only(request)
+    same_origin(request)
+    library_diagnostics.change_ignored(settings_file.active(), body.get("group", ""),
+                                       body.get("ids"), body.get("ignore"))
+    return {"ok": True}
 
 
 @router.get("/api/diagnostics/bundle")
@@ -164,16 +185,19 @@ def diagnostic_export_download(request: Request, identity: str, _args=Depends(re
 _CLIENT_ERROR_LOCK = threading.Lock()
 
 
-def _client_error_budget(request: Request) -> None:
+def _client_diagnostic_slot(request: Request, *, performance: bool = False) -> bool:
+    """慢加载采样有独立额度，避免挤掉浏览器错误。"""
+    field = 'client_performance_times' if performance else 'client_error_times'
     with _CLIENT_ERROR_LOCK:
-        recent = getattr(request.app.state, 'client_error_times', deque(maxlen=20))
-        request.app.state.client_error_times = recent
+        recent = getattr(request.app.state, field, deque(maxlen=20))
+        setattr(request.app.state, field, recent)
         now = time.monotonic()
         while recent and now - recent[0] >= 60:
             recent.popleft()
-        if len(recent) >= 20:
-            raise HTTPException(429, message_fields('api.configuration.clientErrorRateLimited'))
+        if len(recent) >= recent.maxlen:
+            return False
         recent.append(now)
+    return True
 
 
 def _record_browser_context(request: Request, context: dict) -> bool:
@@ -212,6 +236,17 @@ async def client_error(request: Request):
         raise HTTPException(400, message_fields("api.configuration.clientErrorInvalid")) from None
     if not isinstance(data, dict) or not isinstance(data.get("message"), str):
         raise HTTPException(400, message_fields("api.configuration.clientErrorMissingMessage"))
+    from . import diagnostic_context
+    if data.get('kind') == 'performance':
+        timing = diagnostic_context.performance_timing(data['message'], data.get('timing'))
+        if timing is None:
+            raise HTTPException(400, message_fields("api.configuration.clientErrorInvalid"))
+        if not _client_diagnostic_slot(request, performance=True):
+            return {'recorded': False}
+        recorded = error_reporting.local_event('browser-performance', **timing)
+        if recorded is None:
+            raise HTTPException(503, message_fields("api.configuration.errorLogUnwritable"))
+        return {'recorded': True}
     fields = {key: value[:6000] for key in ("message", "stack", "kind", "page", "source_file", "error_name")
               if isinstance(value := data.get(key), str)}
     fields.update({key: value for key in ('line', 'column')
@@ -222,11 +257,11 @@ async def client_error(request: Request):
         fields['bundle_debug_ids'] = {key: value for key, value in identities.items()
             if shipped(key) and isinstance(value, str) and len(value) == 36}
     fields['user_agent'] = request.headers.get('user-agent', '')[:512]
-    from . import diagnostic_context
     context = {'browser': diagnostic_context.browser(data.get('browser'), user_agent=fields['user_agent'])}
     if data.get('kind') == 'context':
         return {'recorded': _record_browser_context(request, context)}
-    _client_error_budget(request)
+    if not _client_diagnostic_slot(request):
+        raise HTTPException(429, message_fields('api.configuration.clientErrorRateLimited'))
     if isinstance(data.get('playback'), dict):
         context['playback'] = diagnostic_context.playback(data['playback'])
         recorded = error_reporting.local_event('browser', **fields, **context)
@@ -471,6 +506,27 @@ def save_seed_sharing(request: Request, body: dict = Body(...), _args=Depends(re
     local_only(request)
     same_origin(request)
     return request.app.state.seed_sharing.save(body)
+
+
+@router.get('/api/configuration/community-sharing')
+def read_community_sharing(request: Request, _args=Depends(require_auth)):
+    local_only(request)
+    from . import community_sharing
+    state = request.app.state
+    return JSONResponse(community_sharing.snapshot(state.library_sharing, state.seed_sharing),
+                        headers={'Cache-Control': 'no-store'})
+
+
+@router.post('/api/configuration/community-sharing')
+def save_community_sharing(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
+    local_only(request)
+    same_origin(request)
+    from . import community_sharing
+    state = request.app.state
+    try:
+        return community_sharing.save(state.library_sharing, state.seed_sharing, body)
+    except ValueError as error:
+        raise HTTPException(400, error_detail(error)) from error
 
 
 @router.get('/api/configuration/seed-sharing/name')
@@ -756,6 +812,91 @@ def logout_pikpak(request: Request, _args=Depends(require_auth)):
     return web_downloads.pikpak_logout(service, roots)
 
 
+def _javdb_browser_login(request: Request):
+    from .javdb_browser_login import JavDBBrowserLogin
+
+    contract = request.app.state.web_contract
+    with _BROWSER_LOGIN_LOCK:
+        if not hasattr(contract, "javdb_browser_login"):
+            contract.javdb_browser_login = JavDBBrowserLogin(contract.follow_secrets_root)
+        return contract.javdb_browser_login
+
+
+@router.get("/api/scraping/javdb-browser-login")
+def javdb_browser_login_status(request: Request, _args=Depends(require_auth)):
+    if not loopback_client(request):
+        return {"available": False, "state": "idle", "message": ""}
+    login = _javdb_browser_login(request)
+    return {"available": login.available(), **login.status()}
+
+
+@router.post("/api/scraping/javdb-browser-login")
+def start_javdb_browser_login(request: Request, _args=Depends(require_auth)):
+    if not loopback_client(request):
+        raise HTTPException(403, message_fields("api.configuration.openOnHost"))
+    same_origin(request)
+    login = _javdb_browser_login(request)
+    return {"available": login.available(), **login.start()}
+
+
+@router.post("/api/scraping/javdb-browser-login/cancel")
+def cancel_javdb_browser_login(request: Request, _args=Depends(require_auth)):
+    if not loopback_client(request):
+        raise HTTPException(403, message_fields("api.configuration.openOnHost"))
+    same_origin(request)
+    login = _javdb_browser_login(request)
+    return {"available": login.available(), **login.cancel()}
+
+
+def _check_browser_login_source(source: str) -> None:
+    from .source_browser_login import SOURCE_BROWSER_LOGIN_SOURCES
+
+    if source not in SOURCE_BROWSER_LOGIN_SOURCES:
+        raise HTTPException(404)
+
+
+def _source_browser_login(request: Request, source: str):
+    from .source_browser_login import SourceBrowserLogin
+
+    contract = request.app.state.web_contract
+    with _BROWSER_LOGIN_LOCK:
+        if not hasattr(contract, "source_browser_logins"):
+            contract.source_browser_logins = {}
+        logins = contract.source_browser_logins
+        if source not in logins:
+            logins[source] = SourceBrowserLogin(contract.follow_secrets_root, source)
+        return logins[source]
+
+
+@router.get("/api/source-browser-login/{source}")
+def source_browser_login_status(request: Request, source: str, _args=Depends(require_auth)):
+    _check_browser_login_source(source)
+    if not loopback_client(request):
+        return {"available": False, "state": "idle", "message": ""}
+    login = _source_browser_login(request, source)
+    return {"available": login.available(), **login.status()}
+
+
+@router.post("/api/source-browser-login/{source}")
+def start_source_browser_login(request: Request, source: str, _args=Depends(require_auth)):
+    _check_browser_login_source(source)
+    if not loopback_client(request):
+        raise HTTPException(403, message_fields("api.configuration.openOnHost"))
+    same_origin(request)
+    login = _source_browser_login(request, source)
+    return {"available": login.available(), **login.start()}
+
+
+@router.post("/api/source-browser-login/{source}/cancel")
+def cancel_source_browser_login(request: Request, source: str, _args=Depends(require_auth)):
+    _check_browser_login_source(source)
+    if not loopback_client(request):
+        raise HTTPException(403, message_fields("api.configuration.openOnHost"))
+    same_origin(request)
+    login = _source_browser_login(request, source)
+    return {"available": login.available(), **login.cancel()}
+
+
 @router.get("/api/configuration/startup")
 def read_startup(request: Request, _args=Depends(require_auth)):
     local_only(request)
@@ -763,6 +904,29 @@ def read_startup(request: Request, _args=Depends(require_auth)):
     if not config.present:
         raise HTTPException(409, message_fields("api.configuration.setupRequired"))
     return desktop_startup.snapshot(config)
+
+
+@router.get("/api/configuration/desktop-alerts")
+def read_desktop_alerts(request: Request, _args=Depends(require_auth)):
+    if not desktop_alerts.available() or not local_client(request):
+        return {"available": False, "enabled": False}
+    config = settings_file.load_config()
+    return {"available": bool(config.present),
+            "enabled": config.present and desktop_alerts.enabled(config.directory("state"))}
+
+
+@router.post("/api/configuration/desktop-alerts")
+def save_desktop_alerts(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
+    local_only(request)
+    same_origin(request)
+    config = settings_file.load_config()
+    if not desktop_alerts.available() or not config.present:
+        raise HTTPException(409, message_fields("api.configuration.desktopAlertsUnavailable"))
+    value = body.get("enabled")
+    if not isinstance(value, bool):
+        raise HTTPException(400, message_fields("api.configuration.enabledNotBoolean"))
+    desktop_alerts.save(config.directory("state"), value)
+    return {"available": True, "enabled": value}
 
 
 @router.post("/api/configuration/startup")
@@ -921,6 +1085,23 @@ def restore_ledger(request: Request, body: dict[str, Any] = Body(default_factory
         return _ledger_backups(request).start_restore(body.get("id"))
     except (ValueError, JobAlreadyRunning) as exc:
         raise HTTPException(409, error_detail(exc)) from exc
+
+
+@router.get("/api/configuration/background-work")
+def read_background_work(request: Request, _args=Depends(require_auth)):
+    from . import background_work
+    local_only(request)
+    return {"precompute": background_work.enabled(request.app.state.web_contract.follow_state_root)}
+
+
+@router.post("/api/configuration/background-work")
+def save_background_work(request: Request, body: dict[str, Any] = Body(default_factory=dict),
+                         _args=Depends(require_auth)):
+    from . import background_work
+    local_only(request)
+    same_origin(request)
+    value = background_work.save(request.app.state.web_contract.follow_state_root, body.get("precompute"))
+    return {"precompute": value}
 
 
 @router.get("/api/configuration/retention")

@@ -11,7 +11,7 @@
  * 令牌与密码只往本机凭据文件写，读接口只回「存没存过」，所以令牌框保存后清空、提示改成
  * 「已保存，留空不改」。PikPak 要人机验证时服务端回一个验证页地址，这里给出链接让用户在浏览器
  * 里完成，Peach 不替他过验证。 */
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type MouseEventHandler, type ReactNode } from 'react';
 
 import { Button } from '@/components/base/buttons/button';
 import { Chip } from '@/components/base/badges/chip';
@@ -22,13 +22,14 @@ import { Select, SelectItem } from '@/components/base/select/select';
 
 import { apiGet, apiSend, errorMessage } from '../../api';
 import type {
-  ConfigurationPanel, DownloadCheckReport, DownloadConfig, DownloadSaveResult, DownloadSettingsState, PikPakLoginResult,
+  DownloadCheckReport, DownloadConfig, DownloadSaveResult, DownloadSettingsState, PikPakLoginResult,
 } from '../bundle';
 import { ActivityStatus } from '../components/activity-motion';
 import { NavigationOrderRows } from '../components/navigation-order';
 import { Note } from '../components/note';
 import { SourceLabel, providerIcon } from '../components/source-label';
-import { groupRoot } from './configuration-panel';
+import { ConfigurationContents } from './configuration-contents';
+import { useCheckReceipt } from './use-check-receipt';
 import {
   ErrorText, ExternalLink, Fact, FactList, FieldLabel, Footer, Help, Section, Stack,
 } from './section';
@@ -40,6 +41,7 @@ import { EDITION_TONE, editionName } from '../../core/jav-title';
 import { jobText, serverLabel } from '../../core/server-text';
 import { pollUntil } from '../../polling';
 import { t } from '../../i18n';
+import { downloadAddressError, invalidDownloadPath, trimDownloadAddress, useFieldValidation } from './field-validation';
 
 export const DOWNLOADS_URL = '/api/configuration/downloads';
 const CHECK_URL = '/api/configuration/downloads/check';
@@ -64,17 +66,17 @@ const missingTexts = (report: DownloadCheckReport): string[] =>
   report.missing.map((label, index) => serverLabel(report.missing_codes?.[index] ?? '', label));
 
 /** 「下载渠道」分组：CloudDrive2 与 PikPak 账号。 */
-export function DownloadGroup({ initial, receipt, panel, issues }: {
+export function DownloadGroup({ initial, receipt, active, issues }: {
   initial?: DownloadSettingsState;
   receipt(message: string): void;
-  panel?: ConfigurationPanel;
+  active: boolean;
   issues?: ReactNode;
 }) {
   return (
-    <div {...groupRoot(panel)}>
+    <>
       {issues}
-      {initial ? <DownloadSettings initial={initial} receipt={receipt} active={panel?.active} /> : null}
-    </div>
+      {initial ? <DownloadSettings initial={initial} receipt={receipt} active={active} /> : null}
+    </>
   );
 }
 
@@ -94,15 +96,17 @@ export function DownloadSettings({ initial, receipt, active = true }: {
   const hasCloud = sources.some(source => CLOUD_LOCATIONS.includes(source));
   const pikpakAccount = hasPikPak && (state.pikpak.logged_in || Boolean(username.trim()));
   return (
-    <>
-      {hasCloud ? <DownloadForm state={state} settle={setState} receipt={receipt} pikpakAccount={pikpakAccount} active={active} /> : null}
-      {hasPikPak ? <PikPakAccount state={state} settle={setState} receipt={receipt} username={username} setUsername={setUsername} /> : null}
-      <LocalDownloadSettings state={state} settle={setState} receipt={receipt} />
-      <JavBrowserSettings receipt={receipt} refreshKey={JSON.stringify([
+    <ConfigurationContents entries={[
+      hasCloud && { id: 'downloads-cloud', label: t('settings:cloudDownload.title'),
+        content: <DownloadForm state={state} settle={setState} receipt={receipt} pikpakAccount={pikpakAccount} active={active} /> },
+      hasPikPak && { id: 'downloads-pikpak', label: t('settings:pikpakAccount.title'),
+        content: <PikPakAccount state={state} settle={setState} receipt={receipt} username={username} setUsername={setUsername} /> },
+      { id: 'downloads-local', label: t('settings:localDownload.title'), content: <LocalDownloadSettings state={state} settle={setState} receipt={receipt} /> },
+      { id: 'downloads-browser', label: t('settings:javBrowser.title'), content: <JavBrowserSettings receipt={receipt} refreshKey={JSON.stringify([
         state.media_sources, state.config, state.token_set, state.pikpak.logged_in,
         state.qbittorrent, state.local_roots,
-      ])} />
-    </>
+      ])} /> },
+    ]} />
   );
 }
 
@@ -113,6 +117,8 @@ interface CardProps {
 }
 
 function DownloadForm({ state, settle, receipt, pikpakAccount, active }: CardProps & { pikpakAccount: boolean; active: boolean }) {
+  const { checked, checkFailed } = useCheckReceipt();
+  const connection = t('settings:connectionCheck.action', { service: 'CloudDrive2' });
   const [config, setConfig] = useState<DownloadConfig>(state.config);
   const [token, setToken] = useState('');
   const [hours, setHours] = useState(String(state.config.wait_hours));
@@ -120,8 +126,9 @@ function DownloadForm({ state, settle, receipt, pikpakAccount, active }: CardPro
   const [detected, setDetected] = useState('');
   const [suggested, setSuggested] = useState<Suggestions>(NO_SUGGESTIONS);
   const [failure, setFailure] = useState('');
-  const [saveBlocked, setSaveBlocked] = useState(false);
   const action = useAction();
+  const validation = useFieldValidation<'address' | 'token' | 'target115' | 'targetPikPak' | 'hours'>();
+  const { errors } = validation;
   const autoChecked = useRef(false);
   const sources = state.media_sources ?? [];
   const has115 = sources.includes('115');
@@ -147,8 +154,19 @@ function DownloadForm({ state, settle, receipt, pikpakAccount, active }: CardPro
     setReport(next);
     setDetected(blank.address ? next.address : '');
     setSuggested({ target: folder, root, saved: stored });
-    setSaveBlocked(false);
     setFailure('');
+  };
+
+  const addressError = (value: string) => {
+    const code = downloadAddressError(value);
+    return code ? serverLabel(code, '', { label: 'CloudDrive2' }) : '';
+  };
+  const targetError = (value: string) => invalidDownloadPath(value) ? serverLabel('errors.downloads.targetIsRoot', '') : '';
+  const hoursError = () => {
+    if (!hours.trim()) return '';
+    if (!/^[+-]?\d+$/.test(hours.trim())) return serverLabel('errors.downloads.waitHoursNotNumber', '');
+    return Number(hours) < 1 || Number(hours) > state.max_wait_hours
+      ? serverLabel('errors.downloads.waitHoursOutOfRange', '', { max: state.max_wait_hours }) : '';
   };
 
   // 下载分区首次可见时按已保存的配置检查。其它分区仍保留表单，但不触发云端连接。
@@ -165,12 +183,15 @@ function DownloadForm({ state, settle, receipt, pikpakAccount, active }: CardPro
   // 保存的响应里带着按已保存配置做的检查报告，直接渲染；115 目标目录留空时服务端已按推送发现填上。
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (missing) {
-      setSaveBlocked(true);
-      return;
-    }
+    setFailure('');
+    if (!validation.check(event.currentTarget, {
+      address: addressError(config.clouddrive_address),
+      target115: has115 ? targetError(target('115')) || (missing ? t('settings:cloudDownload.createOrPick') : '') : '',
+      targetPikPak: hasPikPak ? targetError(target('pikpak')) : '',
+      hours: hoursError(),
+    })) return;
     const blankTarget = !target('115').trim();
-    const body = { ...config, wait_hours: hours, token, pikpak_account: pikpakAccount };
+    const body = { ...config, wait_hours: hours.trim(), token, pikpak_account: pikpakAccount };
     void action.run('save', (signal) => apiSend<DownloadSaveResult>(DOWNLOADS_URL, body, 'POST', signal),
       (next) => {
         const { report: checked, ...settings } = next;
@@ -185,7 +206,6 @@ function DownloadForm({ state, settle, receipt, pikpakAccount, active }: CardPro
           setReport(null);
           setDetected('');
           setSuggested(NO_SUGGESTIONS);
-          setSaveBlocked(false);
           setFailure('');
         }
         receipt(t('settings:shared.settingsSaved'));
@@ -193,13 +213,31 @@ function DownloadForm({ state, settle, receipt, pikpakAccount, active }: CardPro
   };
 
   // 「检查」按此刻填的值重查：地址留空时服务端探测本机端口，目录留空时按推送发现推建议值。
-  const check = () => {
-    const blank = { address: !config.clouddrive_address.trim(), target: !target('115').trim(),
+  const check: MouseEventHandler<HTMLButtonElement> = (event) => {
+    setFailure('');
+    if (!validation.check(event.currentTarget.form, {
+      address: addressError(config.clouddrive_address),
+      token: trimDownloadAddress(config.clouddrive_address) && !state.token_set && !token.trim()
+        ? serverLabel('errors.downloadsClouddrive.tokenMissing', '') : '',
+      target115: has115 ? targetError(target('115')) : '',
+    })) {
+      setReport(null);
+      return;
+    }
+    const blank = { address: !trimDownloadAddress(config.clouddrive_address), target: !target('115').trim(),
       root: !config.pikpak_root };
     const body = { clouddrive_address: config.clouddrive_address, token, target: target('115'),
       pikpak_root: config.pikpak_root, pikpak_account: pikpakAccount };
     void action.run('check', (signal) => apiSend<DownloadCheckReport>(CHECK_URL, body, 'POST', signal),
-      (next) => show(next, blank), (cause) => setFailure(errorMessage(cause)));
+      (next) => {
+        show(next, blank);
+        if (next.ok) checked(t('settings:connectionCheck.passed', { service: 'CloudDrive2' }));
+        else checkFailed(connection, problemTexts(next)[0] || t('settings:connectionCheck.details'));
+      }, (cause) => {
+        const message = errorMessage(cause);
+        setFailure(message);
+        checkFailed(connection, message);
+      });
   };
 
   // 只在用户点了「新建这个目录」时调 CloudDrive2 建目录，建好后服务端按这个目录再检查一遍。
@@ -210,7 +248,7 @@ function DownloadForm({ state, settle, receipt, pikpakAccount, active }: CardPro
       (next) => {
         setReport(next);
         setSuggested((current) => ({ ...current, target: { path, exists: true } }));
-        setSaveBlocked(false);
+        validation.update('target115');
         setFailure('');
         receipt(t('settings:cloudDownload.directoryCreated'));
       }, (cause) => setFailure(errorMessage(cause)));
@@ -221,36 +259,47 @@ function DownloadForm({ state, settle, receipt, pikpakAccount, active }: CardPro
       {state.problems?.length ? <Stack><Note tone="error" title={t('settings:cloudDownload.needsAttention')}>{problemTexts(state).join('\n')}</Note></Stack> : null}
       <Stack>
         <Input label={t('settings:cloudDownload.cloudDriveUrl')} placeholder={t('settings:cloudDownload.addressPlaceholder')} autoComplete="off" maxLength={200}
-          value={config.clouddrive_address} isDisabled={!state.available}
-          onChange={(value) => setConfig({ ...config, clouddrive_address: value })} />
+          data-settings-field="address" validationBehavior="aria" isInvalid={Boolean(errors.address)}
+          hint={errors.address || t('settings:cloudDownload.cloudDriveUrlHelp')} value={config.clouddrive_address} isDisabled={!state.available}
+          onBlur={() => validation.update('address', addressError(config.clouddrive_address))}
+          onChange={(value) => { setConfig({ ...config, clouddrive_address: value }); validation.update('address'); }} />
         <Input label={t('settings:cloudDownload.apiToken')} type="password" autoComplete="off" maxLength={400}
           placeholder={state.token_set ? t('settings:shared.savedLeaveBlank') : t('settings:cloudDownload.tokenPlaceholder')}
-          hint={t('settings:cloudDownload.apiTokenHelp')}
-          value={token} isDisabled={!state.available} onChange={setToken} />
+          data-settings-field="token" validationBehavior="aria" isInvalid={Boolean(errors.token)}
+          hint={errors.token || t('settings:cloudDownload.apiTokenHelp')}
+          value={token} isDisabled={!state.available} onChange={value => { setToken(value); validation.update('token'); }} />
         {has115 ? <Input label={<SourceLabel source="115" label={t('settings:cloudDownload.target115')} />} placeholder={t('settings:cloudDownload.targetPlaceholder')} autoComplete="off" maxLength={300}
-          validationBehavior="aria" isInvalid={missing}
-          hint={missing ? (saveBlocked ? t('settings:cloudDownload.createOrPick') : t('settings:cloudDownload.directoryMissing')) : t('settings:cloudDownload.target115Help')}
-          value={target('115')} isDisabled={!state.available} onChange={(value) => setTarget('115', value)} /> : null}
+          data-settings-field="target115" validationBehavior="aria" isInvalid={Boolean(errors.target115 || missing)}
+          hint={errors.target115 || (missing ? t('settings:cloudDownload.directoryMissing') : t('settings:cloudDownload.target115Help'))}
+          onBlur={() => validation.update('target115', targetError(target('115')))}
+          value={target('115')} isDisabled={!state.available} onChange={(value) => { setTarget('115', value); validation.update('target115'); }} /> : null}
         {hasPikPak ? <><Input label={<SourceLabel source="pikpak" label={t('settings:cloudDownload.targetPikpak')} />} placeholder={t('settings:cloudDownload.pikpakPathPlaceholder')} autoComplete="off" maxLength={300}
-          hint={t('settings:cloudDownload.targetPikpakHelp')}
-          value={target('pikpak')} isDisabled={!state.available} onChange={(value) => setTarget('pikpak', value)} />
+          data-settings-field="targetPikPak" validationBehavior="aria" isInvalid={Boolean(errors.targetPikPak)}
+          hint={errors.targetPikPak || t('settings:cloudDownload.targetPikpakHelp')}
+          onBlur={() => validation.update('targetPikPak', targetError(target('pikpak')))}
+          value={target('pikpak')} isDisabled={!state.available} onChange={(value) => { setTarget('pikpak', value); validation.update('targetPikPak'); }} />
         <div className="flex flex-col gap-1">
           <FieldLabel><SourceLabel source="pikpak" label={t('settings:cloudDownload.pikpakRootDirectory')} /></FieldLabel>
           {state.pikpak_roots.length ? (
             /* 根目录只给登录后的 PikPak 直连与 PikPak 任务落地用：没登录、也没填账号时变灰。
                上面的目标目录经 CloudDrive 转存时也要用，不跟着变灰。 */
-            <Select aria-label={t('settings:cloudDownload.pikpakRootDirectory')} selectedKey={config.pikpak_root || null}
-              isDisabled={!state.available || !pikpakAccount} placeholder={t('settings:cloudDownload.rootPlaceholder')}
-              onSelectionChange={(key) => setConfig({ ...config, pikpak_root: key === null ? '' : String(key) })}>
-              {state.pikpak_roots.map((root) => <SelectItem key={root} id={root}>{root}</SelectItem>)}
-            </Select>
+            <>
+              <Select aria-label={t('settings:cloudDownload.pikpakRootDirectory')} selectedKey={config.pikpak_root || null}
+                isDisabled={!state.available || !pikpakAccount} placeholder={t('settings:cloudDownload.rootPlaceholder')}
+                onSelectionChange={(key) => setConfig({ ...config, pikpak_root: key === null ? '' : String(key) })}>
+                {state.pikpak_roots.map((root) => <SelectItem key={root} id={root}>{root}</SelectItem>)}
+              </Select>
+              <Help>{t('settings:cloudDownload.pikpakRootDirectoryHelp')}</Help>
+            </>
           ) : (
             <Help>{t('settings:cloudDownload.addPikpakMount')}</Help>
           )}
         </div></> : null}
-        <Input label={t('settings:cloudDownload.maxWait')} type="number" inputMode="numeric" autoComplete="off"
-          hint={t('settings:cloudDownload.waitHint', { max: state.max_wait_hours })}
-          value={hours} isDisabled={!state.available} onChange={setHours} />
+        <Input label={t('settings:cloudDownload.maxWait')} inputMode="numeric" autoComplete="off"
+          data-settings-field="hours" validationBehavior="aria" isInvalid={Boolean(errors.hours)}
+          hint={errors.hours || t('settings:cloudDownload.waitHint', { max: state.max_wait_hours })}
+          onBlur={() => validation.update('hours', hoursError())}
+          value={hours} isDisabled={!state.available} onChange={value => { setHours(value); validation.update('hours'); }} />
         <EditionPreferences values={config.edition_preferences ?? []} disabled={!state.available}
           onChange={(values) => setConfig((current) => ({ ...current, edition_preferences: values }))} />
       </Stack>
@@ -323,6 +372,7 @@ function CheckReport({ report, detected, suggested, create, creating }: {
   if (!hasFacts && !report.problems.length) return null;
   return (
     <Stack divided>
+      <h4 className="text-body-medium text-text-primary" data-copy-key="settings.connectionCheck.results">{t('settings:connectionCheck.results')}</h4>
       {hasFacts ? <FactList>
         {detected ? <Fact term={t('settings:cloudDownload.cloudDriveUrl')}>{t('settings:cloudDownload.detectedAddress', { address: detected })}</Fact> : null}
         {folder?.exists ? (
@@ -364,6 +414,7 @@ function PikPakAccount({ state, settle, receipt, username, setUsername }: CardPr
   setUsername(value: string): void;
 }) {
   const [password, setPassword] = useState('');
+  const validation = useFieldValidation<'username' | 'password'>();
   const [remember, setRemember] = useState(false);
   const [captcha, setCaptcha] = useState('');
   const [failure, setFailure] = useState('');
@@ -407,6 +458,11 @@ function PikPakAccount({ state, settle, receipt, username, setUsername }: CardPr
   const login = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (account.logged_in) return;
+    setFailure('');
+    if (!validation.check(event.currentTarget, {
+      username: username.trim() ? '' : t('settings:pikpakAccount.accountRequired'),
+      password: password ? '' : t('settings:pikpakAccount.passwordRequired'),
+    })) return;
     const body = { username, password, remember };
     void action.run('login', (signal) => apiSend<PikPakLoginResult>(LOGIN_URL, body, 'POST', signal),
       (result) => {
@@ -431,9 +487,11 @@ function PikPakAccount({ state, settle, receipt, username, setUsername }: CardPr
   const passwordForm = (
     <>
       <Input label={t('settings:shared.account')} placeholder={t('settings:pikpakAccount.usernamePlaceholder')} autoComplete="username" maxLength={200}
-        value={username} isDisabled={!state.available} onChange={setUsername} />
+        data-settings-field="username" validationBehavior="aria" isInvalid={Boolean(validation.errors.username)} hint={validation.errors.username}
+        value={username} isDisabled={!state.available} onChange={value => { setUsername(value); validation.update('username'); }} />
       <Input label={t('settings:shared.password')} type="password" autoComplete="current-password" maxLength={200}
-        value={password} isDisabled={!state.available} onChange={setPassword} />
+        data-settings-field="password" validationBehavior="aria" isInvalid={Boolean(validation.errors.password)} hint={validation.errors.password}
+        value={password} isDisabled={!state.available} onChange={value => { setPassword(value); validation.update('password'); }} />
       <Checkbox isSelected={remember} isDisabled={!state.available} onChange={setRemember}>
         {t('settings:pikpakAccount.rememberPassword')}
       </Checkbox>

@@ -14,6 +14,7 @@
  * JAV 探索卡（`../jav/discovery-card.tsx`）：封面、头像那一格放勾选框、两行标题、来源与体积，
  * 判定原因落在标签行，底部一排动作键。 */
 import { useState, type CSSProperties } from 'react';
+import { hasSelectionModifier } from '../../selection';
 import { RiCheckboxLine, RiPlayLine, RiSearchLine, RiSparklingLine } from '@remixicon/react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -21,19 +22,18 @@ import { LOC, fmtDur, fmtSize } from '@peach/legacy/core';
 
 import { Button } from '@/components/base/buttons/button';
 
-import { errorMessage } from '../../api';
 import { queueContentSkeletonHtml } from '../../queue-skeleton';
 import { CloudDownloadDialog, type DownloadPrefill } from '../activity/cloud-download-dialog';
 import type { QualityGoalsProps } from '../bundle';
 import { CardTags, Icon } from '../components/card-meta';
 import { EmptyState } from '../components/empty-state';
-import { FilterGlassRows, SelectAllButton } from '../components/filter-glass';
+import { FilterGlassRows, FilterSearch, SelectAllButton } from '../components/filter-glass';
 import { QueueFilterChips, QueueIdentity, QueuePicture, QueueTable } from '../components/queue-table';
 import { useQueueSort } from '../components/queue-sort';
 import { useCatalogView } from '../catalog-grid/catalog-view';
 import { CatalogViewToggle } from '../catalog-grid/catalog-view-toggle';
 import { SortKeys } from '../entity-filter/entity-filter-page';
-import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { Page } from '../components/page';
 import { enterPageSelection, exitPageSelection, usePageSelection } from '../components/page-selection';
 import { SelectionDock } from '../components/selection-dock';
@@ -41,12 +41,11 @@ import { providerIcon } from '../components/source-label';
 import { useDense } from '../components/use-dense';
 import { useLibraryTints } from '../components/library-tint';
 import { ListLibrary } from '../catalog-grid/catalog-list-page';
-import { JavBatchResources } from '../jav/jav-batch-resources';
-import type { Discovery } from '../jav/jav';
+import { JavBatchResources, type BatchResourceWork } from '../jav/jav-batch-resources';
 import {
   fetchQualityGoals, previewUrl, QUALITY_GOALS_KEY, type QualityGoal,
 } from './quality-goals';
-import { t } from '../../i18n';
+import { joinList, t } from '../../i18n';
 import { useRectangleSelection } from '../components/rectangle-selection';
 import type { TableFilters } from '../components/use-table-filters';
 import { useWorkContextMenu, type WorkContextOperation } from '../components/work-context-menu';
@@ -89,7 +88,7 @@ function GoalCard({ item, openItem, searchResources, javTitleHtml, javDisplayNam
       onKeyDown={event => menu.onKeyDown(event, context)}
       onClickCapture={(event) => {
         if ((event.target as Element).closest('[data-work-context-menu]')) return;
-        if (!selecting && !event.shiftKey && !event.ctrlKey && !event.metaKey) return;
+        if (!selecting && !hasSelectionModifier(event)) return;
         event.preventDefault(); event.stopPropagation(); onPick(!picked);
       }}>
       {menu.menu}
@@ -129,36 +128,38 @@ export function QualityGoalsPage({ toast, ...props }: QualityGoalsProps) {
   const [download, setDownload] = useState<DownloadPrefill | null>(null);
   const [picked, setPicked] = useState<ReadonlyMap<number, QualityGoal>>(new Map());
   const selecting = usePageSelection(() => setPicked(new Map()));
-  const [resources, setResources] = useState<Discovery[] | null>(null);
+  const [resources, setResources] = useState<BatchResourceWork[] | null>(null);
   const view = useCatalogView();
   const [filters, setFilters] = useState<TableFilters>({});
   const encoded = JSON.stringify(filters);
   const filtered = encoded !== '{}';
-  const goals = useQuery({ queryKey: filtered ? [...QUALITY_GOALS_KEY, encoded] : QUALITY_GOALS_KEY,
-    queryFn: ({ signal }) => fetchQualityGoals(signal, filtered ? filters : undefined), placeholderData: previous => previous });
+  const [query, setQuery] = useState('');
+  const goals = useQuery({ queryKey: filtered || query ? [...QUALITY_GOALS_KEY, encoded, query] : QUALITY_GOALS_KEY,
+    queryFn: ({ signal }) => fetchQualityGoals(signal, filtered ? filters : undefined, query), placeholderData: previous => previous });
   const order = useQueueSort<QualityGoal>('quality-goals', {
     size: (item) => Number(item.size || 0), dur: (item) => Number(item.duration || 0), new: (item) => item.id,
   });
   const data = goals.data;
   const items = order.sort(data?.items || []);
   const selectRectangle = (ids: number[], add: boolean) => {
+    if (ids.length) enterPageSelection();
     const keys = new Set(ids);
     setPicked(current => new Map([...(add ? current : []), ...items
       .filter(item => keys.has(item.id)).map(item => [item.id, item] as const)]));
   };
-  const rectangle = useRectangleSelection(selecting && !goals.isFetching && !goals.isError
-    ? (keys, add) => selectRectangle(keys.map(Number), add) : undefined);
+  const rectangle = useRectangleSelection(!goals.isFetching && !goals.isError
+    ? (keys, add) => selectRectangle(keys.map(Number), add) : undefined, { selecting });
   if (goals.isPending) return <Page><div dangerouslySetInnerHTML={{
     __html: queueContentSkeletonHtml('quality-goals', t('shell:spinner.loading'), ['w-20', 'w-24']),
   }} /></Page>;
   if (!data) {
     return (
       <Page>
-        <Note tone="error" title={t('manage:hdUpgrades.loadFailed')}>{goals.error ? errorMessage(goals.error) : t('manage:hdUpgrades.notFound')}</Note>
+        <QueryErrorNote titleKey="manage:hdUpgrades.loadFailed" query={goals} />
       </Page>
     );
   }
-  if (!items.length && view !== 'list' && !filtered) {
+  if (!items.length && view !== 'list' && !filtered && !query) {
     return (
       <Page>
         <EmptyState icon={RiSparklingLine} title={t('manage:hdUpgrades.emptyTitle')}>
@@ -189,6 +190,8 @@ export function QualityGoalsPage({ toast, ...props }: QualityGoalsProps) {
         attrs={{ 'data-catalog-frame': '', 'data-filter-frame': '' }} bottomClassName="min-h-12" bottom={<><span data-catalog-summary="">
           <span data-catalog-readout="" role="status">
             {t('manage:hdUpgrades.summaryLabel')} · {t('manage:hdUpgrades.videoCount', { count: Number(data.total || 0) })}</span>
+          <FilterSearch label={t('manage:hdUpgrades.search')} value={query}
+            onQuery={value => { setQuery(value); setPicked(new Map()) }} />
           <SelectAllButton label={t('manage:hdUpgrades.selectAll')} picked={items.filter(item => picked.has(item.id)).length} total={items.length} onChange={pickAll} />
         </span>
         <span data-entity-sorts=""><CatalogViewToggle /><SortKeys sorts={order.sorts} onSort={order.onSort} /></span></>} />
@@ -239,12 +242,15 @@ export function QualityGoalsPage({ toast, ...props }: QualityGoalsProps) {
           </div>}
       <SelectionDock visible={chosen.length > 0} label={t('manage:hdUpgrades.dockLabel')} count={t('manage:hdUpgrades.selectedCount', { count: chosen.length })}
         actions={[]}>
-        <Button size="small" variant="secondary" disabled={!searchable.length} onClick={() => setResources(searchable.map((item) => ({ id: item.id, code: item.code!,
-          title: props.javDisplayName(item), release_date: undefined }) as unknown as Discovery))}>{t('manage:resourceSearch.searchTorrents')}</Button>
+        <Button size="small" variant="secondary" disabled={!searchable.length} onClick={() => setResources(searchable.map(item => ({
+          id: item.id, code: item.code!, title: props.javDisplayName(item), studio: item.studio, release_date: item.release_date,
+          performers: item.performers?.length ? joinList(item.performers) : undefined,
+          cover: item.has_cover || item.has_thumb ? previewUrl(item) : undefined,
+        })))}>{t('manage:resourceSearch.searchTorrents')}</Button>
         <Button size="small" variant="ghost" onClick={exitPageSelection}>{t('manage:hdUpgrades.clearSelection')}</Button>
       </SelectionDock>
       <JavBatchResources items={resources} close={() => setResources(null)} readOnly={false} receipt={toast} />
-      {goals.isError ? <Note tone="error">{errorMessage(goals.error)}</Note> : null}
+      {goals.isError ? <QueryErrorNote titleKey="manage:hdUpgrades.loadFailed" query={goals} /> : null}
       {/* 列表只取前 200 部；总数比这多时说清楚这一页不是全部。 */}
       {Number(data.total || 0) > items.length
         ? <p className="mt-6 text-center text-caption-1-regular text-text-secondary">

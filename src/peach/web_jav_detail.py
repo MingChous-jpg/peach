@@ -16,6 +16,7 @@ from .javdb_public import (MAX_REVIEW_PAGES, PAGE_SIZE, PUBLIC_API, PublicSource
                           public_cache_scope, cache_checked_at, cache_error, cache_failure)
 from .jav_discovery_metadata import discovery_metadata
 from .metadata import relay_args
+from .profiles import read_settings
 from .sources.javdb import maker_writing, page_reader
 from .remote_media_cache import AVATAR_REFRESH_SECONDS, cache_for
 from .preview_cache import PreviewCache
@@ -101,6 +102,11 @@ def _source_cache(handler):
 @_source_cache
 def q_jav_detail(contract, args) -> dict:
     code = detail_code(args)
+    part = args.get("part", "")
+    if part == "preview":
+        stored, _ = discovery_metadata(contract).peek(code)
+        source = PUBLIC_API.peek_movie(code) or stored or {}
+        return _preview_fields(contract, code, source, refresh=True)
     with contract.database.read_connection() as connection:
         row = connection.execute("SELECT * FROM feed_discovery WHERE code=? COLLATE NOCASE LIMIT 1", (code,)).fetchone()
         item = dict(row) if row else {}
@@ -130,11 +136,12 @@ def q_jav_detail(contract, args) -> dict:
                "release_date": item.get("release_date"), "studio": item.get("studio")}
     with contract.database.read_connection() as connection:
         decisions = load_genre_decisions(connection)
-    payload.update(_source_fields(source or {}, decisions))
+        original_tags = read_settings(connection).get("sourceTagsOriginal") is True
+    payload.update(_source_fields(source or {}, decisions, original_tags=original_tags))
     # 官方目录退路没有 JavDB 作品 id：样张、预告与来源链接只按 JavDB 那份算，退路只补标题、厂牌、类别与演员。
     javdb = source if source and source.get("id") else {}
     payload.update(_artwork_fields(contract, code, item, javdb, refresh=args.get('refresh') == '1',
-                                   ambiguous=ambiguous))
+                                   ambiguous=ambiguous, include_preview=part != 'metadata'))
     payload.update(_identity_fields(contract, code, item, source or {}))
     return payload
 
@@ -201,6 +208,12 @@ def source_performer_refs(contract, connection, actors):
             continue
         ref['gender'] = gender
         actor_id = str(actor.get('id') or '')
+        dmm_id = str(actor.get('dmm_id') or '')
+        if re.fullmatch(r'[0-9]{1,10}', dmm_id):
+            from .feeds import dmm_actress_url
+            ref['source_url'] = dmm_actress_url(dmm_id)
+        elif re.fullmatch(r'[A-Za-z0-9]{1,16}', actor_id):
+            ref['source_url'] = 'https://javdb.com/actors/' + actor_id
         if re.fullmatch(r'[A-Za-z0-9]{1,64}', actor_id):
             ref['source_actor_id'] = actor_id
             ref['source_avatar'] = (bool(actor['has_avatar']) if 'has_avatar' in actor
@@ -209,7 +222,7 @@ def source_performer_refs(contract, connection, actors):
     return refs
 
 
-def _artwork_fields(contract, code, item, source, *, refresh=False, ambiguous=False):
+def _artwork_fields(contract, code, item, source, *, refresh=False, ambiguous=False, include_preview=True):
     from .jav_cover_fetch import OFFICIAL_PLACEHOLDER_ONLY_CODE, PLACEHOLDER_CODE, is_javdb_image
     source_cover = (source or {}).get('cover_url') or (source or {}).get('thumb_url')
     missing = {} if contract.has_cover(code) else _cover_reason(contract, code)
@@ -219,8 +232,9 @@ def _artwork_fields(contract, code, item, source, *, refresh=False, ambiguous=Fa
             "cover_url": '' if ambiguous or placeholder else discovery_cover_url(item, source or {}),
             "source_image": bool(source_cover and not is_javdb_image(source_cover)),
             "preview_count": min(len(source.get("preview_images") or []), 30),
-            **({'preview_video_url': '', 'preview_state': 'unavailable'} if ambiguous else
-               _preview_fields(contract, code, source, refresh=refresh)),
+            **(({'preview_video_url': '', 'preview_state': 'unavailable'} if ambiguous else
+               _preview_fields(contract, code, source, refresh=refresh)) if include_preview else {}),
+            "identity_ambiguous": ambiguous,
             "source_url": '' if ambiguous else "https://javdb.com/v/" + str(source["id"]) if source else item.get("link") or "",
             **missing}
 
@@ -238,7 +252,7 @@ def _cover_reason(contract, code) -> dict:
             "cover_message_code": reason['code'], "cover_message_params": reason['params']}
 
 
-def _source_fields(source, decisions):
+def source_tags(source, decisions, *, original_tags=False):
     tags = [str(tag.get("name") or "") if isinstance(tag, dict) else str(tag)
             for tag in source.get("tags", [])]
     tag_refs = []
@@ -246,12 +260,17 @@ def _source_fields(source, decisions):
         label = resolve_genre(raw, decisions)
         if label is None:
             continue
-        label = label or raw
-        if label and all(ref["name"] != label for ref in tag_refs):
-            tag_refs.append({"name": label, "category": tag_cat(label), "source_name": raw})
+        name = raw if original_tags else label or raw
+        if name and all(ref["name"] != name for ref in tag_refs):
+            tag_refs.append({"name": name, "category": tag_cat(label or raw), "source_name": raw})
+    return [tag for tag in tags if tag], tag_refs
+
+
+def _source_fields(source, decisions, *, original_tags=False):
+    tags, tag_refs = source_tags(source, decisions, original_tags=original_tags)
     return {"duration": source.get("duration"), "score": source.get("score"),
             "summary": source.get("summary") or "", "director": source.get("director_name") or "",
-            "publisher": source.get("publisher_name") or "", "tags": [tag for tag in tags if tag],
+            "publisher": source.get("publisher_name") or "", "tags": tags,
             "tag_refs": tag_refs,
             "comments_count": int(source.get("comments_count") or 0)}
 
@@ -422,8 +441,10 @@ def q_jav_resources(contract, args) -> dict:
     from .wants_magnets import search_for
 
     code = detail_code(args)
+    retry_source = str(args.get("retry_source") or "")
+    options = {"retry_source": retry_source} if retry_source else {}
     with public_cache_scope(contract.cover_root.parent / 'jav-public'), _jav_pages(contract) as pages, \
             PUBLIC_API.page_reader(pages):
-        found = search_for(contract.follow_secrets_root).query(code, refresh=args.get('refresh') == '1')
+        found = search_for(contract.follow_secrets_root).query(code, refresh=args.get('refresh') == '1', **options)
     # 查询结果是共享缓存里的那一份，交出去的是副本。
     return {**found, "items": list(found.get("items") or []), "warnings": list(found.get("warnings") or [])}

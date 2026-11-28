@@ -165,7 +165,7 @@ def _repaired_header(state, asset_id: int, source: Path, stat=None):
 
 
 def _needs_conversion(state, asset_id: int, source: Path, session: str,
-                      decode: frozenset[str] = frozenset()) -> bool:
+                      decode: frozenset[str] = frozenset(), *, stat=None) -> bool:
     """起播时要不要转码。只有 `/api/stream-plan` 问这一句。
 
     缺 ctts 的片子只是时间戳错乱，重建一份头就能直接按 Range 播，不必重编码。头还没
@@ -177,20 +177,20 @@ def _needs_conversion(state, asset_id: int, source: Path, session: str,
     `decode` 是浏览器报的解码能力（ADR-0163）：报了能解 HEVC，HEVC 的 MP4 就不算要转码。
     """
     if not state.transcode_service.requires_conversion(
-            source, session=session, registry=state.stream_sessions, decode=decode):
+            source, session=session, registry=state.stream_sessions, stat=stat, decode=decode):
         return False
     store = getattr(state, "header_repairs", None)
     if store is None or not state.transcode_service.decode_order_timestamps(
-            source, session=session, registry=state.stream_sessions, decode=decode):
+            source, session=session, registry=state.stream_sessions, stat=stat, decode=decode):
         return True
-    if store.lookup(asset_id, source) is not None:
+    if store.lookup(asset_id, source, stat=stat) is not None:
         return False
     store.request(asset_id, source)
     return True
 
 
 def _hls_plan(state, asset_id: int, session: str = "", conversion: bool | None = None,
-              force_transcode: bool = False):
+              force_transcode: bool = False, *, located=None):
     """解析 HLS 的片源路径与分片计划；任何一步不成立就返回 None 走 Range。
 
     要重编码的片源按固定 6 秒切，时长先看账本，账本没记或记成负数就用 ffprobe 报的；
@@ -204,27 +204,29 @@ def _hls_plan(state, asset_id: int, session: str = "", conversion: bool | None =
     `conversion` 是起播时已经得出的结论。给不出时按片源本身判：播放列表和分片端点走的
     就是这条，它们不看重建好的 MP4 头，理由见 `_needs_conversion`。
     """
-    asset = state.media_engine.asset(asset_id)
-    # 播放列表和分片端点本身就是 HLS 路径，按 ADR-0016 显式要计划，不受默认值影响。
-    choice = state.media_engine.stream_plan(asset_id, mode="hls")
-    source = state.media_engine.filesystem.file_for(asset, thumbnail=False)
+    if located is None:
+        asset = state.media_engine.asset(asset_id)
+        source, source_stat = state.media_engine.filesystem.located(asset)
+    else:
+        asset, source, source_stat = located
     duration = asset.duration if asset.duration and asset.duration > 0 else 0.0
     needs_conversion = (conversion if conversion is not None else state.transcode_service.requires_conversion(
-        source, session=session, registry=state.stream_sessions))
+        source, session=session, registry=state.stream_sessions, stat=source_stat))
     if force_transcode or needs_conversion:
         duration = duration or state.transcode_service.media_duration(
-            source, session=session, registry=state.stream_sessions)
+            source, session=session, registry=state.stream_sessions, stat=source_stat)
         mode = ("transcode" if force_transcode else state.transcode_service.hls_mode(
-            source, session=session, registry=state.stream_sessions))
+            source, session=session, registry=state.stream_sessions, stat=source_stat))
         if mode != "transcode" and duration > 0:
-            plan = state.hls_service.plan(source, duration)
+            plan = state.hls_service.plan(source, duration, stat=source_stat)
             if plan:
                 return asset, source, plan, mode
         plan = state.hls_service.conversion_plan(duration) if duration > 0 else []
         return (asset, source, plan, "transcode") if plan else None
-    if choice.protocol != "hls" or duration <= 0:
+    # 播放列表和分片端点显式请求 HLS，不受默认播放方式影响。
+    if state.media_engine.plan_for(asset, mode="hls").protocol != "hls" or duration <= 0:
         return None
-    plan = state.hls_service.plan(source, duration)
+    plan = state.hls_service.plan(source, duration, stat=source_stat)
     return None if not plan else (asset, source, plan, "copy")
 
 
@@ -375,14 +377,17 @@ def external_playlist(request: Request, id: int, ticket: str, origin: str = ''):
 @router.api_route("/stream", methods=["GET", "HEAD"])
 def stream(request: Request, id: int, session: str = "", decode: str = "", original: bool = False,
            args: dict[str, str] = Depends(require_auth)):
+    started = time.monotonic()
     state = request.app.state
     from .error_reporting import local_event
-    local_event('playback-request', asset_id=id, method=request.method,
-                range=request.headers.get('range', '')[:80], user_agent=request.headers.get('user-agent', '')[:512])
+    byte_range = request.headers.get('range', '')
+    initial = request.method == 'GET' and (not byte_range or byte_range.startswith('bytes=0-'))
     asset = state.media_engine.asset(id)
+    request.scope['peach.media_source'] = asset.location
     # 拖一次进度条就是一串 Range 请求，片源在网盘上时每次 stat 都是一趟网络往返：确认存在时
     # 取到的那一次 stat 一路传给头修复查询、画像缓存和文件响应，一个请求只问一次。
     path, source_stat = state.media_engine.filesystem.located(asset)
+    located = time.monotonic()
     from . import strm, strm_stream
     if strm.is_pointer(path):
         return strm_stream.proxy(request, id, path, session)
@@ -425,23 +430,28 @@ def stream(request: Request, id: int, session: str = "", decode: str = "", origi
     if transcoded:
         response.headers["X-Peach-Transcoded"] = "1"
     response.headers["Cache-Control"] = "no-store"
-    local_event('playback-source', asset_id=id, mime_type=response.headers.get('content-type', ''),
-                transcoded=transcoded, session_present=bool(session))
+    elapsed = round((time.monotonic() - started) * 1000)
+    if (initial and session) or elapsed >= 300:
+        local_event('playback-source', asset_id=id, mime_type=response.headers.get('content-type', ''),
+                    transcoded=transcoded, session_present=bool(session), initial_range=initial,
+                    locate_ms=round((located - started) * 1000), elapsed_ms=elapsed)
     return response
 
 
 @router.get("/api/stream-plan")
 def stream_plan(request: Request, id: int, session: str = "", mode: str = "", decode: str = "",
                 args: dict[str, str] = Depends(require_auth)):
+    started = time.monotonic()
     state = request.app.state
     if session and len(session) > 128:
         return JSONResponse({"error": "invalid session"}, status_code=400)
     if session and state.stream_sessions.is_cancelled(session):
         return JSONResponse({"error": "stream cancelled"}, status_code=410)
     asset = state.media_engine.asset(id)
-    plan = state.media_engine.stream_plan(id, mode=mode or "auto")
+    plan = state.media_engine.plan_for(asset, mode=mode or "auto")
     # 只有真的能读出关键帧才宣告 HLS，否则客户端会拿到一个必然 404 的播放列表。
-    source_path = state.media_engine.filesystem.file_for(asset, thumbnail=False)
+    source_path, source_stat = state.media_engine.filesystem.located(asset)
+    located = time.monotonic()
     from . import strm, strm_stream
     if strm.is_pointer(source_path):
         try:
@@ -451,22 +461,24 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", de
         mime = strm_stream.mime_type(target)
         return _record_stream_plan(state, id, source_path, {'id': id, 'protocol': 'hls' if mime in strm_stream.PLAYLIST_TYPES else 'range',
                 'mime_type': mime, 'duration': asset.duration,
-                'src': f'/stream?id={id}&session={quote(session, safe="")}', 'reason': 'strm-pointer'})
+                'src': f'/stream?id={id}&session={quote(session, safe="")}', 'reason': 'strm-pointer'},
+                started, located)
     if source_path.suffix.lower() in strm.DISC_SUFFIXES:
         return JSONResponse(message_fields('api.media.discNeedsExternalPlayer', key='error'), status_code=415)
     capabilities = parse_decode(decode)
-    conversion = _needs_conversion(state, id, source_path, session, capabilities)
+    conversion = _needs_conversion(state, id, source_path, session, capabilities, stat=source_stat)
     reason = plan.reason
     if conversion and state.transcode_service.remuxes(
-            source_path, session=session, registry=state.stream_sessions, decode=capabilities):
+            source_path, session=session, registry=state.stream_sessions, decode=capabilities, stat=source_stat):
         # 视频浏览器解得了，只差音轨、`hev1` 标签或容器（`.ts` 一类）：`/stream` 整片换封装，不重编码视频。
         conversion, reason = False, "remux"
     original_trial = conversion and state.transcode_service.original_playable(
-        source_path, session=session, registry=state.stream_sessions, decode=capabilities)
+        source_path, session=session, registry=state.stream_sessions, decode=capabilities, stat=source_stat)
     original_mime = "video/x-matroska" if source_path.suffix.lower() == ".mkv" else "video/mp4"
-    resolved = (_hls_plan(state, id, session, conversion)
+    resolved = (_hls_plan(state, id, session, conversion, located=(asset, source_path, source_stat))
                 if conversion or plan.protocol == "hls" else None)
     if resolved and session:
+        state.hls_session_plans.put(session, id, resolved)
         result = {
             "id": id,
             "protocol": "hls",
@@ -484,7 +496,7 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", de
         if resolved[3] != "transcode":
             result["fallback_src"] = f"/stream/hls/{id}/index.m3u8?session={quote(session, safe='')}&transcode=1"
             result["fallback_mime_type"] = "application/vnd.apple.mpegurl"
-        return _record_stream_plan(state, id, source_path, result, capabilities)
+        return _record_stream_plan(state, id, source_path, result, started, located, capabilities)
     source = f"/stream?id={id}"
     if session:
         source += f"&session={quote(session, safe='')}"
@@ -502,16 +514,19 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", de
         # 切不了分片（时长或关键帧都拿不到）时先试原文件，浏览器放不了再要整片转换的那条。
         result.update(src=f"/stream?id={id}&original=1&session={quote(session, safe='')}",
                       mime_type=original_mime, fallback_src=source, fallback_mime_type="video/mp4")
-    return _record_stream_plan(state, id, source_path, result, capabilities)
+    return _record_stream_plan(state, id, source_path, result, started, located, capabilities)
 
 
-def _record_stream_plan(state, asset_id: int, source: Path, plan: dict,
+def _record_stream_plan(state, asset_id: int, source: Path, plan: dict, started: float, located: float,
                         decode: frozenset[str] = frozenset()) -> dict:
     from .error_reporting import local_event
     try:
         local_event('playback-plan', asset_id=asset_id,
                     plan={key: plan.get(key) for key in ('protocol', 'mime_type', 'duration', 'reason', 'segments',
-                                                         'processing', 'original_src')},
+                                                         'processing')},
+                    original_trial=bool(plan.get('original_src')),
+                    locate_ms=round((located - started) * 1000),
+                    elapsed_ms=round((time.monotonic() - started) * 1000),
                     decode=sorted(decode),
                     media_profile=state.transcode_service.diagnostic_profile(source),
                     hardware=state.transcode_service.hardware.diagnostic_snapshot())
@@ -550,6 +565,7 @@ def hls_playlist(request: Request, id: int, session: str = "", transcode: bool =
         return PlainTextResponse("hls unavailable", status_code=404)
     if resolved is None:
         return PlainTextResponse("hls unavailable", status_code=404)
+    request.scope['peach.media_source'] = resolved[0].location
     query = f"?session={quote(session, safe='')}" + ("&transcode=1" if transcode else "")
     playlist = build_hls_playlist(
         resolved[2], lambda index: f"/stream/hls/{id}/{index}.ts{query}",
@@ -567,10 +583,17 @@ async def hls_segment(request: Request, id: int, index: int, session: str = "", 
         return JSONResponse({"error": "invalid session"}, status_code=400)
     if state.stream_sessions.is_cancelled(session):
         return Response(status_code=410, headers={"Cache-Control": "no-store"})
+    started = time.monotonic()
     try:
-        return await run_until_disconnect(_hls_segment(request, id, index, session, transcode), request.receive)
+        response = await run_until_disconnect(_hls_segment(request, id, index, session, transcode), request.receive)
     except ClientDisconnect:
         return Response(status_code=410, headers={"Cache-Control": "no-store"})
+    elapsed = round((time.monotonic() - started) * 1000)
+    if elapsed >= 1000:
+        from .error_reporting import local_event
+        await asyncio.to_thread(local_event, 'playback-segment', asset_id=id, segment=index,
+                                elapsed_ms=elapsed, status=response.status_code, forced_transcode=transcode)
+    return response
 
 
 async def _hls_segment(request: Request, id: int, index: int, session: str, transcode: bool = False):
@@ -584,7 +607,8 @@ async def _hls_segment(request: Request, id: int, index: int, session: str, tran
             )
         if resolved is None:
             return JSONResponse({"error": "hls unavailable"}, status_code=404)
-        _, source, plan, processing = resolved
+        asset, source, plan, processing = resolved
+        request.scope['peach.media_source'] = asset.location
         if index < 0 or index >= len(plan):
             return JSONResponse({"error": "invalid segment"}, status_code=416)
         start, duration = plan[index]
@@ -1299,7 +1323,7 @@ def follow_image(request: Request, id: int, media: int | None = None,
 
 
 @router.api_route("/cover-image", methods=["GET", "HEAD"])
-def cover_image(request: Request, code: str, args: dict[str, str] = Depends(require_auth)):
+def cover_image(request: Request, code: str = "", catalog: str = "", args: dict[str, str] = Depends(require_auth)):
     """库外作品的官方封面：按番号在服务端查地址，经 Peach 的出网设置取图并落盘缓存。
 
     取不到一律回 404 且不缓存：卡片按 `data-drop` 换成占位，网络恢复后下一次加载重取。
@@ -1307,9 +1331,10 @@ def cover_image(request: Request, code: str, args: dict[str, str] = Depends(requ
     """
     from .jav_cover_fetch import COVER_PROXY_HOSTS, PLACEHOLDER, candidate_for
     from .web_jav_detail import detail_code, stored_cover_url
+    from .web_jav_catalog import catalog_cover_target
     state = request.app.state
     try:
-        url = stored_cover_url(state.web_contract, detail_code({"code": code}))
+        url = catalog_cover_target(catalog) if catalog else stored_cover_url(state.web_contract, detail_code({"code": code}))
         if not url:
             raise UserValueError("api.media.coverNotFound")
         cache = cache_for(state.web_contract)
@@ -1322,11 +1347,14 @@ def cover_image(request: Request, code: str, args: dict[str, str] = Depends(requ
             upstream = open_upstream(state.http_transport.client, request.method, target, incoming=request.headers)
             if PLACEHOLDER.search(str(upstream.url)):
                 upstream.close()
-                raise FollowProxyError("upstream returned the not-ready placeholder image")
+                raise FollowProxyError("upstream returned the not-ready placeholder image", status_code=404)
             return upstream
         return cache.stream(key, request, fetch)
-    except (ValueError, FollowProxyError, OSError, httpx.HTTPError):
-        return Response(status_code=404, headers={"cache-control": "no-store"})
+    except (ValueError, FollowProxyError, OSError, httpx.HTTPError) as error:
+        probe = catalog and request.method == "HEAD"
+        missing = isinstance(error, FollowProxyError) and error.status_code in (404, 410)
+        return Response(status_code=502 if probe and not missing and not isinstance(error, ValueError) else 404,
+                        headers={"cache-control": "no-store"})
 
 
 #: 来源图片只按位图回给浏览器：同源下发 SVG 等于让来源在 Peach 的源里跑脚本。

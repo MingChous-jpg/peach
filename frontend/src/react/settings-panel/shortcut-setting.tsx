@@ -19,7 +19,7 @@ const NONE: Modifiers = { ctrl: false, alt: false, shift: false, meta: false };
 const heldModifiers = (event: KeyboardEvent): Modifiers =>
   ({ ctrl: event.ctrlKey, alt: event.altKey, shift: event.shiftKey, meta: event.metaKey });
 
-export function ShortcutSetting({ current, onChange }: { current: Shortcut; onChange(shortcut: Shortcut | null): void }) {
+export function ShortcutSetting({ current, onChange }: { current: Shortcut; onChange(shortcut: Shortcut | null): boolean | void }) {
   const [recording, setRecording] = useState(false);
   const [problem, setProblem] = useState('');
   /** 录制中正按着的键：只按了修饰键时 `code` 为 null；按了不能用的主键会留在这里，配着原因。 */
@@ -38,7 +38,10 @@ export function ShortcutSetting({ current, onChange }: { current: Shortcut; onCh
       setProblem('');
       const result = recordShortcut(event);
       if (result.state === 'invalid') setProblem(result.problem);
-      if (result.state === 'done') { onChange(result.shortcut); setSaved(result.shortcut); stop() }
+      if (result.state === 'done') {
+        if (onChange(result.shortcut) !== false) setSaved(result.shortcut);
+        stop();
+      }
     };
     // 松开修饰键时同步键帽；已经按过主键的那一组留着，让人看清是哪一下没过。
     const keyup = (event: KeyboardEvent) => {
@@ -74,9 +77,9 @@ export function ShortcutSetting({ current, onChange }: { current: Shortcut; onCh
         {keys ? <Keycaps keys={keys} plus={!apple} />
           : <Kbd data-shortcut-keys="" aria-label={t('settings:sfwShortcut.current', { shortcut: formatShortcut(current, apple) })}>{formatShortcut(current, apple)}</Kbd>}
         {custom && !recording && !saved ? (
-          <Button variant="secondary" size="small" onClick={() => onChange(null)}>{t('settings:shared.reset')}</Button>
+          <Button variant="secondary" size="small" data-copy-interact="" onClick={() => onChange(null)}>{t('settings:shared.reset')}</Button>
         ) : null}
-        <Button variant={recording ? 'secondary' : 'primary'} size="small" aria-describedby="sfwShortcutDescription"
+        <Button variant={recording ? 'secondary' : 'primary'} size="small" aria-describedby="sfwShortcutDescription" data-copy-interact=""
           onClick={() => { if (recording) stop(); else { setSaved(null); setRecording(true) } }}
           onBlur={stop}>
           {recording ? t('settings:shared.cancel') : t('settings:sfwShortcut.change')}

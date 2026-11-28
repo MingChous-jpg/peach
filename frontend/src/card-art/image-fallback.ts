@@ -1,5 +1,5 @@
-/* 图片回退链：模板只声明数据，行为归 wireImageFallbacks() 的全站委托监听。
-   Application 与 React 页面引用同一模块，候选依次尝试，全部不可用时按 data-drop 处理。
+/* HTML 模板只声明图片回退数据，行为归 wireImageFallbacks() 的全站委托监听。
+   React 直接渲染的图片用 ImageWithFallback，让 React 自己挂载和卸载节点。
 
    - `data-drop`：必填，也是这套机制的开关。没有它的 `<img>` 一概不管——页面上
      另有一批靠 CSS 或父节点兜底的图（厂牌 `.mk`），把它们删掉反而是错的。
@@ -75,6 +75,13 @@ export function advanceImageFallback(image: HTMLImageElement | null | undefined)
     span.className = image.dataset.dropClass || '';
     span.textContent = image.dataset.initial || '';
     image.replaceWith(span);
+    return 'drop';
+  }
+  /* React 自己画的 `<img>`（JSX，不是 innerHTML）不能从它手里摘走：卸载时它按自己的记录 removeChild，
+     节点已经不在就抛错，错误出在提交阶段，整棵路由树跟着卸掉。这种只藏起来，节点留给 React 收。 */
+  if (Object.keys(image).some(key => key.startsWith('__reactFiber$'))) {
+    image.hidden = true;
+    image.style.display = 'none';
     return 'drop';
   }
   image.remove();

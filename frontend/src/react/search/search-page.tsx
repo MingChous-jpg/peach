@@ -9,14 +9,19 @@
  * 小封面键和最上面那排页签都放不进去。所以这里按遗留层那一套逐条照做：上下环绕着选、回车提交、
  * Escape 先关下拉再清字、空输入回车用占位里那个推荐词。 */
 import { useLayoutEffect, useReducer, useRef, type MouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { VisuallyHidden } from 'react-aria-components';
+import { ButtonLink } from '@/components/base/buttons/button';
 import { avatarInner } from '@peach/card-art';
 
-import { apiGet, apiSend } from '../../api';
+import { apiGet, apiSend, errorMessage } from '../../api';
 import { entityDisplayName } from '../../core/entity-names';
 import { useEntityNames } from '../use-entity-names';
 import { TabCount } from '../components/board-tabs';
 import { PillTabList } from '../components/pill-tabs';
 import { composingKey } from '../components/ime';
+import { Note } from '../components/note';
+import { spriteGlyph } from '../components/sprite-glyph';
 import {
   menuModel, nextPage, shufflePicks, SUGGEST_DEBOUNCE, SUGGEST_EACH, SUGGEST_ONE_KIND, SUGGEST_PROFILE_KINDS, SUGGEST_RIGHT_KINDS, fold,
   type MenuModel, type MenuSection, type SearchApi, type SearchOption, type SearchProps, type SuggestCard,
@@ -24,9 +29,12 @@ import {
 } from './search';
 import { t as tr } from '../../i18n';
 
+const AssistantIcon = spriteGlyph('bot-orb');
+
 interface Store {
   dismissed: boolean;
   history: string[];
+  historyRemovalError: string;
   pool: string[];
   poolRequest: number;
   /** 推荐栏一起带回的推荐词：还没聚焦、按筛选核过的 `pool` 还没取时，占位里轮换它。 */
@@ -65,7 +73,7 @@ interface Store {
 
 const emptyStore = (): Store => ({
   dismissed: false, history: [], pool: [], poolRequest: 0, words: [], recommendations: [], nextRecommendations: null, recommendationsFilling: false, recommendationLoading: false, recommendationRequest: 0, cancelIdle: () => {}, shuffled: {}, cancelRoll: () => {}, query: '', picks: [], suggestFor: '', groups: [], tabs: [],
-  suggestRequest: 0, asked: '', timer: 0, kind: '', active: -1, reveal: false, rewind: false,
+  suggestRequest: 0, asked: '', timer: 0, kind: '', active: -1, reveal: false, rewind: false, historyRemovalError: '',
 });
 
 const modelOf = (s: Store): MenuModel => menuModel({
@@ -161,6 +169,7 @@ export function SearchPage(props: SearchProps) {
   });
 
   const model = modelOf(s);
+  const highlighted = model.options[s.active];
   const limit = props.historyLimit;
   const option = (entry: SearchOption): ReactNode => (
     <Row key={`${entry.type}:${entry.value}:${entry.index}`} entry={entry} active={entry.index === s.active}
@@ -195,11 +204,27 @@ export function SearchPage(props: SearchProps) {
       {right.length ? <div data-search-col="">{right.map(section)}</div> : null}
     </div>
   ) : null);
+  const aiPath = (text: string) => '/ai' + (text.trim() ? '?' + new URLSearchParams({ ask: text.trim() }) : '');
+  const aiMount = document.getElementById('aiSearchAction');
   return (
     <div ref={root} data-search-root="" data-search-recommendations={!s.query && s.recommendations.length ? '' : undefined} data-history-limit={limit}>
+      {aiMount ? createPortal(
+        <ButtonLink variant="secondary" size="small" leadingIcon={AssistantIcon} data-ai-button="entry"
+          href={aiPath(s.query)} onMouseDown={keep} onClick={event => {
+            if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+            event.preventDefault(); op.openPath(aiPath(props.input.value));
+          }}><span data-copy-key="catalog.libraryAssistant.title">{tr('catalog:libraryAssistant.title')}</span></ButtonLink>,
+        aiMount,
+      ) : null}
       {model.tabs ? <Tabs tabs={model.tabs} kind={s.kind} onPick={op.pickKind} wire={props.helpers.wireScroller} /> : null}
+      {s.historyRemovalError ? <Note className="mx-2 my-2" tone="error" title={<span data-copy-key="catalog.searchSuggest.removeHistoryFailed">{tr('catalog:searchSuggest.removeHistoryFailed')}</span>}>
+        {s.historyRemovalError}
+      </Note> : null}
       {model.recent ? section(model.recent) : null}
       {columns(model.left, model.right)}
+      <VisuallyHidden role="status" aria-atomic="true">
+        {highlighted?.type === 'more' ? tr('catalog:searchSuggest.viewAllVideos', { count: highlighted.total }) : highlighted?.value}
+      </VisuallyHidden>
       {model.empty ? <p data-search-empty="" role="status">{tr('catalog:searchSuggest.noResults')}</p> : null}
     </div>
   );
@@ -429,7 +454,8 @@ function createOps(props: () => SearchProps, s: Store, menu: () => HTMLElement |
   const move = (step: number) => {
     const list = options();
     if (!list.length) return false;
-    s.active = (s.active + step + list.length) % list.length;
+    const start = s.active < 0 ? (step > 0 ? -1 : 0) : s.active;
+    s.active = (start + step + list.length) % list.length;
     s.reveal = true;
     bump();
     return true;
@@ -470,7 +496,15 @@ function createOps(props: () => SearchProps, s: Store, menu: () => HTMLElement |
   const pick = (entry: SearchOption) => { close(); choose(entry) };
   const peek = (card: SuggestCard) => { close(); input().blur(); props().actions.openItem(card.id) };
   const remove = async (value: string) => {
-    await apiSend('/api/search-history', { operation: 'remove', query: value }).catch(() => null);
+    s.historyRemovalError = '';
+    bump();
+    try {
+      await apiSend('/api/search-history', { operation: 'remove', query: value });
+    } catch (error) {
+      s.historyRemovalError = errorMessage(error);
+      bump();
+      return;
+    }
     writeHistory(readHistory().filter((row) => fold(row) !== fold(value)));
     // 行没了，键盘选中的下标就指不回同一项，归零重来。推荐不重洗：删一条记录却换了一批推荐，看着像列表自己跳了。
     s.active = -1;

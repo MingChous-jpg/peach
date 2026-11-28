@@ -138,6 +138,9 @@ if ($Standalone) {
     }
 }
 $ResourceArguments = @()
+& (Join-Path $PSScriptRoot 'build_windows_webview.ps1')
+$WebViewRuntime = Join-Path $ProjectRoot 'build/windows-webview'
+$ResourceArguments += @('--add-data', "${WebViewRuntime};tools/peach-webview")
 $AmaneRuntime = Join-Path $BuildPath 'amane-runtime'
 & $Python -X utf8 (Join-Path $PSScriptRoot 'build_amane_runtime.py') --destination $AmaneRuntime `
     --work (Join-Path $BuildPath 'amane-build')
@@ -162,6 +165,12 @@ foreach ($ResourceEntry in $ResourceEntries) {
     (Join-Path $ProjectRoot 'scripts\build_app_entry.py')
 if ($LASTEXITCODE -ne 0) { throw 'Peach build failed.' }
 if ($Standalone) {
+    # OpenCV processes images and ONNX models. Video reads use the separately shipped FFmpeg tools.
+    $OpenCvDirectory = Join-Path $OutputPath '_internal\cv2'
+    if (Test-Path -LiteralPath $OpenCvDirectory -PathType Container) {
+        Get-ChildItem -LiteralPath $OpenCvDirectory -File -Filter 'opencv_videoio_ffmpeg*_64.dll' |
+            ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force }
+    }
     Copy-Item -LiteralPath (Join-Path $ProjectRoot 'docs/TESTING_DESKTOP.md') -Destination (Join-Path $OutputPath '开始使用.md')
     Copy-Item -LiteralPath (Join-Path $ProjectRoot 'LICENSE') -Destination (Join-Path $OutputPath 'LICENSE.txt')
     Copy-Item -LiteralPath $CloudflaredSource -Destination (Join-Path $OutputPath 'cloudflared.exe') -Force

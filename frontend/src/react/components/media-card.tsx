@@ -19,6 +19,7 @@
  * 点击的分流：多选与修饰键优先，然后是打开、实体链接、未归属、
  * 标签，其余落到整张卡上就是打开。 */
 import { memo, useCallback, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { hasSelectionModifier } from '../../selection';
 import { cardRatio as layoutRatio } from '@peach/appearance';
 import {
   cardArtwork, cardIdentity, entityAvatar, frameArtwork, relayoutCovers, releaseHover, wireHover,
@@ -27,6 +28,7 @@ import { esc, fmtDur, fmtSize } from '@peach/legacy/core';
 import { Button } from '@/components/base/buttons/button';
 import { Chip } from '@/components/base/badges/chip';
 import { entityDisplayName } from '../../core/entity-names';
+import { CastPopover } from './cast-popover';
 import { useEntityNames } from '../use-entity-names';
 
 import type { MediaCardActions, MediaCardHelpers, MediaCardLayout, MediaItem } from '../catalog-grid/types';
@@ -41,6 +43,7 @@ import { busyProps } from '../settings/busy-props';
 import { joinList, t } from '../../i18n';
 import { codedText, partsLabel, serverLabelList } from '../../core/server-text';
 import { useMediaContextMenu } from './media-actions';
+import { MediaAvatarStack } from './media-avatar-stack';
 
 /** 竖屏一律同一个比例，不按每条视频的实际宽高：竖屏条与竖屏网格才高低一致。 */
 const PORTRAIT_RATIO = 9 / 16;
@@ -128,19 +131,15 @@ export interface MediaCardProps {
 export const editionNames = (group: NonNullable<MediaItem['edition_group']>) =>
   group.editions.map((label, index) => partsLabel(group.editions_parts?.[index], label)).join(' · ');
 
-export function identityParts(item: MediaItem): { avatar: ReactNode; who: ReactNode } {
+export function identityParts(item: MediaItem, openEntity?: (kind: string, name: string) => void): { avatar: ReactNode; who: ReactNode; cast: ReactNode } {
   const { kind, name, coStarred, performers, refs, total } = cardIdentity(item);
-  const performer = performers[0] || '';
   const avatar = coStarred
     ? (
-      <div data-media-avatars="" style={{ '--media-avatar-count': Math.min(5, performers.length) } as CSSProperties}>
-        {performers.slice(0, 5).map((nm, index) => (
+      <MediaAvatarStack faces={performers.slice(0, 5).map((nm, index) => (
           <button key={`${nm}:${index}`} type="button" data-media-avatar="" data-entity-kind="performer"
             data-entity-name={nm} title={t(item.is_jav ? 'shell:mediaCard.openActressNamed' : 'shell:mediaCard.openPerformerNamed', { name: entityDisplayName('performer', nm, refs[index]?.id) })}
-            style={{ '--media-avatar-index': index } as CSSProperties}
             dangerouslySetInnerHTML={{ __html: entityAvatar(nm, refs[index] ?? null, 'performer') }} />
-        ))}
-      </div>
+        ))} />
     )
     : kind
       ? (
@@ -151,18 +150,12 @@ export function identityParts(item: MediaItem): { avatar: ReactNode; who: ReactN
           }} />
       )
       : <span data-media-avatar="" dangerouslySetInnerHTML={{ __html: entityAvatar(name, null, '') }} />;
-  const who = coStarred
-    ? (
-      <>
-        <button type="button" data-media-who="" data-entity-kind="performer" data-entity-name={performer} title={entityDisplayName('performer', performer)}><WhoLabel name={entityDisplayName('performer', performer)} /></button>
-        <span data-media-who-more="">{t('shell:mediaCard.performerTotal', { count: total })}</span>
-      </>
-    )
-    : kind
-      ? <button type="button" data-media-who="" data-entity-kind={kind} data-entity-name={name} title={entityDisplayName(kind, name)}><WhoLabel name={entityDisplayName(kind, name)} /></button>
-      /* 没有署名人的那批是馆藏里的一类，点得开，和女优名、厂牌名一样。 */
-      : <button type="button" data-media-who="" data-open-unowned=""><WhoLabel name={name} /></button>;
-  return { avatar, who };
+  const who = kind
+    ? <button type="button" data-media-who="" data-inline-action="" data-entity-kind={kind} data-entity-name={name} title={entityDisplayName(kind, name)}><WhoLabel name={entityDisplayName(kind, name)} /></button>
+    : <button type="button" data-media-who="" data-inline-action="" data-open-unowned=""><WhoLabel name={name} /></button>;
+  const cast = coStarred ? <CastPopover people={performers.map((name, index) => ({ ...refs[index], name }))} total={total} assetId={item.id}
+    subscribe={item.is_jav} onOpenPerson={openEntity ? person => openEntity('performer', person.name) : undefined} /> : null;
+  return { avatar, who, cast };
 }
 
 /** 悬停时右上角那一圈倒计时，走完就放大；点它直接打开。 */
@@ -265,16 +258,16 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
   const shownDuration = parts?.total_duration ?? item.duration;
   const watched = !parts && Number(item.play_seconds) > 0 && Number(item.duration) > 0
     ? Math.min(Number(item.play_seconds) / Number(item.duration), 1) : 0;
-  const { avatar, who } = identityParts(item);
+  const { avatar, who, cast } = identityParts(item, actions.openEntity);
   const tags = (item.follow_tags || item.tags || []).slice(0, 3);
   const trash = item.disposal === 'trash';
 
   const click = (event: MouseEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
-    if (target.closest('[data-media-reason-dialog]')) return;
+    if (target.closest('[data-media-reason-dialog], [data-cast-popover], [data-cast-trigger]')) return;
     const el = card.current;
     if (!el) return;
-    if (selectMode || event.shiftKey || event.ctrlKey || event.metaKey) {
+    if (selectMode || hasSelectionModifier(event)) {
       event.preventDefault();
       actions.toggleSelection(item.id, event.shiftKey);
       return;
@@ -350,22 +343,22 @@ function VideoCard({ item, variant, layout, selected, selectMode, seekSeconds, h
       data-jav-item={item.is_jav ? '' : undefined}
       data-part-seed={parts ? parts.seed_id : undefined} data-stacked={stacked ? '' : undefined}
       data-pending-delete={trash ? '' : undefined} data-jav-card={trash ? '' : undefined} data-selected={selected ? '' : undefined}
-      onClick={click} onMouseDown={suppressShiftTextSelection}
+      {...(selectMode ? undefined : context.touchProps)} onClick={click} onMouseDown={suppressShiftTextSelection}
       onContextMenu={event => context.onContextMenu(event, contextProps)} onKeyDown={event => context.onKeyDown(event, contextProps)}>
       {context.menu}
-      <button type="button" data-media-open="" data-open=""
-        aria-label={t(editions ? 'shell:mediaCard.openEditionsNamed' : parts ? 'shell:mediaCard.openPartsNamed' : 'shell:mediaCard.openDetailsNamed', { name: shownName })} />
+      <button type="button" data-media-open="" data-open="" aria-pressed={selectMode ? selected : undefined}
+        aria-label={t(selectMode ? 'shell:mediaCard.selectNamed' : editions ? 'shell:mediaCard.openEditionsNamed' : parts ? 'shell:mediaCard.openPartsNamed' : 'shell:mediaCard.openDetailsNamed', { name: shownName })} />
       {stacked ? <div data-media-stack="">{pic}</div> : pic}
       <div data-media-meta="">
         {avatar}
         <div data-media-text="">
           {/* 回收站卡的标题按钮从顶上排，两行截断落在里面这一层（见 `media-card.css`）。 */}
-          <button type="button" data-media-title="" data-open=""
+          <button type="button" data-media-title="" data-open="" tabIndex={selectMode ? -1 : undefined}
             dangerouslySetInnerHTML={trash ? undefined : { __html: titleHtml }}>
             {trash ? <span data-media-title-text="" dangerouslySetInnerHTML={{ __html: titleHtml }} /> : null}
           </button>
           <div data-media-byline="">
-            {who}
+            {who}{cast}
             {why && variant !== 'next' ? <span data-media-why="" title={why}>{why}</span> : null}
             <span data-media-facts="">
               {item.is_jav && item.release_date ? <CardDate value={item.release_date} label={item.release_date} /> : null}
@@ -396,7 +389,7 @@ function ResourceCard({ item, selected, selectMode, helpers, actions, onOpen }: 
   const glyph = image ? 'pics' : shortcut ? 'globe' : 'hard-drive';
   const click = (event: MouseEvent<HTMLElement>) => {
     if (!card.current) return;
-    if (selectMode || event.shiftKey || event.ctrlKey || event.metaKey) {
+    if (selectMode || hasSelectionModifier(event)) {
       event.preventDefault();
       actions.toggleSelection(item.id, event.shiftKey);
       return;
@@ -406,7 +399,7 @@ function ResourceCard({ item, selected, selectMode, helpers, actions, onOpen }: 
   return (
     <article ref={card} data-media-card="" data-id={item.id} data-variant="resource" data-medium={item.medium || 'other'}
       data-pending-delete={trash ? '' : undefined} data-jav-card={trash ? '' : undefined} data-selected={selected ? '' : undefined}
-      onClick={click} onMouseDown={suppressShiftTextSelection}
+      {...(selectMode ? undefined : context.touchProps)} onClick={click} onMouseDown={suppressShiftTextSelection}
       onContextMenu={event => context.onContextMenu(event, contextProps)} onKeyDown={event => context.onKeyDown(event, contextProps)}>
       {context.menu}
       <div data-media-pic="" style={{ '--card-ratio': String(16 / 9) } as CSSProperties}>
@@ -423,7 +416,9 @@ function ResourceCard({ item, selected, selectMode, helpers, actions, onOpen }: 
       <div data-media-meta="">
         <span data-media-avatar="" data-media-kind-glyph="" aria-hidden="true"><Icon name={glyph} /></span>
         <div data-media-text="">
-          <span data-media-title="" data-middle-truncate="" title={name}
+          <button type="button" data-media-title="" data-middle-truncate="" title={name}
+            aria-pressed={selectMode ? selected : undefined}
+            aria-label={t(selectMode ? 'shell:mediaCard.selectNamed' : 'shell:mediaCard.openDetailsNamed', { name: name || label })}
             dangerouslySetInnerHTML={{ __html: esc(name || t('shell:mediaCard.untitledResource')) }} />
           <div data-media-byline="">
             <span data-media-who="">{label}</span>

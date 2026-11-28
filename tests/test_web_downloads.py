@@ -652,6 +652,41 @@ class ResourceIndexerRoutes(_App):
         self.assertEqual(direct.call_args.kwargs["goal"], "chinese")
         self.assertEqual(self.client.get("/api/resources/search?code=ABC-123&min_size=-1").status_code, 400)
 
+    def test_missing_fallback_indexer_keeps_complete_empty_searches_distinct_from_source_failures(self):
+        baseline = {"items": [], "warnings": [], "trace": [], "next_sources": [], "reference_only": []}
+        with mock.patch("peach.web_resource_search.direct_search",
+                        return_value={**baseline, "complete": True}):
+            complete = self.client.get("/api/resources/search?code=ABC-123").json()
+        self.assertEqual((complete["state"], complete["error"]), ("ready", ""))
+
+        with mock.patch("peach.web_resource_search.direct_search", return_value={
+                **baseline, "complete": False, "unfetched_sources": ["sukebei"], "connection_checks": ["sukebei"]}):
+            failed = self.client.get("/api/resources/search?code=ABC-123").json()
+        self.assertEqual(failed["state"], "unavailable")
+        self.assertEqual(failed["error_code"], "labels.resourceSearch.noIndexer")
+        self.assertEqual(failed["connection_checks"], ["sukebei"])
+
+    def test_resource_retry_calls_only_the_selected_source(self):
+        from peach.resource_search import Indexers
+        Indexers(self.service.credentials).save({"indexers": [
+            {"key": key, "name": key, "enabled": True, "url": f"http://{key}.test/api"}
+            for key in ("one", "two")
+        ]})
+        baseline = {"items": [], "warnings": [], "state": "ready"}
+        endpoint = "/api/resources/search?code=ABC-123&retry_source="
+        with mock.patch("peach.web_resource_search.direct_search", return_value=baseline) as direct, \
+             mock.patch("peach.web_resource_search._SEARCH.run", return_value=baseline) as indexed:
+            self.assertEqual(self.client.get(endpoint + "javdb").status_code, 200)
+            self.assertEqual(direct.call_args.kwargs["retry_source"], "javdb")
+            indexed.assert_not_called()
+            direct.reset_mock()
+
+            self.assertEqual(self.client.get(endpoint + "indexer:two").status_code, 200)
+            self.assertEqual([row["key"] for row in indexed.call_args.args[0]], ["two"])
+            self.assertTrue(indexed.call_args.kwargs["retry"])
+            direct.assert_not_called()
+            self.assertEqual(self.client.get(endpoint + "indexer:missing").status_code, 400)
+
     def test_switching_magnets_searches_every_source_and_drops_skipped_hashes(self):
         from peach.web_resource_search import q_resource_search
         failed, other = "a" * 40, "b" * 40

@@ -8,6 +8,7 @@
 import type { InterfaceLanguage, InterfaceLanguageChoice } from '../../i18n';
 import type { NameLanguage } from '../../core/entity-names';
 import type { AfterPlayback, HomeGlow } from '@peach/appearance';
+import type { NotificationLimits } from '../../appearance/settings';
 
 import type { SettingsStore } from '../../settings-store';
 import type { Shortcut } from '../../keyboard-shortcut';
@@ -16,6 +17,7 @@ import type { SyncedSettings } from './settings-data';
 /** 面板读写的那几项；对象本身还有别的字段，面板不碰。 */
 export interface PanelSettings {
   theme: string;
+  localAppearance: boolean;
   uiSounds: boolean;
   homeGlow: HomeGlow;
   /** 预设格选一档时连强调色一起换（`@peach/appearance` 的 `chooseGlowPreset`）。 */
@@ -38,6 +40,10 @@ export interface PanelSettings {
   completionPrompt: boolean;
   searchRecommendations: boolean;
   ingestNotices: boolean;
+  ingestToasts: boolean;
+  browserNotices: boolean;
+  notificationLimits: NotificationLimits;
+  showFeedbackButton: boolean;
   feedLimit: number;
   feedHideGroupCompilations: boolean;
   feedHideSoloCompilations: boolean;
@@ -93,7 +99,7 @@ export interface SettingsPanelHost {
   followInitialRanges: readonly Choice[];
   /** 视频封面默认大小跟着当前页走（首页与 JAV 各存一份），读写都归壳。 */
   videoLayout(): string;
-  setVideoLayout(layout: string): void;
+  setVideoLayout(layout: string): boolean | void;
   /** SFW 与增加对比度各有自己的键，不在 `appSettings` 里；改完壳调 `store.notify()`。 */
   censored(): boolean;
   setCensored(on: boolean): void;
@@ -121,3 +127,11 @@ export interface SettingsPanelApi {
   /** 已经打开时把某一块滚进视野（配色弹层的「详细设置」落到光晕参数）。 */
   reveal(selector: string): void;
 }
+
+export type SettingsSaveResult = 'saved' | 'local' | 'failed';
+export type SettingsSaveFeedback = () => (result: SettingsSaveResult) => void;
+
+export type SettingsEditorHost = SettingsPanelHost & {
+  saveLocal(write?: () => boolean | void): boolean;
+  feedback: SettingsSaveFeedback;
+};

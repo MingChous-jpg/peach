@@ -7,12 +7,10 @@
  * 地址、密钥不单独列成读数：它们只在那段配置里有用，抄两处只会抄漏一处。整段由服务端
  * 拼（`peach.push_discovery.clouddrive_config`）。
  *
- * 前缀怎么算合法、根是不是已声明过，同样由服务端判；这一页只把那句原因显示出来。
- *
  * 整块只有一种行：读数写在它所属那个开关的说明里，配置通过共用代码块展示与复制，
  * 前缀表排在最后。读数与配置跟着各自的开关收起：网盘通道关着时那段配置指向一件不会
  * 发生的事；本机监视在总开关关着时读作「没有运行」，分不出是没开还是坏了。 */
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { RiDeleteBinLine } from '@remixicon/react';
 
 import { SettingsRow } from '@/components/application/settings/settings-rows';
@@ -28,11 +26,26 @@ import { CodeBlock } from '../components/code-block';
 import { Note } from '../components/note';
 import { Disclosure, ErrorText, FieldLabel, Footer, Help, Rows, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
-import { codedText } from '../../core/server-text';
+import { codedText, serverLabel } from '../../core/server-text';
 import { joinList, t } from '../../i18n';
+import { normaliseCloudPrefix, useFieldValidation } from './field-validation';
 
 const SAVE_URL = '/api/configuration/push-discovery';
 const SECRET_URL = '/api/configuration/push-discovery/secret';
+
+function DiscoveryStatusRow({ label, help, status, children }: {
+  label: string; help: string; status?: string; children: ReactNode;
+}) {
+  return (
+    <div className="flex min-h-13 w-full items-center justify-between gap-4 border-b border-separator-border py-2.5 pr-2.5 last:border-b-0">
+      <div className="flex min-w-0 flex-col">
+        <p className="text-body-regular text-text-primary">{label}</p>
+        <Help><span>{help}</span>{status ? <span className="block">{status}</span> : null}</Help>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export function PushDiscoveryForm({ initial, receipt }: {
   initial: PushDiscoveryState;
@@ -43,6 +56,8 @@ export function PushDiscoveryForm({ initial, receipt }: {
   const [failure, setFailure] = useState('');
   const action = useAction();
   const roots = state.media_roots;
+  const validation = useFieldValidation<string>();
+  const errorId = useId();
   /* 读数说的是服务端此刻在跑什么，所以按已保存的开关收放：拨一下开关它们就跟着出现的话，
      写的还是上一次的状态，「本机文件夹监视 · 没有运行」会被读成「打开了也没用」。
      要填的东西（前缀表）反过来跟着拨到哪儿走，否则得先保存一次才能填。 */
@@ -61,6 +76,26 @@ export function PushDiscoveryForm({ initial, receipt }: {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const errors: Record<string, string> = {};
+    const seen = new Set<string>();
+    for (const [index, row] of rows.entries()) {
+      const prefix = normaliseCloudPrefix(row.prefix);
+      const root = row.root.trim();
+      if (!root) {
+        errors[`root-${index}`] = t(roots.length ? 'settings:pushDiscovery.chooseMediaRoot' : 'settings:pushDiscovery.addMediaRoot');
+      } else if (!roots.some(known => known.toLowerCase() === root.toLowerCase())) {
+        errors[`root-${index}`] = serverLabel(roots.length ? 'errors.pushDiscovery.undeclaredRoot' : 'errors.pushDiscovery.noDeclaredRoots',
+          '', { root, known: roots });
+      }
+      if (prefix === '/') {
+        errors[`prefix-${index}`] = t('settings:pushDiscovery.concretePrefix');
+      } else {
+        if (seen.has(prefix)) errors[`prefix-${index}`] = serverLabel('errors.pushDiscovery.duplicatePrefix', '', { prefix });
+        seen.add(prefix);
+      }
+    }
+    setFailure('');
+    if (!validation.check(event.currentTarget, errors)) return;
     const body = {
       enabled: state.enabled, watch_local: state.watch_local, cloud: state.cloud, prefixes: rows,
     };
@@ -88,28 +123,22 @@ export function PushDiscoveryForm({ initial, receipt }: {
           <StatusLabel tone={!live.enabled || !live.watch_local ? 'neutral' : live.local_running ? 'progress' : 'warning'}>{!live.enabled || !live.watch_local ? t('settings:shared.notEnabled') : live.local_running ? t('settings:shared.running') : t('settings:pushDiscovery.notRunning')}</StatusLabel></div>
       </Stack>
       <Rows>
-        <SettingsRow label={t('settings:fileDiscovery.autoImport')} description={live.enabled ? ingested : undefined}>
+        <DiscoveryStatusRow label={t('settings:fileDiscovery.autoImport')} help={t('settings:fileDiscovery.autoImportHelp')}
+          status={live.enabled ? ingested : undefined}>
           <Switch aria-label={t('settings:fileDiscovery.autoImport')} isSelected={state.enabled} isDisabled={!state.available}
             onChange={(enabled) => setState({ ...state, enabled })} />
-        </SettingsRow>
-        <SettingsRow label={t('settings:fileDiscovery.monitorLocal')} description={live.enabled && live.watch_local ? watching : undefined}>
+        </DiscoveryStatusRow>
+        <DiscoveryStatusRow label={t('settings:fileDiscovery.monitorLocal')} help={t('settings:fileDiscovery.monitorLocalHelp')}
+          status={live.enabled && live.watch_local ? watching : undefined}>
           <Switch aria-label={t('settings:fileDiscovery.monitorLocal')} isSelected={state.watch_local}
             isDisabled={!state.available || !state.enabled}
             onChange={(watchLocal) => setState({ ...state, watch_local: watchLocal })} />
-        </SettingsRow>
+        </DiscoveryStatusRow>
         <SettingsRow label={t('settings:fileDiscovery.cloudNotify')} description={t('settings:fileDiscovery.cloudNotifyHelp')}>
           <Switch aria-label={t('settings:fileDiscovery.cloudNotify')} isSelected={state.cloud}
             isDisabled={!state.available || !state.enabled}
             onChange={(cloud) => setState({ ...state, cloud })} />
         </SettingsRow>
-        {live.enabled && live.cloud ? (
-          <SettingsRow label={t('settings:fileDiscovery.webhookConfig')} description={live.config_toml
-            ? t('settings:pushDiscovery.webhookHelp')
-            : live.origin
-              ? t('settings:pushDiscovery.noSecret')
-              : t('settings:pushDiscovery.needsLanUrl')}>
-          </SettingsRow>
-        ) : null}
       </Rows>
       {/* 原因是服务端记下的最近一次入库异常，下一个文件入库成功时清空；漏掉的那个文件由
           定期全量扫描补上，所以这里只报原因，不给重试。 */}
@@ -118,38 +147,50 @@ export function PushDiscoveryForm({ initial, receipt }: {
           <Note tone="error" title={t('settings:pushDiscovery.lastImportFailed')}>{live.queue.last_error}</Note>
         </Stack>
       ) : null}
-      {live.enabled && live.cloud && live.config_toml ? (
+      {live.enabled && live.cloud ? (
         <Stack divided>
-          <div className="flex flex-col gap-3">
-            {/* 收起来是因为抄它的人不用读它：三十行里只有地址和密钥两处跟这台机器有关，
-                两处都已经填好了。展开是留给要核对推到哪儿的那一次。 */}
-            <Disclosure summary={t('settings:fileDiscovery.viewConfig')}>
+          <div className="flex flex-col gap-1">
+            <FieldLabel>{t('settings:fileDiscovery.webhookConfig')}</FieldLabel>
+            <Help>{live.config_toml ? t('settings:pushDiscovery.webhookHelp')
+              : live.origin ? t('settings:pushDiscovery.noSecret') : t('settings:pushDiscovery.needsLanUrl')}</Help>
+          </div>
+          {live.config_toml ? <Disclosure summary={t('settings:fileDiscovery.viewConfig')}>
               <CodeBlock code={live.config_toml} language="toml" label={t('settings:pushDiscovery.configLabel')} bounded={false} copyLabel={t('settings:pushDiscovery.copyConfig')}
                 onCopy={() => receipt(t('settings:pushDiscovery.configCopied'))} />
               <Help>{t('settings:pushDiscovery.invalidPasteHelp')}</Help>
-            </Disclosure>
-          </div>
+            </Disclosure> : null}
         </Stack>
       ) : null}
       {/* 前缀表不只给云通知用：云下载按它推出网盘目标目录与落地路径，开关关着也在生效，所以一直摆出来。 */}
       <Stack divided>
           <div className="flex flex-col gap-3">
             <FieldLabel>{t('settings:pushDiscovery.cloudPrefixes')}</FieldLabel>
-            <Help>{t('settings:pushDiscovery.cloudPrefixesHelp')}</Help>
+          <Help><span data-copy-key="settings.pushDiscovery.cloudPrefixesHelp">{t('settings:pushDiscovery.cloudPrefixesHelp')}</span></Help>
             <div role="group" aria-label={t('settings:pushDiscovery.cloudPrefixes')} className="flex flex-col gap-3">
-              {rows.map((row, index) => (
-                <div key={index} className="flex items-start gap-2">
+              {rows.map((row, index) => {
+                const prefixField = `prefix-${index}`;
+                const rootField = `root-${index}`;
+                const prefixError = validation.errors[prefixField];
+                const rootError = validation.errors[rootField];
+                return <div key={index} className="flex items-start gap-2">
                   <Input className="min-w-0 flex-1" aria-label={t('settings:pushDiscovery.prefixLabel', { index: index + 1 })}
-                    placeholder="/115" autoComplete="off" maxLength={200} value={row.prefix}
-                    onChange={(prefix) => edit(index, { prefix })} />
-                  <Select aria-label={t('settings:pushDiscovery.prefixRootLabel', { index: index + 1 })} prefix={t('settings:pushDiscovery.mapsTo')} selectedKey={row.root}
-                    onSelectionChange={(key) => { if (key !== null) edit(index, { root: String(key) }); }}>
-                    {roots.map((root) => <SelectItem key={root} id={root}>{root}</SelectItem>)}
-                  </Select>
-                  <Button variant="danger" iconOnly leadingIcon={RiDeleteBinLine} aria-label={t('settings:pushDiscovery.removeRow')}
-                    onClick={() => setRows((list) => list.filter((_row, i) => i !== index))} />
-                </div>
-              ))}
+                    placeholder="/115open/Peach" autoComplete="off" maxLength={200} value={row.prefix}
+                    data-settings-field={prefixField} validationBehavior="aria" isInvalid={Boolean(prefixError)} hint={prefixError}
+                    onChange={(prefix) => { edit(index, { prefix }); validation.clear(); }} />
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <Select aria-label={t('settings:pushDiscovery.prefixRootLabel', { index: index + 1 })} prefix={t('settings:pushDiscovery.mapsTo')} selectedKey={row.root || null}
+                      placeholder={t('settings:pushDiscovery.chooseMediaRoot')}
+                      data-settings-field={rootField} validationBehavior="aria" isInvalid={Boolean(rootError)}
+                      aria-describedby={rootError ? `${errorId}-${index}` : undefined}
+                      onSelectionChange={(key) => { if (key !== null) { edit(index, { root: String(key) }); validation.clear(); } }}>
+                      {roots.map((root) => <SelectItem key={root} id={root}>{root}</SelectItem>)}
+                    </Select>
+                    {rootError ? <ErrorText id={`${errorId}-${index}`}>{rootError}</ErrorText> : null}
+                  </div>
+                  <Button variant="secondary" iconOnly leadingIcon={RiDeleteBinLine} aria-label={t('settings:pushDiscovery.removeRow')}
+                    onClick={() => { setRows((list) => list.filter((_row, i) => i !== index)); validation.clear(); }} />
+                </div>;
+              })}
             </div>
             <div>
               <Button variant="secondary"

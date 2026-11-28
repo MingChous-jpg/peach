@@ -5,19 +5,30 @@
  * 当前在用的那个域名——默认值不需要使用者先抄一遍，清空就回到它。
  *
  * 入口出不出现不由这里决定：地址由服务端拼（`peach.entry_links`），站点 id 缺席那一枚
- * 就不在资料页上，所以这里没有开关。校验也只在服务端，前端复制一份判定只会漂。 */
+ * 就不在资料页上，所以这里没有开关。 */
 import { useState, type FormEvent } from 'react';
 
 import { Button } from '@/components/base/buttons/button';
 import { Input } from '@/components/base/input/input';
 
 import { apiSend } from '../../api';
+import { serverLabel } from '../../core/server-text';
 import { ENTRY_LINKS_HELP, ENTRY_LINKS_HINT } from '../../configuration-copy';
 import type { EntryLinkSite, EntryLinksState } from '../bundle';
 import { ErrorText, Footer, Help, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
 import { SiteLabel } from '../components/source-label';
 import { t } from '../../i18n';
+import { useFieldValidation } from './field-validation';
+
+function hostError(site: EntryLinkSite) {
+  const host = site.host.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  if (!host) return '';
+  const code = host.length > 100 ? 'errors.entryLinks.hostTooLong'
+    : !/^[a-z\d](?:[a-z\d-]*[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]*[a-z\d])?)+$/i.test(host)
+      ? 'errors.entryLinks.hostShape' : '';
+  return code ? serverLabel(code, '', { site: site.label, limit: 100, example: site.default_host }) : '';
+}
 
 export function EntryLinksForm({ initial, receipt }: {
   initial: EntryLinksState;
@@ -25,12 +36,14 @@ export function EntryLinksForm({ initial, receipt }: {
 }) {
   const [sites, setSites] = useState<EntryLinkSite[]>(initial.sites);
   const action = useAction();
+  const validation = useFieldValidation<string>();
 
   const change = (key: string, host: string) =>
     setSites((rows) => rows.map((row) => (row.key === key ? { ...row, host } : row)));
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validation.check(event.currentTarget, Object.fromEntries(sites.map(site => [site.key, hostError(site)])))) return;
     const body = { sites: Object.fromEntries(sites.map((site) => [site.key, { host: site.host }])) };
     void action.run('save', (signal) =>
       apiSend<EntryLinksState>('/api/configuration/entry-links', body, 'POST', signal),
@@ -48,8 +61,10 @@ export function EntryLinksForm({ initial, receipt }: {
           <Input key={site.key} id={`entry-link-${site.key}`} label={<SiteLabel site={site.key} label={t('settings:entryLinks.siteAddress', { site: site.label })} />}
             autoComplete="off" maxLength={100} value={site.host}
             placeholder={site.default_host}
-            onChange={(host) => change(site.key, host)}
-            validationBehavior="aria" hint={ENTRY_LINKS_HINT} />
+            data-settings-field={site.key} isInvalid={Boolean(validation.errors[site.key])}
+            onChange={(host) => { change(site.key, host); validation.update(site.key); }}
+            onBlur={() => validation.update(site.key, hostError(site))}
+            validationBehavior="aria" hint={validation.errors[site.key] || ENTRY_LINKS_HINT} />
         ))}
         {action.error ? <ErrorText>{action.error}</ErrorText> : null}
       </Stack>

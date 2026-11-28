@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import random
 import re
 import sqlite3
@@ -384,6 +385,42 @@ def _catalog_entity_filters(contract, args):
     return where, parameters
 
 
+def _translation_filter(language, trash):
+    if trash or language not in ("zh-TW", "zh-CN", "en"):
+        return [], []
+    return [
+        "a.medium='video'",
+        "NOT EXISTS (SELECT 1 FROM asset_content_translation tr WHERE tr.asset_id=a.id AND tr.language=?)",
+    ], [language]
+
+
+def catalog_root_predicate(contract):
+    config = settings_file.active()
+    # 独立账本（例如 serve --db）沿用自身范围，避免套用默认账本的媒体根目录。
+    if contract.db_path.absolute() != (config.directory('database') / 'ledger.db').absolute():
+        return "1", []
+    return media_libraries.catalog_predicate(config)
+
+
+def _catalog_storage_filters(contract, args, *, trash):
+    from .web_folders import folder_filter
+
+    where, parameters = folder_filter(contract, args)
+    if location_filter := args.get("loc"):
+        locations = [item for item in location_filter.split(",") if item]
+        where.append("a.location IN (%s)" % ",".join("?" * len(locations)))
+        parameters.extend(locations)
+    if library := args.get("library"):
+        clause, values = media_libraries.predicate(settings_file.active(), library)
+        where.append(clause)
+        parameters.extend(values)
+    elif not trash:
+        clause, values = catalog_root_predicate(contract)
+        where.append(clause)
+        parameters.extend(values)
+    return where, parameters
+
+
 def catalog_filter(contract: WebContract, args):
     """视频列表与侧栏使用同一组筛选条件。"""
     trash = args.get("state") == "trash"
@@ -396,19 +433,11 @@ def catalog_filter(contract: WebContract, args):
         conditions, parameters = _column_filter_predicate(contract, columns)
         where.extend(conditions)
         par.extend(parameters)
-    from .web_folders import folder_filter
-    folder_where, folder_params = folder_filter(contract, args)
-    where.extend(folder_where)
-    par.extend(folder_params)
-    if args.get("library"):
-        clause, values = media_libraries.predicate(settings_file.active(), args["library"])
-        where.append(clause)
-        par.extend(values)
+    storage_where, storage_parameters = _catalog_storage_filters(contract, args, trash=trash)
+    where.extend(storage_where)
+    par.extend(storage_parameters)
     if trash:
         where.append("a.disposal='trash'")
-    if args.get("loc"):
-        locs = [x for x in args["loc"].split(",") if x]
-        where.append("a.location IN (%s)" % ",".join("?" * len(locs))); par += locs
     entity_where, entity_parameters = _catalog_entity_filters(contract, args)
     where.extend(entity_where)
     par.extend(entity_parameters)
@@ -456,6 +485,9 @@ def catalog_filter(contract: WebContract, args):
     if not trash and args.get("jav") == "1":
         # 只有番号形态还不够：JI-103 这类 creator clip 没有任何发行证据。
         where.append(JAV_ASSET_PREDICATE)
+    translation_where, translation_par = _translation_filter(args.get("translation_missing"), trash)
+    where += translation_where
+    par += translation_par
     if args.get("q"):
         query = args["q"].strip()
         if len(query) >= 3 and contract.has_fts():
@@ -572,8 +604,10 @@ def _catalog_order(args):
     return order
 
 
-def q_items(contract: WebContract, args):
+def q_items(contract: WebContract, args, *, playback_queue=False):
     where, par = catalog_filter(contract, args)
+    if playback_queue:
+        where.append("a.medium='video' AND a.disposal IS NULL AND a.location<>'online'")
     if args.get('summary_only') == '1':
         count, size, works = _catalog_totals(contract, where, par, args)
         return {'total': count, 'bytes': size, 'work_total': works}
@@ -599,7 +633,26 @@ def q_items(contract: WebContract, args):
         # 为它单独再发一次请求只是把同一条 WHERE 又跑一遍。
         cnt, total_bytes, work_total = (
             _catalog_totals(contract, where, par, args) if include_total else (None, None, None))
-    # 卡片要显示出镜者和高权重标签，不能只有番号 —— 一次批量取，别 N+1
+    attach_catalog_card_identity(contract, rows)
+    sources = dict(_download_source_names(contract))
+    for r in rows:
+        r["cost"] = cost_for(r['location'], r.get('path'))
+        r["has_thumb"] = contract.has_snapshot(r["snapshot_path"])
+        r['has_local_poster'] = (contract.poster_root / f"{r['id']}_4.jpg").is_file()
+        attach_artwork_fields(contract, r)
+        # 卡片上的出镜者称谓、规范番号、版本徽章与详情页使用同一份投影。
+        attach_jav_display_fields(r, r.get("tags", ()), r.pop("_entity_kinds", ()),
+                                  sources.get(r["id"], ()))
+        r.pop("snapshot_path", None)
+        r.pop("path", None)                     # 路径不外发，串流走 id
+    attach_saved_follow_cards(contract, rows)
+    shown = orientation_member(args)
+    attach_multipart_groups(contract, rows, shown)
+    attach_edition_groups(contract, rows, shown)
+    return {"total": cnt, "work_total": work_total, "bytes": total_bytes, "items": rows, "has_more": has_more}
+
+def attach_catalog_card_identity(contract: WebContract, rows: list[dict]) -> None:
+    """批量投影馆藏卡片的署名和经过隐藏规则筛选的摘要标签。"""
     if rows:
         ids = [r["id"] for r in rows]
         qm = ",".join("?" * len(ids))
@@ -643,22 +696,19 @@ def q_items(contract: WebContract, args):
                 r["creator"] = r["creator_entity"]["name"]
             r["performer_total"] = len(refs) or len(all_performers)
             r["_entity_kinds"] = tuple(canonical)
-    sources = dict(_download_source_names(contract))
-    for r in rows:
-        r["cost"] = cost_for(r['location'], r.get('path'))
-        r["has_thumb"] = contract.has_snapshot(r["snapshot_path"])
-        r['has_local_poster'] = (contract.poster_root / f"{r['id']}_4.jpg").is_file()
-        attach_artwork_fields(contract, r)
-        # 卡片上的出镜者称谓、规范番号、版本徽章与详情页使用同一份投影。
-        attach_jav_display_fields(r, r.get("tags", ()), r.pop("_entity_kinds", ()),
-                                  sources.get(r["id"], ()))
-        r.pop("snapshot_path", None)
-        r.pop("path", None)                     # 路径不外发，串流走 id
-    attach_saved_follow_cards(contract, rows)
-    shown = orientation_member(args)
-    attach_multipart_groups(contract, rows, shown)
-    attach_edition_groups(contract, rows, shown)
-    return {"total": cnt, "work_total": work_total, "bytes": total_bytes, "items": rows, "has_more": has_more}
+
+
+def attach_studio_refs(contract: WebContract, rows: list[dict]) -> None:
+    refs: dict[str, dict] = {}
+    for row in rows:
+        studio = row.get("studio")
+        if not studio:
+            continue
+        if studio not in refs:
+            refs[studio] = {"name": studio, "has_logo": contract.has_logo(studio),
+                            "logo_version": contract.logo_version(studio)}
+        row["studio_ref"] = refs[studio]
+
 
 def con_tags(contract: WebContract, ids, qm):
     with contract.read_connection() as c:
@@ -1744,6 +1794,10 @@ def _facet_scope(contract, connection, jav, state, filters, asset_id, scope_kind
         library_clause, library_params = media_libraries.predicate(settings_file.active(), filters["library"])
         scope += "AND " + library_clause + " "
         scope_params.extend(library_params)
+    elif asset_id is None and not (scope_kind or scope_name) and state != "trash":
+        library_clause, library_params = catalog_root_predicate(contract)
+        scope += "AND " + library_clause + " "
+        scope_params.extend(library_params)
     if asset_id is not None:
         scope += "AND a.id=? "
         scope_params.append(int(asset_id))
@@ -1872,7 +1926,7 @@ def w_item_tag(contract: WebContract, body):
             "tags": [item["k"] for item in q_item(contract, aid)["tags"]]}
 
 
-def write_item_tag(c, aid: int, operation: str, raw: str) -> str:
+def write_item_tag(c, aid: int, operation: str, raw: str, *, ai_review: dict | None = None) -> str:
     """在调用方的事务里给一部片加一个标签或隐藏一个标签，返回落下的规范名。
 
     编辑框一次保存里的标签增删也走这里，与单条接口是同一套判据。
@@ -1912,9 +1966,13 @@ def write_item_tag(c, aid: int, operation: str, raw: str) -> str:
             "INSERT OR IGNORE INTO asset_tag(asset_id,tag,confidence,source) "
             "VALUES(?,?,1.0,'web-user')", (aid, tag),
         )
-        upsert_asset_entity(
+        entity_id = upsert_asset_entity(
             c, kind="tag", name=tag, asset_id=aid, role="tag",
             source="web-user", confidence=1.0,
             metadata={"profile_id": DEFAULT_PROFILE_ID}, now=stamp,
         )
+        if ai_review is not None:
+            c.execute("UPDATE asset_entity SET metadata_json=json_set(metadata_json,'$.ai_review',json(?)) "
+                      "WHERE asset_id=? AND entity_id=? AND role='tag' AND source='web-user'",
+                      (json.dumps(ai_review, ensure_ascii=False), aid, entity_id))
     return tag

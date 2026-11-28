@@ -73,6 +73,22 @@ class LibraryDiagnosticsTests(unittest.TestCase):
         self.assertEqual(row['size'], 1048576)
         self.assertEqual(before, self.db.read_bytes())
 
+    def test_ignored_issues_are_scoped_to_one_group_and_restorable(self):
+        before = self.db.read_bytes()
+        diagnostics.change_ignored(self.config, 'duration', [2], True)
+        active = diagnostics.library(self.settings, self.config)['groups']
+        ignored = diagnostics.library(self.settings, self.config, show_ignored=True)['groups']
+        self.assertEqual(active['duration']['ignored_count'], 1)
+        self.assertEqual([item['id'] for item in active['duration']['items']], [3])
+        self.assertEqual([item['id'] for item in ignored['duration']['items']], [2])
+        self.assertEqual(ignored['cover']['count'], 0)
+        self.assertIn(2, [item['id'] for item in active['cover']['items']])
+        diagnostics.change_ignored(self.config, 'duration', [2], False)
+        restored = diagnostics.library(self.settings, self.config)['groups']['duration']
+        self.assertEqual([item['id'] for item in restored['items']], [2, 3])
+        self.assertEqual(restored['ignored_count'], 0)
+        self.assertEqual(self.db.read_bytes(), before)
+
     def test_library_items_carry_the_same_library_id_as_the_catalog(self):
         from peach import media_identity, settings_file
         (self.root / 'config.toml').write_text("[media.locations]\nlocal = ['R:\\Media']\n"
@@ -141,6 +157,19 @@ class LibraryDiagnosticsTests(unittest.TestCase):
         with patch.object(diagnostics.os, 'scandir', side_effect=PermissionError):
             self.assertIsNone(diagnostics.inventory(self.root))
 
+    def test_new_parsed_profile_clears_an_older_source_failure(self):
+        from peach.scraping_access import record_source_check
+
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            connection.execute("INSERT INTO performer_profile(entity_id,source,source_url,fetched_at) "
+                               "VALUES(1,'auto:performer-profile@42','https://www.minnano-av.com/actress1.html','2023-11-14T22:13:20Z')")
+        root = self.config.directory('secrets')
+        record_source_check(root, 'minnano-av', 'metadata', {
+            'ok': False, 'reason': 'network', 'checked_at': 1_699_999_990})
+        rows = {row['source']: row for row in diagnostics.sources(self.settings, self.config, now=1_700_000_100)}
+        self.assertEqual(rows['minnano-av']['status'], 'ok')
+        self.assertIsNotNone(rows['minnano-av']['last_check_at'])
+
     def test_source_history_and_absent_checks_have_explicit_states(self):
         from peach.scraping_access import record_source_check
         root = self.config.directory('secrets')
@@ -165,7 +194,7 @@ class LibraryDiagnosticsTests(unittest.TestCase):
             'ok': True, 'kind': 'ok', 'reason': 'parsed', 'checked_at': 1_700_000_000, 'elapsed_s': 2.1})
         rows = {row['source']: row for row in diagnostics.sources(self.settings, self.config, now=1_700_000_100)}
         self.assertEqual(rows['airav']['status'], 'unknown')
-        self.assertIn('解析状态未取得', rows['airav']['reason'])
+        self.assertIn('尚未检查资料解析', rows['airav']['reason'])
         self.assertEqual(rows['fc2club']['status'], 'ok')
         self.assertIsNotNone(rows['fc2club']['last_success_at'])
         self.assertEqual(rows['airav']['elapsed_s'], 1.2)

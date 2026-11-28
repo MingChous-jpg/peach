@@ -7,8 +7,9 @@
  *
  * 写操作（评分、标签、反馈、稍后看、高清目标、偏好、播放列表排序与移出）都在岛里发，成功后
  * 把服务端回的那几个字段换进 `['item', id]`，目录网格缓存里的同一张卡一起换，不重读列表。 */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { VisuallyHidden } from 'react-aria-components';
 import { fmtDur, fmtSize, icon, requestErrorMessage } from '@peach/legacy/core';
 import { appSettingsStore } from '@peach/appearance';
 import {
@@ -20,7 +21,9 @@ import { apiGet, apiSend } from '../../api';
 import { codedText } from '../../core/server-text';
 import { EDITION_TONE } from '../../core/jav-title';
 import { Button } from '@/components/base/buttons/button';
-import { RiArrowDownSLine, RiPlayLine, RiSubtractLine } from '@remixicon/react';
+import { Note } from '../components/note';
+import { RiPlayLine, RiSubtractLine } from '@remixicon/react';
+import { CastPopover } from '../components/cast-popover';
 import type { WorkContextOperation } from '../components/work-context-menu';
 import { CatalogGridPage } from '../catalog-grid/catalog-grid-page';
 import { patchCatalogItems, replaceCatalogItem } from '../catalog-grid/catalog-grid';
@@ -28,6 +31,9 @@ import type { MediaItem } from '../catalog-grid/types';
 import { DetailFailure } from '../components/detail-failure';
 import { PendingWork, pendingRefetch, usePendingWorkRefetch } from '../components/pending-work';
 import { MixQueue, MixQueueRow } from '../components/mix-queue';
+import { NavigationDropLine } from '../components/navigation-order';
+import { ObjectOrderDialog } from '../components/object-order-dialog';
+import { useSidebarReorder } from '../sidebar/use-sidebar-reorder';
 import { RelatedSection } from '../components/related-section';
 import { DetailContinuation } from '../components/detail-continuation';
 import { DetailTags } from '../components/detail-tags';
@@ -36,6 +42,7 @@ import { DetailTitle } from '../components/detail-title';
 import { IdentityCell, IdentitySeries } from '../components/identity-cell';
 import { MediaCarousel } from '../components/media-carousel';
 import { CatalogPicture } from './catalog-picture';
+import { LibraryAIPanel } from './library-ai-panel';
 import { fetchJavDetail, javDetailKey } from '../jav-detail/jav-detail';
 import { busyProps } from '../settings/use-action';
 import { LIBRARY_PROCESSING_URL } from '../library-processing/library-processing';
@@ -47,7 +54,7 @@ import { LibraryCompletionPrompt, missingPreviewIds } from '../library-processin
 import {
   CAST_SHOWN, FEEDBACK_URL, PLAYLIST_URL, PREFERENCE_URL, QUALITY_GOAL_URL,
   RELATED_URL, WATCH_LATER_URL, chooseItem, clampRating, detailTags, feedbackReceipt, fetchItem, fetchQueue,
-  identityGroups, isVanished, itemKey, mediaGate, movedOrder, nextRating, editionLabel, partLabel, partLabelHtml, playlistQueue,
+  identityGroups, isVanished, itemKey, mediaGate, nextRating, editionLabel, partLabel, partLabelHtml, playlistQueue,
   queueCopy, queueKey, queueNext, ratingStars, ratingText, realWatched, relatedKey, sameOrder,
   withPartLabel,
   type DetailEntityRef, type DetailItem, type DetailQueue, type ItemDetailActions,
@@ -133,7 +140,7 @@ function Detail(props: ItemDetailProps & { item: DetailItem; queue: DetailQueue 
       if (video) { video.currentTime = 0; void video.play()?.catch(() => {}) }
       return;
     }
-    actions.openQueueItem({ kind: queue.kind, seedId: queue.seedId, playlistId: queue.playlistId, autoplay: true }, next.id);
+    actions.openQueueItem({ kind: queue.kind, seedId: queue.seedId, playlistId: queue.playlistId, filterId: queue.filterId, autoplay: true }, next.id);
   };
   return (
     <>
@@ -219,8 +226,12 @@ function MediaFrame({ item, gate, helpers, actions, autoplay, onEnded }: {
       </> : null}
       {image !== -2 && item.is_jav && item.code && !item.sample_images?.length && (source.isPending || source.error || source.data?.state === 'partial') ?
         <div data-item-samples-state="">{source.isPending ? <span data-skeleton="samples" role="status" aria-label={t('catalog:detailMedia.loadingSamples')} className="relative block h-12 w-20 skeleton-sheen" />
-          : <Button variant="secondary" {...busyProps(source.isFetching)} title={source.data?.message || requestErrorMessage(source.error)}
-            aria-label={t('catalog:detailMedia.retrySamples')} onClick={() => { refreshSamples.current = true; void source.refetch() }}>{t('catalog:shared.retryNow')}</Button>}</div> : null}
+          : <Note tone="warning" action={
+            <Button variant="secondary" size="small" {...busyProps(source.isFetching)}
+              aria-label={t('catalog:detailMedia.retrySamples')} onClick={() => { refreshSamples.current = true; void source.refetch() }}>
+              {t('catalog:shared.retryNow')}
+            </Button>
+          }>{source.error ? requestErrorMessage(source.error) : source.data?.message || t('shell:artworkGap.previewNotFound')}</Note>}</div> : null}
       {gate === 'offline' ? <OfflineGate item={item} badge={badge} helpers={helpers} actions={actions} />
         : gate === 'disc' ? (
           <div role="status" data-item-gate="disc">
@@ -250,13 +261,22 @@ function OfflineGate({ item, badge, helpers, actions }: {
 }) {
   const [checking, setChecking] = useState(false);
   const [still, setStill] = useState(false);
+  const [problem, setProblem] = useState('');
   const source = String(item.root_id || item.location || '');
   const retry = async () => {
     setChecking(true);
-    const online = await actions.checkSource(source).catch(() => false);
-    setChecking(false);
-    if (online) actions.reopen();
-    else setStill(true);
+    setProblem('');
+    setStill(false);
+    try {
+      const online = await actions.checkSource(source);
+      if (online === true) actions.reopen();
+      else if (online === false) setStill(true);
+      else setProblem(t('catalog:detailGate.sourceStatusUnknown'));
+    } catch (error) {
+      setProblem(requestErrorMessage(error));
+    } finally {
+      setChecking(false);
+    }
   };
   return (
     <div id="offlineGate" role="status" data-item-gate="offline">
@@ -266,6 +286,9 @@ function OfflineGate({ item, badge, helpers, actions }: {
       <button className="chip" id="offlineRetry" type="button" disabled={checking} onClick={() => void retry()}>
         {still ? t('catalog:detailGate.stillUnavailable') : t('catalog:detailGate.refreshStatus')}
       </button>
+      {problem ? <Note tone="error" className="w-full max-w-md" title={
+        <span data-copy-key="catalog.detailGate.sourceStatusFailed">{t('catalog:detailGate.sourceStatusFailed')}</span>
+      }>{problem}</Note> : null}
     </div>
   );
 }
@@ -276,34 +299,37 @@ function Queue({ queue, itemId, helpers, actions }: {
   queue: DetailQueue; itemId: number; helpers: ItemDetailHelpers; actions: ItemDetailActions;
 }) {
   const copy = queueCopy(queue);
+  const [sorting, setSorting] = useState(false);
+  const sortButton = useRef<HTMLButtonElement>(null);
+  const closeSorting = () => {
+    setSorting(false);
+    requestAnimationFrame(() => sortButton.current?.focus({ preventScroll: true }));
+  };
   const list = useRef<HTMLDivElement | null>(null);
   const reorder = usePlaylistReorder(queue, itemId, actions);
-  const reorderRef = useRef(reorder);
-  reorderRef.current = reorder;
+  const playlist = queue.kind === 'playlist';
+  const drag = useSidebarReorder(list, queue.items.map(row => String(row.id)),
+    keys => { void reorder.save(keys.map(Number)).catch(() => {}) }, () => {}, 'x', 'tab', [], 'row');
   const listRef = useCallback((node: HTMLDivElement | null) => {
     list.current = node;
-    if (!node) return;
-    helpers.wireDrag(node);
-    /* 顺序直接拖：一列十几条，靠上移下移把最后一条挪到第二位要按十几次，而每一次都是一趟写库
-       加一次重绘。拖动中的行态由 `wireDragReorder` 挂在行上，行是按 id 复用的，重排之后监听还在。 */
-    if (queue.kind === 'playlist') {
-      helpers.wireDragReorder(node, {
-        selector: '[data-queue-row]', attribute: 'data-queue-row',
-        onMove: (from, target, after) => reorderRef.current.move(+from, +target, after),
-      });
-    }
-  }, [helpers, queue.kind]);
+    if (node) helpers.wireDrag(node);
+  }, [helpers]);
   const saveMix = useSaveMix(queue, actions);
   const head = queue.kind === 'mix'
     ? <button type="button" data-save-mix="" title={t('catalog:detailQueue.saveAsPlaylist')} aria-label={t('catalog:detailQueue.saveAsPlaylist')} onClick={saveMix}
       dangerouslySetInnerHTML={{ __html: icon('playlist') }} />
     : queue.kind === 'playlist'
-      ? <button type="button" data-edit-playlist="" title={t('catalog:detailQueue.editPlaylist')} aria-label={t('catalog:detailQueue.editPlaylist')} onClick={actions.editPlaylist}
+      ? <button ref={sortButton} type="button" data-edit-playlist="" title={t('catalog:detailQueue.editPlaylist')} aria-label={t('catalog:detailQueue.editPlaylist')}
+        onClick={() => setSorting(true)}
         dangerouslySetInnerHTML={{ __html: icon('playlist') }} />
       : null;
-  const ref = { kind: queue.kind, seedId: queue.seedId, playlistId: queue.playlistId };
+  const ref = { kind: queue.kind, seedId: queue.seedId, playlistId: queue.playlistId, filterId: queue.filterId };
   return (
-    <MixQueue kind={queue.kind} title={copy.title} summary={copy.summary} onClose={actions.close} actions={head} listRef={listRef}>
+    <MixQueue kind={queue.kind} title={copy.title} summary={copy.summary} onClose={actions.close} actions={head} listRef={listRef}
+      listProps={playlist ? {
+        'data-navigation-order': 'playlist-queue', 'data-navigation-axis': 'x', 'data-drop-on-row': '',
+        'data-reordering': drag.picked ? '' : undefined, onClickCapture: drag.clickCapture,
+      } : undefined}>
       {queue.items.map((row) => {
         const edition = queue.kind === 'editions' && row.edition_label
           ? <i className={`javedition ${EDITION_TONE[row.edition ?? ''] || 'censored'}`} data-queue-edition="">{editionLabel(row)}</i> : null;
@@ -315,8 +341,21 @@ function Queue({ queue, itemId, helpers, actions }: {
         if (!gone) operations.push({ id: 'open', label: t('catalog:mediaActions.open'), icon: RiPlayLine, run: open });
         if (queue.kind === 'playlist') operations.push({ id: 'remove', label: t('catalog:detailQueue.removeFromPlaylist'),
           icon: RiSubtractLine, run: remove });
+        const key = String(row.id);
+        const bindings = drag.bindings(key, '[data-mix-item]');
+        const nudge = drag.nudge(key);
         return (
-          <MixQueueRow key={row.id} current={row.id === itemId} data-queue-item={row.id} row={{ 'data-queue-row': row.id }}
+          <MixQueueRow key={row.id} current={row.id === itemId} data-queue-item={row.id}
+            aria-keyshortcuts={playlist ? 'Alt+ArrowLeft Alt+ArrowRight' : undefined}
+            row={playlist ? {
+              'data-queue-row': row.id, 'data-tab': key, 'aria-label': helpers.displayName(row),
+              'data-dragging': drag.picked?.key === key ? '' : undefined,
+              style: { '--sidebar-nudge': `${nudge.distance}px`, '--sidebar-delay': `${nudge.delay}ms` } as CSSProperties,
+              ...bindings,
+              onPointerDown: event => {
+                if (event.pointerType === 'mouse' || (event.target as Element).closest('[data-queue-grip]')) bindings.onPointerDown(event);
+              },
+            } : { 'data-queue-row': row.id }}
             disabled={gone} title={gone ? t('catalog:detailQueue.fileGone') : undefined}
             {...(gone ? { 'data-queue-vanished': '' } : {})}
             onClick={gone ? undefined : open} contextOperations={operations}
@@ -336,6 +375,11 @@ function Queue({ queue, itemId, helpers, actions }: {
           </MixQueueRow>
         );
       })}
+      {playlist ? <><NavigationDropLine reorder={drag} /><VisuallyHidden role="status" aria-live="polite">{drag.announcement}</VisuallyHidden></> : null}
+      {sorting && queue.kind === 'playlist' ? <ObjectOrderDialog dropOnRow
+        title={t('catalog:playlistOrder.dialogTitle', { name: queue.title })}
+        items={queue.items.map(row => ({ id: String(row.id), name: helpers.displayName(row) }))}
+        save={keys => reorder.save(keys.map(Number))} close={closeSorting} /> : null}
     </MixQueue>
   );
 }
@@ -367,15 +411,13 @@ function usePlaylistReorder(queue: DetailQueue, itemId: number, actions: ItemDet
     onError: (error) => actions.failure(t('catalog:playlistOrder.reorder'), error),
   });
   const ids = queue.items.map((row) => row.id);
+  const save = async (next: number[]) => {
+    if (sameOrder(next, ids)) return;
+    await reorder.mutateAsync(next);
+    actions.toast(t('catalog:playlistOrder.reordered'), { undo: async () => { apply(await write({ action: 'reorder', asset_ids: ids })) } });
+  };
   return {
-    move: async (from: number, target: number, after: boolean) => {
-      if (queue.kind !== 'playlist') return;
-      const next = movedOrder(ids, from, target, after);
-      if (sameOrder(next, ids)) return;
-      const before = ids;
-      await reorder.mutateAsync(next);
-      actions.toast(t('catalog:playlistOrder.reordered'), { undo: async () => { apply(await write({ action: 'reorder', asset_ids: before })) } });
-    },
+    save,
     remove: (assetId: number) => {
       const before = ids;
       void confirmModal({
@@ -492,6 +534,8 @@ function ItemTitle({ item, queue, helpers, actions, onStatus, deleteAction }: {
             </span>
           ) : null}
           {item.location === 'online' ? null : <SourceTools id={item.id} code={item.code || ''} actions={actions} onStatus={onStatus} />}
+          {!item.disposal && (item.medium || 'video') === 'video' ? <LibraryAIPanel key={item.id} id={item.id} code={item.code}
+            cover={coverUrl(item, 2)} onSaved={() => { void queryClient.invalidateQueries({ queryKey: itemKey(item.id) }); }} /> : null}
           <ItemEditButton item={item} helpers={helpers} onSaved={(saved) => {
             applySavedItem(saved);
             actions.toast(t('catalog:itemEdit.saved'));
@@ -575,17 +619,13 @@ function Rating({ item, write }: { item: DetailItem; write: DetailWrite }) {
    撑满。一个都没有时，「未归属」就是这条作品所属的那一类，和女优、厂牌并列：点进去看得到全部。 */
 function Identity({ item, actions }: { item: DetailItem; helpers: ItemDetailHelpers; actions: ItemDetailActions }) {
   const groups = useMemo(() => identityGroups(item), [item]);
-  const [castOpen, setCastOpen] = useState(false);
   const overflow = Math.max(0, groups.cast.length - CAST_SHOWN);
-  const cell = (kind: string, ref: DetailEntityRef, index: number) => {
-    const hide = kind === 'performer' && index >= CAST_SHOWN && !castOpen;
-    return <IdentityCell key={`${kind}:${ref.name}`} kind={kind} person={ref} onOpen={actions.openEntity}
-      hidden={hide} overflow={kind === 'performer' && index >= CAST_SHOWN} />;
-  };
+  const cell = (kind: string, ref: DetailEntityRef) =>
+    <IdentityCell key={`${kind}:${ref.name}`} kind={kind} person={ref} onOpen={actions.openEntity} />;
   const group = (label: string, kind: string, list: DetailEntityRef[], extra: ReactNode = null) => (list.length ? (
     <section key={`${kind}:${label}`} data-id-group={kind}>
       <h5 data-id-label="">{label}</h5>
-      <div data-id-row="">{list.map((ref, index) => cell(kind, ref, index))}{extra}</div>
+      <div data-id-row="">{list.map(ref => cell(kind, ref))}{extra}</div>
     </section>
   ) : null);
   const primary = [
@@ -599,9 +639,9 @@ function Identity({ item, actions }: { item: DetailItem; helpers: ItemDetailHelp
           </button>
         </div>
       </section>
-    ) : group(performerLabel(item), 'performer', groups.cast, overflow && !castOpen
-      ? <Button variant="secondary" size="small" id="castMore" data-cast-more="" trailingIcon={RiArrowDownSLine}
-        aria-expanded={false} onClick={() => setCastOpen(true)}>{t('catalog:detailCredit.showMore', { count: overflow })}</Button> : null),
+    ) : group(performerLabel(item), 'performer', groups.cast.slice(0, CAST_SHOWN), overflow
+      ? <CastPopover people={groups.cast} label={t('catalog:detailCredit.showMore', { count: overflow })} subscribe={item.is_jav} triggerButton
+        onOpenPerson={person => actions.openEntity('performer', person.name)} /> : null),
     group(t('catalog:shared.label'), 'studio', groups.studios),
     group(t('catalog:entityHero.studio'), 'studio', groups.makers),
     group(t('catalog:shared.sellers'), 'creator', groups.creators.filter(ref => ref.identity_categories?.includes('seller'))),

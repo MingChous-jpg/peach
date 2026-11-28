@@ -71,8 +71,9 @@ const open = (given: IndexProps) =>
   mount(<QueryClientProvider client={queryClient}><Shell {...given} /></QueryClientProvider>);
 
 const cells = (host: ParentNode) => [...host.querySelectorAll('[data-index-cell]')];
-const search = (host: ParentNode) => host.querySelector<HTMLInputElement>('[data-index-search] input')!;
-const tab = (host: ParentNode, value: string) => host.querySelector(`[role="tab"][data-tab="${value}"]`);
+/** 名册的筛选框在页头；标签页有筛选浮层，查找在浮层下排。 */
+const search = (host: ParentNode) => host.querySelector<HTMLInputElement>('[data-index-search] input, [data-filter-search] input')!;
+const tab = (host: ParentNode, value: string) => host.querySelector(`[data-tab="${value}"]:is(a,[role="tab"])`);
 const alphaTag = (host: ParentNode, k: string) => host.querySelector(`[data-alpha-tag][data-k="${k}"]`);
 
 describe('地址栏上的类型', () => {
@@ -206,8 +207,9 @@ describe('名册', () => {
     serve(() => ({items:[],has_more:false}));
     const given = props();
     const host = await open(given);
-    expect([...host.querySelectorAll('[role="tab"]')].map(item => item.textContent?.trim())).toEqual(['艺人','卖家','在线']);
-    expect(host.querySelectorAll('[role="tablist"]')).toHaveLength(1);
+    expect([...host.querySelectorAll('nav a[data-tab]')].map(item => item.textContent?.trim())).toEqual(['艺人','卖家','在线']);
+    expect(tab(host, 'performers')?.getAttribute('aria-current')).toBe('page');
+    expect(tab(host, 'online')?.getAttribute('href')).toBe('/performers?scope=online');
     await click(tab(host,'creators'));
     await settle();
     expect(host.querySelector('[data-index-title]')?.textContent).toBe('卖家');
@@ -281,7 +283,8 @@ describe('名册', () => {
     const host = await open(props());
     const more = host.querySelector<HTMLButtonElement>('[data-index-more]')!;
     await click(more);
-    expect(more.disabled).toBe(true);
+    expect(more.disabled).toBe(false);
+    expect(more.getAttribute('aria-disabled')).toBe('true');
     expect(more.getAttribute('aria-busy')).toBe('true');
     expect(urls(fetcher)[0]).toContain('offset=1');
     await next.release({ items: [person('乙')], has_more: false });
@@ -433,10 +436,11 @@ describe('标签', () => {
     serve(() => ({ items: [tag('痴女')], has_more: false, categories: { role: 1 } }));
     const given = props({ kind: 'tags' });
     const host = await open(given);
-    // 状态那一组（使用中、已隐藏）平时也在，类型药丸跟在后面。
-    const pills = [...host.querySelectorAll('[data-tag-pill]')].map((pill) => pill.textContent);
-    expect(pills).toEqual(['使用中', '已隐藏', '全部', '角色设定', '情境场所']);
-    await click([...host.querySelectorAll('[data-tag-pill]')].find((pill) => pill.textContent === '角色设定'));
+    expect([...host.querySelectorAll('[data-tag-pill]')].map((pill) => pill.textContent)).toEqual(['使用中', '已隐藏']);
+    await click(host.querySelector('[data-table-column-filter="index-tag-category"]'));
+    expect([...document.querySelectorAll('[data-filter-option]')].map(option => option.getAttribute('data-filter-option')))
+      .toEqual(['all', 'role', 'scene']);
+    await click(document.querySelector('[data-filter-option="role"]'));
     expect(given.route).toHaveBeenLastCalledWith(expect.objectContaining({ category: 'role' }), { replace: false });
   });
 

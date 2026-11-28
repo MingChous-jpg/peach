@@ -18,7 +18,7 @@ from media_tool_bundle import checked_file
 LOCK = Path(__file__).with_name("sparkle-macos.json")
 FRAMEWORK = "Sparkle.framework"
 #: 发布作业用来生成与核对 appcast 的官方工具；打包只取框架。
-TOOLS = ("bin/generate_appcast", "bin/sign_update")
+TOOLS = ("bin/generate_appcast", "bin/sign_update", "bin/BinaryDelta")
 #: 框架里自带签名的嵌套代码，按由内向外的顺序重签；最后签框架本身封住资源清单。
 NESTED_CODE = ("Versions/B/Autoupdate", "Versions/B/Updater.app")
 

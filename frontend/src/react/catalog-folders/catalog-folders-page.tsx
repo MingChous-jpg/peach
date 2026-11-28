@@ -15,6 +15,7 @@ import { errorMessage } from '../../api';
 import { ModalFrame } from '../components/modal-frame';
 import { SettingsDialogClose } from '../components/settings-dialog-close';
 import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { EmptyState } from '../components/empty-state';
 import { useOverlayScrollbar } from '../components/overlay-scrollbar';
 import { ShellActionsContext } from '../router/router';
@@ -113,11 +114,11 @@ export function CatalogFolders({ treeTarget, headerTarget, enabled = true }: {
       {query.isPending ? <div data-skeleton="" aria-busy="true" aria-label={t('catalog:catalogFolders.loading')} className="folder-children">{Array.from({ length: 6 }, (_, i) => <span key={i} className="skeleton-sheen h-8 w-28 rounded-lg" />)}</div> : null}
       {data?.children.length ? <FolderChildren key={key} nodes={data.children} go={go} /> : null}
     </div>, headerHost)}
-    <ModalFrame isOpen={drawer} onOpenChange={setDrawer} width="form" label={t('catalog:catalogFolders.tree')}>
-      <div className="flex items-center justify-between border-b border-separator-border p-4">
+    <ModalFrame isOpen={drawer} onOpenChange={setDrawer} width="form" label={t('catalog:catalogFolders.tree')} fitVisualViewport>
+      <div className="flex shrink-0 items-center justify-between border-b border-separator-border p-4">
         <h2 className="text-title-2-medium">{t('catalog:catalogFolders.treeTitle')}</h2><SettingsDialogClose label={t('catalog:catalogFolders.closeTree')} onPress={() => setDrawer(false)} />
       </div>
-      <div className="peach-react relative p-4">{drawer ? navigation : null}</div>
+      <div className="peach-react relative flex min-h-0 flex-col p-4">{drawer ? navigation : null}</div>
     </ModalFrame>
     {editing && data?.selected ? <FolderRuleDialog key={data.selected.id} folder={data.selected} rule={data.rule}
       revision={data.rules_revision} close={() => setEditing(false)} /> : null}
@@ -169,11 +170,11 @@ function FolderTree({ scope, selected, current, go, reportedError }: {
   return <section aria-label={t('catalog:catalogFolders.navigation')} className="catalog-folder-navigation flex min-h-0 min-w-0 flex-col gap-3">
     <Input aria-label={t('catalog:catalogFolders.search')} placeholder={t('catalog:catalogFolders.search')} leadingIcon={RiSearchLine} value={search}
       onChange={setSearch} size="small" />
-    {failed ? <Note tone="error" action={<Button variant="secondary" size="small" onClick={() => { void roots.refetch(); branches.forEach(branch => { if (branch.error) void branch.refetch() }) }}>{t('catalog:shared.retryNow')}</Button>}>{errorMessage(failed)}</Note> : null}
+    {failed ? <Note tone="error" action={<Button variant="secondary" size="small" onClick={() => { if (roots.error) void roots.refetch(); branches.forEach(branch => { if (branch.error) void branch.refetch() }) }}>{t('catalog:shared.retryNow')}</Button>}>{errorMessage(failed)}</Note> : null}
     <div className="folder-tree-frame relative flex min-h-0 flex-col overflow-hidden rounded-3xl"><div ref={scroll} className="folder-tree-scroller">
       {roots.error ? null : roots.isPending ? <div data-skeleton="" aria-busy="true" aria-label={t('catalog:catalogFolders.loadingTree')} className="flex flex-col gap-2">{Array.from({ length: 8 }, (_, i) => <div key={i} className="flex h-8 items-center gap-2 px-3"><span className="skeleton-sheen size-4" /><span className="skeleton-sheen h-4 flex-1" /></div>)}</div>
         : deferredSearch ? <div className="flex flex-col gap-1">{searchQuery.isPending ? <div data-skeleton="" aria-busy="true" className="h-8 skeleton-sheen" aria-label={t('catalog:catalogFolders.searching')} />
-          : searchQuery.error ? <Note tone="error">{errorMessage(searchQuery.error)}</Note>
+          : searchQuery.error ? <QueryErrorNote titleKey="catalog:catalogFolders.searchFailed" query={searchQuery} />
           : searchQuery.data?.matches.length ? searchQuery.data.matches.map(node => <Button key={node.id} variant="secondary" size="small" leadingIcon={RiFolder3Line}
             onClick={() => { setSearch(''); go(node.id) }}>{node.name}</Button>) : <EmptyState size="compact" icon={RiSearchLine} title={t('catalog:catalogFolders.noMatches')}
               actions={<Button size="small" onClick={() => setSearch('')}>{t('catalog:shared.clearSearch')}</Button>}>{t('catalog:catalogFolders.tryAnotherName')}</EmptyState>}</div>

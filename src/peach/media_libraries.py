@@ -24,11 +24,24 @@ def libraries(config):
 
 def predicate(config, library):
     """路径边界精确匹配；未知库返回空集。"""
-    from .media_folders import path_predicate
     roots = next((row["roots"] for row in libraries(config) if row["id"] == library), [])
-    terms, params = [], []
-    for item in roots:
-        clause, values = path_predicate(item["location"], item["root"])
+    return _root_scope((item["location"], item["root"]) for item in roots)
+
+
+def catalog_predicate(config):
+    """已配置实例的全部媒体库只包含当前根目录和在线条目。"""
+    if not config.present:
+        return "1", []
+    roots = ((location, root) for location, paths in config.locations.items() for root in paths)
+    return _root_scope(roots, include_online=True)
+
+
+def _root_scope(roots, *, include_online=False):
+    from .media_folders import path_predicate
+
+    terms, params = (["a.location='online'"] if include_online else []), []
+    for location, root in roots:
+        clause, values = path_predicate(location, root)
         terms.append(clause)
         params.extend(values)
     return "(" + " OR ".join(terms) + ")" if terms else "0", params

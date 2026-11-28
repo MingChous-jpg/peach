@@ -25,6 +25,8 @@ Windows 版提供完整安装包、轻量安装包和免安装包，均无需另
 5. 添加媒体目录（可以用「选择文件夹」挑选），选择谁可以访问、要不要设访问密码、是否立即扫描，然后提交。
 6. 设置完成后自动进入馆藏，右下角会显示一份安装教程，照着做或逐项跳过都可以。
 
+托盘的「打开 Peach」在系统默认浏览器中打开馆藏，首次设置时打开引导页。点击网页中的「反馈」后，支持标签页捕获的浏览器会请求共享当前标签页，其余浏览器用 SnapDOM 生成当前页面的截图。
+
 测试包没有代码签名，Windows 可能提示「未识别的应用」。先确认文件来自本项目的 Release 页面、哈希与 `SHA256SUMS.txt` 一致，再决定是否运行。
 
 ## 从其他设备打开
@@ -64,7 +66,7 @@ Windows 第一次询问防火墙权限时，只勾选「专用网络」。
 
 源码运行可在配置页「运行信息」点「安装」，把发布的 FFmpeg、untrunc 工具包装进数据目录的 `tools\ffmpeg`、`tools\untrunc`；也可将 FFmpeg、ffprobe 加入 PATH，或自行放在数据目录的 `tools\ffmpeg\bin`。显式指定的 `PEACH_FFMPEG`、`PEACH_FFPROBE` 优先；独立包随后使用随包工具，再查数据目录和 PATH。
 
-已在系统安装媒体工具时，可运行 [`import_windows_media_tools.cmd`](../scripts/import_windows_media_tools.cmd)，它调用同目录 PowerShell 脚本检测 WinGet、Scoop、Chocolatey、PATH 和下载目录，将工具及同目录 DLL 放入 Peach 的数据目录，替换文件时保留备份。没有检测到已解压工具时，可识别下载目录中的 Gyan `ffmpeg-9.0.2-essentials_build.zip`，校验固定 SHA-256 后解压接入。脚本不修改系统 PATH 或馆藏账本；完成后刷新配置页。
+已在系统安装媒体工具时，可运行 [`import_windows_media_tools.cmd`](../scripts/import_windows_media_tools.cmd)，它调用同目录 PowerShell 脚本检测 WinGet、Scoop、Chocolatey、PATH 和下载目录，将工具及同目录 DLL 放入 Peach 的数据目录，替换文件时保留备份。没有检测到已解压工具时，可识别下载目录中的 Gyan `ffmpeg-9.1-essentials_build.zip`，校验固定 SHA-256 后解压接入。脚本不修改系统 PATH 或馆藏账本；完成后刷新配置页。
 
 ## 从外网临时访问
 

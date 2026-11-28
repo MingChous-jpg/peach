@@ -21,9 +21,10 @@ const REACT_IMPORT_TIMEOUT_MS = 30_000;
 beforeAll(async () => { await import('../../src/react/router/router') }, REACT_IMPORT_TIMEOUT_MS);
 
 const pages = vi.hoisted(() => ({
-  feedBroken: false, junkBroken: false, feedPrefetchFails: false,
+  feedBroken: false, junkBroken: false, feedPrefetchFails: false, notice: vi.fn(),
 }));
 
+vi.mock('../../src/react/toaster', () => ({ showToast: pages.notice }));
 vi.mock('../../src/react/feed-new/feed-new-page', () => ({
   FeedNewPage: () => {
     if (pages.feedBroken) throw new Error('新作行画不出来');
@@ -57,6 +58,7 @@ afterEach(async () => {
   for (const unmount of unmounts.splice(0)) await act(async () => { unmount() });
   document.body.innerHTML = '';
   Object.assign(pages, { feedBroken: false, junkBroken: false, feedPrefetchFails: false });
+  pages.notice.mockClear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -64,6 +66,7 @@ afterEach(async () => {
 function shellActions(): ShellActions {
   return {
     openItem: vi.fn(), openEntity: vi.fn(), openTag: vi.fn(), openTasteSignal: vi.fn(), navigate: vi.fn(),
+    playSavedFilter: vi.fn(),
     openManage: vi.fn(), managePath: vi.fn(() => ''), openFollow: vi.fn(), receipt: vi.fn(), toast: vi.fn(),
     failure: vi.fn(), revealSource: vi.fn(async () => ''), reopenTutorial: vi.fn(async () => {}),
     routeReview: vi.fn(),
@@ -111,11 +114,11 @@ function watchReports() {
 
 function filterProps(): CatalogFilterProps {
   return {
-    tiers: { key: 'k', performers: [], studios: [] }, tiersPending: false, empty: true, tags: [], tagFirst: 0,
+    tiers: { key: 'k', performers: [], studios: [] }, tiersPending: false, empty: true, tags: [],
     views: [{ k: '', label: '全部', href: '/' }], state: '', count: { total: 0, shown: 0 }, trash: false, trashHost: null,
     sorts: [], layout: null, refreshing: false, offscreen: false, combo: [], comboHidden: true, comboHost: null,
     actions: {
-      openEntity: vi.fn(), setView: vi.fn(), toggleTag: vi.fn(), clearFilter: vi.fn(), clearAll: vi.fn(),
+      openEntity: vi.fn(), setView: vi.fn(), toggleTag: vi.fn(), chooseFacet: vi.fn(), clearFilter: vi.fn(), clearAll: vi.fn(),
       setSort: vi.fn(), reshuffle: vi.fn(async () => {}), setLayout: vi.fn(), moreTops: vi.fn(async () => []), emptyTrash: vi.fn(),
     },
     helpers: { wireDrag: vi.fn(), wireScroller: vi.fn() },
@@ -171,6 +174,9 @@ it('页面内组件渲染抛错：只空那一面、撤掉登记、上报一次�
   expect(tree.querySelector('[data-marker]'), '整棵树没卸').not.toBeNull();
   expect(reported).toHaveBeenCalledTimes(1);
   expect(reported).toHaveBeenCalledWith(expect.objectContaining({ message: '新作行画不出来' }));
+  expect(pages.notice).toHaveBeenCalledWith('managed-surface-error', expect.objectContaining({
+    alert: true, timeout: Infinity, action: expect.objectContaining({ label: '刷新页面' }),
+  }));
 });
 
 it('抛错之后推补丁是空操作；壳每重开一次再报一次，换成好页面就画上', async () => {

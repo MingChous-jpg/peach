@@ -596,14 +596,29 @@ class DownloadStore:
                 (max(1, min(int(limit), 500)),)).fetchall()
         return [DownloadTask.from_row(row) for row in rows]
 
-    def count(self) -> int:
-        with self.database.read_connection() as connection:
-            return connection.execute("SELECT count(*) FROM download_task").fetchone()[0]
+    @staticmethod
+    def _search(q: str) -> tuple[str, tuple[str, ...]]:
+        """按番号、标题或文件名找任务的条件与参数；空词不加条件。`%`、`_` 当普通字符。"""
+        needle = q.strip()
+        if not needle:
+            return "", ()
+        pattern = "%" + needle.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%"
+        columns = ("code", "title", "display_name", "remote_name")
+        return ("(" + " OR ".join(f"{column} LIKE ? ESCAPE '!'" for column in columns) + ")",
+                (pattern,) * len(columns))
 
-    def page(self, limit: int, before_id: int | None = None, *, offset: int = 0) -> list[DownloadTask]:
+    def count(self, q: str = "") -> int:
+        search, values = self._search(q)
+        with self.database.read_connection() as connection:
+            return connection.execute(
+                "SELECT count(*) FROM download_task" + (f" WHERE {search}" if search else ""), values).fetchone()[0]
+
+    def page(self, limit: int, before_id: int | None = None, *, offset: int = 0, q: str = "") -> list[DownloadTask]:
         """按提交顺序读取一页；状态更新时间不影响分页位置。"""
-        where = " WHERE id<?" if before_id is not None else ""
-        args = (before_id, limit) if before_id is not None else (limit,)
+        search, values = self._search(q)
+        conditions = (["id<?"] if before_id is not None else []) + ([search] if search else [])
+        where = " WHERE " + " AND ".join(conditions) if conditions else ""
+        args = ((before_id,) if before_id is not None else ()) + values + (limit,)
         with self.database.read_connection() as connection:
             rows = connection.execute(
                 f"SELECT * FROM download_task{where} ORDER BY id DESC LIMIT ? OFFSET ?", (*args, offset)).fetchall()
@@ -1260,11 +1275,11 @@ class DownloadService:
         self.store.save(task)
         return task
 
-    def snapshot(self, limit: int = 100, *, before_id: int | None = None, page: int = 1) -> dict:
+    def snapshot(self, limit: int = 100, *, before_id: int | None = None, page: int = 1, q: str = "") -> dict:
         limit = max(1, min(int(limit), 500))
-        total = self.store.count()
+        total = self.store.count(q)
         page = min(page, max(1, (total + limit - 1) // limit))
-        rows = self.store.page(limit + 1, before_id, offset=(page - 1) * limit)
+        rows = self.store.page(limit + 1, before_id, offset=(page - 1) * limit, q=q)
         tasks = rows[:limit]
         has_more = len(rows) > limit
         assets = self.store.display_assets(tasks)
@@ -1278,7 +1293,8 @@ class DownloadService:
                 payload["cancellable"] = False
         return {
             "available": self.available,
-            **catalog,
+            "providers": catalog["providers"],
+            "problems": catalog["problems"],
             "tasks": payloads,
             "has_more": has_more,
             "total": total,
@@ -1288,15 +1304,16 @@ class DownloadService:
                                for alert in self.channel_alerts()],
         }
 
-    def note_channel(self, provider: str, error: DownloadError | None, now: float) -> None:
-        """按一次提交的结果更新渠道告警：渠道级失败记下，提交成功撤掉，其他失败不动。"""
+    def note_channel(self, provider: str, error: DownloadError | None, now: float, *, probe=False) -> None:
+        """提交成功清除告警，渠道探测成功只清除探测产生的告警。"""
         if error is None:
-            self._channel_alerts.pop(provider, None)
-        elif error.channel_wide:
+            if not probe or self._channel_alerts.get(provider, {}).get("_probe"):
+                self._channel_alerts.pop(provider, None)
+        elif probe or error.channel_wide:
             self._channel_alerts[provider] = {
                 "provider": provider, "failure": "network" if error.channel_down else error.failure,
                 "message": error.detail, "message_code": error.code, "message_params": dict(error.params),
-                "since": iso(now)}
+                "since": iso(now), "_probe": probe}
 
     def channel_alert(self, provider: str) -> dict | None:
         """这个渠道最近一次渠道级失败；之后成功提交过就是 None。"""
@@ -1304,7 +1321,8 @@ class DownloadService:
         return dict(alert) if alert else None
 
     def channel_alerts(self) -> list[dict]:
-        return [dict(alert) for alert in list(self._channel_alerts.values())]
+        return [{key: value for key, value in alert.items() if key != "_probe"}
+                for alert in list(self._channel_alerts.values())]
 
     def channel_snapshot(self) -> dict:
         if self.channel_catalog is not None:

@@ -12,7 +12,7 @@ import { entityOptions, fetchItems, itemsParams, prefetchEntityPage, type Entity
 import { PENDING_REFETCH_MS } from '../../src/react/components/pending-work';
 import { EntityPage } from '../../src/react/entity-page/entity-page-view';
 import { queryClient } from '../../src/react/query';
-import { buttonNamed, click, mountRoot, pending, settle, type } from './render';
+import { buttonNamed, chooseFilter, click, mountRoot, pending, settle, type } from './render';
 
 afterEach(() => { queryClient.clear() });
 notifyManager.setScheduler((notify) => notify());
@@ -342,7 +342,7 @@ describe('换筛选与视图', () => {
     expect(cards(page.props)).toEqual(['7']);
     // 选了哪几枚由交集条列着，读数只报个数：标签名再列一遍，几枚长标签就能把这一行撑出页面。
     expect(readout(page.props)).toBe('视频 · 1 · 已选 1 个标签');
-    expect(page.props.hosts.filter.querySelector('[data-entity-tag="巨乳"]')?.getAttribute('aria-pressed')).toBe('true');
+    expect(page.props.hosts.filter.querySelector('[data-filter-tag="巨乳"]')?.getAttribute('aria-pressed')).toBe('true');
     await push({ filters: {} });
     await settle();
     expect(page.calls('/api/items')).toHaveLength(2);
@@ -455,6 +455,23 @@ describe('换筛选与视图', () => {
 });
 
 describe('照片墙', () => {
+  it('照片换一批失败时保留当前墙，并能重试获取新一批', async () => {
+    let fail = true;
+    const page = await open({
+      photos: query => query.has('seed') ? (fail ? photos(0, { error: '照片目录读取失败' }) : photos(4)) : photos(3),
+    }, { media: { media: 'photos', set: 0 } });
+    await click(page.props.hosts.filter.querySelector('[data-entity-batch]'));
+    await settle();
+    const body = page.props.hosts.body;
+    expect(body.querySelector('[role="alert"]')?.textContent).toContain('照片目录读取失败');
+    expect(body.querySelectorAll('[data-photo-cell]')).toHaveLength(3);
+    fail = false;
+    await click(body.querySelector('[role="alert"] button'));
+    await settle();
+    expect(body.querySelector('[role="alert"]')).toBeNull();
+    expect(body.querySelectorAll('[data-photo-cell]')).toHaveLength(4);
+  });
+
   it('续页数的是已取回的本地图片，带上回话里的种子；换一批换一粒种子，新墙取到才换上', async () => {
     const page = await open({
       photos: (query) => (query.get('offset') ? photos(2, { has_more: false, seed: 's1' })
@@ -518,7 +535,7 @@ describe('创作者的在线视图', () => {
     expect(followCards(page.props)).toEqual(['1', '2']);
     expect(page.props.hosts.body.querySelector('[data-follow-wall]')).toBeNull();
     const routed = vi.mocked(page.props.actions.route).mock.calls.length;
-    await click(page.props.hosts.filter.querySelector('[data-follow-provider="rule34video"]'));
+    await chooseFilter(page.props.hosts.filter.querySelector('[data-table-column-filter="entity-online-source"]'), 'rule34video');
     await settle();
     expect(page.calls('/api/follow').at(-1)?.searchParams.get('provider')).toBe('rule34video');
     expect(followCards(page.props)).toEqual(['3']);

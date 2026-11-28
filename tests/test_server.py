@@ -13,6 +13,23 @@ from starlette.requests import Request
 
 
 class ServerTests(unittest.TestCase):
+    def test_serve_records_a_bind_failure_before_web_is_available(self):
+        from peach import cli, startup_diagnostics
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            state = root / "custom-state"
+            config = settings_file.PeachConfig(root, root / "config.toml", directories={"state": "custom-state"})
+            with patch.object(settings_file, "active", return_value=config), \
+                    patch.object(cli, "_require_readable_settings"), \
+                    patch("peach.listening.bind", side_effect=OSError("bind failed")), self.assertRaises(OSError):
+                cli.main(["serve", "--host", "127.0.0.1", "--no-mdns"])
+            capture = startup_diagnostics.snapshot(state)
+            self.assertFalse(capture["pending"])
+            self.assertEqual(capture["capture"]["status"], "failed")
+            self.assertEqual(capture["capture"]["stages"][-1]["stage"], "bind_listener")
+            self.assertEqual(capture["capture"]["stages"][-1]["status"], "failed")
+
     def test_reader_initialization_does_not_launch_a_ledger_migration(self):
         with tempfile.TemporaryDirectory() as directory:
             config = settings_file.load_config(environ={'PEACH_DATA_ROOT': str(Path(directory).resolve())})

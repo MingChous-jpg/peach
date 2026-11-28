@@ -39,12 +39,15 @@ const flip = (toggle: HTMLInputElement) => act(async () => { toggle.click() });
 
 it('越界的数不提交、标出错误，改对之后错误消失', async () => {
   const { host, apply, input } = await setup('searchHistoryLimitSetting', 10);
+  const descriptions = input().getAttribute('aria-describedby')?.split(' ');
+  expect(descriptions?.map(id => host.querySelector(`[id="${id}"]`)?.textContent)).toEqual(['条', '']);
   await commit(input(), '51');
   expect(apply).not.toHaveBeenCalled();
   expect(input().getAttribute('aria-invalid')).toBe('true');
   const error = host.querySelector<HTMLElement>('[role=status]')!;
   expect(error.hidden).toBe(false);
   expect(error.textContent).toBe('请输入 1–50 的整数（条）');
+  expect(descriptions).toContain(error.id);
   await commit(input(), '17');
   expect(apply).toHaveBeenLastCalledWith(17);
   expect(input().hasAttribute('aria-invalid')).toBe(false);
@@ -91,6 +94,24 @@ it('必填的那几项没有开关', async () => {
   expect(host.querySelector('[role=switch]')).toBeNull();
   expect(input().value).toBe('60');
   expect(host.querySelector('[data-number-control] span')!.textContent).toBe('个');
+});
+
+it('点步进或按方向键立即提交一档，达到上下限时停住', async () => {
+  const { host, apply, input, rerender } = await setup('seekSecondsSetting', 299, '快进 / 快退步长');
+  const up = host.querySelector<HTMLButtonElement>('[data-number-step="up"]')!;
+  const down = host.querySelector<HTMLButtonElement>('[data-number-step="down"]')!;
+  await act(async () => up.click());
+  expect([input().value, up.disabled, apply.mock.calls]).toEqual(['300', true, [[300]]]);
+  await act(async () => up.click());
+  expect(apply).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+  });
+  expect([input().value, up.disabled, apply.mock.calls]).toEqual(['299', false, [[300], [299]]]);
+  await rerender(1);
+  expect(down.disabled).toBe(true);
+  await commit(input(), '301');
+  expect([up.disabled, down.disabled, apply.mock.calls]).toEqual([true, true, [[300], [299]]]);
 });
 
 it('读回的偏好只认区间内的整数', () => {

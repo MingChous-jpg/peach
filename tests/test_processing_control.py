@@ -544,13 +544,15 @@ class ProcessingControlTests(unittest.TestCase):
             self.assertFalse(q_library_processing(contract, {}).get('archived'))
             with database.write_transaction() as connection:
                 connection.execute("UPDATE asset SET disposal='vanished' WHERE id=1")
-            self.assertFalse(q_library_processing(contract, {}).get('archived'), '还有一部在馆藏里，照旧提示')
+            remaining = q_library_processing(contract, {})
+            self.assertFalse(remaining.get('archived'))
+            self.assertEqual([row['asset_id'] for row in remaining['issue_preview']], [2])
             with database.write_transaction() as connection:
                 connection.execute('DELETE FROM asset WHERE id=2')
             settled = q_library_processing(contract, {})
             self.assertTrue(settled['archived'])
             self.assertEqual((settled['status'], settled['issue_count'], settled['retryable_asset_ids']),
-                             ('failed', 2, []))
+                             ('failed', 0, []))
             self.assertNotIn('archived', json.loads(state_path(self.config).read_text(encoding='utf-8')))
             with database.write_transaction() as connection:
                 connection.execute('UPDATE asset SET disposal=NULL WHERE id=1')
@@ -560,6 +562,57 @@ class ProcessingControlTests(unittest.TestCase):
             with database.write_transaction() as connection:
                 connection.execute("UPDATE asset SET disposal='vanished' WHERE id=1")
             self.assertFalse(q_library_processing(contract, {}).get('archived'), '不对应影片的问题不算解决')
+
+    def test_recovered_paths_and_sources_drop_only_their_pending_issues(self):
+        import json
+        from datetime import datetime
+        from peach.library_processing import _save, issues_path, state_path
+        from peach.repository import LedgerDatabase
+        from peach.web_library_processing import q_library_processing, q_library_processing_issues, w_library_processing
+
+        database_root = self.config.directory('database')
+        database_root.mkdir()
+        self.db = fresh_ledger(database_root)
+        self.seed(3)
+        database = LedgerDatabase(self.db)
+        with database.read_connection() as connection:
+            paths = dict(connection.execute('SELECT id,path FROM asset'))
+        job = Mock()
+        job.snapshot.return_value = None
+        monitor = Mock()
+        failed_at = 1_800_000_000
+        recovered_at = failed_at + 60
+        monitor.sources.return_value = [{'location': 'local', 'state': 'checking', 'checked_at': recovered_at}]
+        contract = SimpleNamespace(db_path=self.db, database=database, library_processing_job=job,
+                                   mount_reachability=monitor)
+        log = issues_path(self.config, 'recovery')
+        log.parent.mkdir(parents=True, exist_ok=True)
+        issues = [{'asset_id': asset_id, 'path': paths[asset_id], 'retryable': True, 'last_failed_at': failed_at,
+                   'message_code': 'errors.libraryProcessing.mediaInaccessible'} for asset_id in (1, 2, 3)]
+        issues += [{'asset_id': 1, 'retryable': True, 'message_code': 'errors.libraryProcessing.companionImageUnreadable',
+                    'message': 'A different outstanding problem'},
+                   {'asset_id': None, 'last_failed_at': failed_at, 'message_code': 'errors.libraryProcessing.sourceRootOffline',
+                    'message_params': {'source': 'local'}}]
+        original = ''.join(json.dumps(row) + '\n' for row in issues)
+        log.write_text(original, encoding='utf-8')
+        stored = {'job_id': 'recovery', 'status': 'failed', 'outcome': 'partial', 'issue_count': len(issues),
+                  'retryable_asset_ids': [1, 2, 3], 'notes': {}}
+        _save(state_path(self.config), stored)
+        with patch('peach.web_library_processing.settings_file.active', return_value=self.config):
+            self.assertEqual(q_library_processing(contract, {})['issue_count'], 5)
+            with database.write_transaction() as connection:
+                connection.execute("UPDATE asset SET path=? WHERE id=1", (paths[1] + '.renamed',))
+                connection.execute("UPDATE asset SET last_seen=? WHERE id=2", (datetime.fromtimestamp(recovered_at).isoformat(),))
+            partial = q_library_processing(contract, {})
+            self.assertEqual(partial['retryable_asset_ids'], [1, 3])
+            self.assertEqual([row['asset_id'] for row in partial['issue_preview']], [3, 1, None])
+            with self.assertRaises(ValueError) as rejected:
+                w_library_processing(contract, {'job_id': 'recovery', 'retry': [2]})
+            self.assertEqual(rejected.exception.code, 'api.libraryProcessing.retryItemNotFailed')
+            monitor.sources.return_value = [{'location': 'local', 'state': 'ok', 'checked_at': recovered_at}]
+            self.assertEqual(q_library_processing(contract, {})['issue_count'], 2)
+            self.assertEqual(q_library_processing_issues(contract, {'job_id': 'recovery'})['rows'], issues)
+        self.assertEqual(log.read_text(encoding='utf-8'), original)
 
     def test_cancelled_recovery_is_not_replayed_after_the_writer_exits(self):
         from peach.task_runs import TaskRunStore

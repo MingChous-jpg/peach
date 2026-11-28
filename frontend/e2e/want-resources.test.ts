@@ -7,6 +7,76 @@ describe('JAV 入库作品卡', () => {
   let browser: Browser;
   before(async () => { browser = await launch(); });
   after(async () => { await browser?.close(); });
+  it('单独重试失败来源时保留候选和已选磁力', async () => {
+    const requests: (string | null)[] = [];
+    const candidate = (hash: string, name: string) => ({
+      id: hash, uri: `magnet:?xt=urn:btih:${hash}`, name, size: 1024 ** 3,
+      seeders: 10, origins: ['JavBus'], resolution: 1080, codec: 'H.264',
+    });
+    const existing = candidate('a'.repeat(40), '已有候选');
+    const recovered = candidate('b'.repeat(40), '重试返回的候选');
+    const opened = await visit(browser, '/jav?tab=wants', VIEWPORTS[0]!, async page => {
+      await page.route('**/api/downloads?*', route => route.fulfill({ json: { available: true,
+        providers: [{ key: '115', label: '115', configured: true, target: '/下载' }], tasks: [] } }));
+      await page.route('**/api/resources/search?*', route => {
+        const source = new URL(route.request().url()).searchParams.get('retry_source');
+        requests.push(source);
+        return route.fulfill({ json: source
+          ? { state: 'ready', items: [recovered], error: '', warnings: [] }
+          : { state: 'ready', items: [existing], error: '', warnings: ['sukebei 查询超时', 'JavDB 查询超时'],
+              warning_sources: ['sukebei', 'javdb'], retry_sources: ['sukebei', 'javdb'] } });
+      });
+    });
+    try {
+      const { page } = opened;
+      await page.locator('#javLibraryHeader').getByRole('button', { name: '查找资源', exact: true }).click();
+      await page.getByRole('heading', { name: '查找资源', exact: true }).waitFor();
+      const dialog = page.locator('[data-modal-surface]');
+      const code = dialog.getByLabel('按番号查找资源', { exact: true });
+      await code.fill('DEMO-001');
+      await code.press('Enter');
+      await dialog.getByText(existing.name, { exact: true }).waitFor();
+      await dialog.getByRole('button', { name: '选用此资源' }).click();
+      const magnet = dialog.getByRole('textbox', { name: '磁力链接' });
+      assert.equal(await magnet.inputValue(), existing.uri);
+      await dialog.getByRole('button', { name: '重试此来源', exact: true }).first().click();
+      await dialog.getByText(recovered.name, { exact: true }).waitFor();
+      assert.deepEqual(requests, [null, 'sukebei']);
+      assert.equal(await magnet.inputValue(), existing.uri);
+      assert.equal(await dialog.getByText(existing.name, { exact: true }).count(), 1);
+      assert.equal(await dialog.getByText('sukebei 查询超时').count(), 0);
+      assert.equal(await dialog.getByText('JavDB 查询超时').count(), 1);
+    } finally { await opened.close(); }
+  });
+  it('从想要卡之间直接起拖会进入多选', async () => {
+    const opened = await visit(browser, '/jav?tab=wants', VIEWPORTS[0]!, async page => {
+      await page.route('**/api/wants', route => route.fulfill({ json: {
+        items: [9001, 9002].map(id => ({ id, title: `待发售作品 ${id}`, origin: 'code', phase: 'unreleased' })),
+        counts: { unreleased: 2 }, scraping: false,
+      } }));
+    });
+    try {
+      const { page } = opened;
+      const cards = page.locator('[data-want-phase] [data-want-id]');
+      await cards.nth(1).waitFor();
+      const mode = page.locator('#selectMode');
+      const second = cards.nth(1);
+      await second.evaluate(card => card.scrollIntoView({ block: 'center' }));
+      const [a, b] = [(await cards.first().boundingBox())!, (await second.boundingBox())!];
+      const y = (a.y + a.height + b.y) / 2;
+      await page.mouse.move(b.x + 28, y);
+      await page.mouse.down();
+      await page.mouse.move(b.x + 30, y + 1);
+      assert.equal(await mode.getAttribute('aria-pressed'), 'false');
+      await page.mouse.move(b.x + 60, b.y + 28, { steps: 4 });
+      await page.locator('[data-want-id="9002"][data-rectangle-hit]').waitFor();
+      assert.equal(await mode.getAttribute('aria-pressed'), 'true');
+      await page.mouse.up();
+      assert.equal(await second.getByRole('checkbox').isChecked(), true);
+      assert.equal(await cards.first().getByRole('checkbox').isChecked(), false);
+    } finally { await opened.close(); }
+  });
+
   for (const viewport of VIEWPORTS) {
     it(`资源链接与操作完整可见（${viewport.name}）`, { timeout: 60_000 }, async () => {
       const opened = await visit(browser, '/jav', viewport);
@@ -47,7 +117,7 @@ describe('JAV 入库作品卡', () => {
         await page.getByRole('heading', { name: '资源链接 · 8' }).waitFor();
         await settle(page);
         const card = page.locator('[data-want-id="9001"]');
-        assert.equal(await page.locator('#stats').getByRole('button', { name: '查找资源', exact: true }).count(), 2, '通用入口与作品入口分别保留一处');
+        assert.equal(await page.getByRole('button', { name: '查找资源', exact: true }).count(), 2, '通用入口与作品入口分别保留一处');
         assert.equal(await page.getByRole('combobox', { name: '下载到', exact: true }).count(), 0, '下载目标在资源下载面板中选择');
         const source = card.getByRole('link', { name: 'JavDB', exact: true });
         assert.deepEqual(await source.evaluate(node => [...node.parentElement!.querySelectorAll('button, a')].map(action => action.textContent)), ['JavDB', 'sukebei', 'JavBus', '查找资源', '移除']);

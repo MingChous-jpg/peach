@@ -31,9 +31,10 @@ import { rereadPlaylists } from './playlists.js';
 import { receiptsState } from './receipts.js';
 import { dropBars } from './../catalog-bars';
 import { applicationEffects } from './effects';
+import { syncPhotoWalls } from './entity.js';
 export const preferencesState = { sourceOnline: undefined, sourceProblems: undefined, sourceOffline: undefined, OFFLINE_HINT: undefined, OFFLINE_REASON: undefined, offlineReason: undefined, settingsStore: undefined, appSettings: undefined, saveSettings: undefined, catalogLoadWaiters: undefined, nextCatalogLoad: undefined, handOff: undefined, settingsEffects: undefined, syncGlassOptics: undefined, placeSidebarHead: undefined, SRCICON: undefined, srcBadge: undefined, emptyState: undefined, CENSOR_KEY: undefined };
 
-export async function loadSourceStatus(){
+export async function loadSourceStatus(throwOnError=false){
   const effects=applicationEffects;
   try{
     const d=await loadMediaSources(effects.signal);
@@ -41,7 +42,10 @@ export async function loadSourceStatus(){
     const roots=(d.sources||[]).flatMap(s=>s.roots||[]).filter(r=>r.root_id);
     preferencesState.sourceOnline=Object.fromEntries([...(d.sources||[]).map(s=>[s.location,s.online]),...roots.map(r=>[r.root_id,r.online])]);
     preferencesState.sourceProblems=Object.fromEntries([...(d.sources||[]).map(s=>[s.location,s.message||'']),...roots.map(r=>[r.root_id,r.message||''])]);
-  }catch{if(!effects.isActive)return preferencesState.sourceOnline;preferencesState.sourceOnline={};preferencesState.sourceProblems={}}
+  }catch(error){
+    if(throwOnError)throw error;
+    return preferencesState.sourceOnline;
+  }
   document.body.classList.toggle('offline-source',Object.values(preferencesState.sourceOnline).includes(false));
   dropOfflineFromDefaultLoc();
   return preferencesState.sourceOnline;
@@ -167,6 +171,7 @@ wireGestureSettings(preferencesState.settingsStore);
 setNameLocale(interfaceLanguage);
 setNameLanguage(preferencesState.appSettings.performerNameLanguage);
 preferencesState.saveSettings = ()=>preferencesState.settingsStore.save();
+applicationEffects.listen(window,'peach:preferences-save-failed',event=>receiptsState.toast(event.detail,{warn:true}));
 document.documentElement.style.setProperty('--hover-delay',`${preferencesState.appSettings.hoverDelaySeconds}s`);
 setUiSoundsEnabled(preferencesState.appSettings.uiSounds);
 wireUiSounds();
@@ -180,6 +185,21 @@ preferencesState.catalogLoadWaiters = [];
 preferencesState.nextCatalogLoad = ()=>new Promise(resolve=>preferencesState.catalogLoadWaiters.push(resolve));
 preferencesState.handOff = loading=>{preferencesState.catalogLoadWaiters.splice(0).forEach(resolve=>resolve(loading));return loading};
 preferencesState.settingsEffects = {
+  browsePreferences:keys=>{
+    const has=key=>keys.includes(key);
+    if(has('theme'))applyTheme();
+    if(has('accent'))applyAccent();
+    if(has('homeGlow')){applyHomeGlow();applyGlassFaces()}
+    if(has('photoLayout'))syncPhotoWalls();
+    if(has('homeTiers'))syncCatalogFilterScreen();
+    if(has('feedNewRows'))syncHomeFeedSetting(state.browse==='folders');
+    else if(has('feedLimit'))refreshFeedRows();
+    if(has('homePreviewOnly'))preferencesState.settingsEffects.homePreviewOnly();
+    if((has('defaultSort')||has('defaultSortDirection'))&&!new URLSearchParams(location.search).has('sort')&&location.pathname==='/'){
+      preferencesState.settingsEffects.defaultSort();
+    }else if((has('homeShortsLimit')||has('batchSize'))&&isCatalogPath(location.pathname))loadCatalog();
+    if(has('followLayout')||has('followPageSize')||has('queueSort'))notifyShell();
+  },
   performerNameLanguage:()=>{
     setNameLanguage(preferencesState.appSettings.performerNameLanguage);
     loadingState.syncPageTitle(location.href);

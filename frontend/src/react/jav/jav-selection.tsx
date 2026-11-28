@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/base/buttons/button';
+import { coverUrl, remoteCoverUrl } from '@peach/card-art';
 import { JAV_SELECTION_EVENT, takeJavSelection } from '../../jav-controls';
 import { selectRange, selectionSummary } from '../../selection';
 import { errorMessage } from '../../api';
@@ -7,10 +8,18 @@ import { SelectionDock } from '../components/selection-dock';
 import { useDense } from '../components/use-dense';
 import { addWant, invalidateWants, removeWants } from '../wants/wants';
 import type { BulkAction, Receipt } from '../components/bulk-action';
-import { JavBatchResources } from './jav-batch-resources';
+import { JavBatchResources, type BatchResourceWork } from './jav-batch-resources';
 import type { Discovery } from './jav';
 import { t } from '../../i18n';
 import { useRectangleSelection } from '../components/rectangle-selection';
+
+function discoveryResourceWork(item: Discovery): BatchResourceWork {
+  return {
+    id: item.id, code: item.code, title: item.title, performers: item.performers, performerRefs: item.performer_refs,
+    studio: item.studio, release_date: item.release_date,
+    cover: item.has_cover ? coverUrl(item, 2) : item.online_cover_url || (item.cover_url ? remoteCoverUrl(item) : undefined),
+  };
+}
 
 interface Selection {
   dense: boolean; mode: boolean; selected: Set<string>;
@@ -27,7 +36,7 @@ export const useJavSelection = () => useContext(Context);
 
 export function useJavRectangle(enabled: boolean) {
   const selection = useJavSelection();
-  return useRectangleSelection(enabled && selection?.mode ? selection.selectRectangle : undefined);
+  return useRectangleSelection(enabled ? selection?.selectRectangle : undefined, { selecting: Boolean(selection?.mode) });
 }
 
 /** 当前页提供展示顺序；跨页选择保留作品本身，不能把来源 ID 当馆藏 ID。 */
@@ -46,7 +55,7 @@ export function JavSelectionProvider({ children, readOnly, receipt, dock = true 
   const [mode, setMode] = useState(false);
   const [picked, setPicked] = useState<Map<string, Discovery>>(new Map());
   const [page, setPage] = useState<Discovery[]>([]);
-  const [resources, setResources] = useState<Discovery[] | null>(null);
+  const [resources, setResources] = useState<BatchResourceWork[] | null>(null);
   const anchor = useRef<string | null>(null);
   const owner = useRef(new URLSearchParams(location.search).get('tab') || '');
   const selected = new Set(picked.keys());
@@ -66,6 +75,8 @@ export function JavSelectionProvider({ children, readOnly, receipt, dock = true 
     return next;
   });
   const selectRectangle = (keys: string[], add: boolean) => {
+    if (!mode && !keys.length) return;
+    if (!mode) setMode(true);
     const codes = new Set(keys);
     anchor.current = keys.at(-1) ?? null;
     setPicked(current => new Map([...(add ? current : []), ...page
@@ -73,9 +84,10 @@ export function JavSelectionProvider({ children, readOnly, receipt, dock = true 
   };
   useEffect(() => {
     const toggle = (event: Event) => {
-      if (event instanceof CustomEvent && event.detail !== owner.current) return;
+      const detail = event instanceof CustomEvent ? event.detail : undefined;
+      if (detail && detail.tab !== owner.current) return;
       event.preventDefault();
-      if (mode) close(); else setMode(true);
+      if (mode && !detail?.enter) close(); else setMode(true);
     };
     window.addEventListener(JAV_SELECTION_EVENT, toggle);
     return () => window.removeEventListener(JAV_SELECTION_EVENT, toggle);
@@ -91,7 +103,7 @@ export function JavSelectionProvider({ children, readOnly, receipt, dock = true 
   useEffect(() => {
     if (!mode) return;
     const keydown = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement).closest('input,textarea,[contenteditable]:not([contenteditable="false"]),dialog,[role="dialog"]')) return;
+      if ((event.target as HTMLElement).closest('input:not([type="checkbox"],[type="radio"]),textarea,[contenteditable]:not([contenteditable="false"]),dialog,[role="dialog"]')) return;
       if (event.key === 'Escape') { event.preventDefault(); close() }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
         event.preventDefault();
@@ -150,7 +162,7 @@ export function JavSelectionProvider({ children, readOnly, receipt, dock = true 
       actions={[{ action: want, items: eligible, host, disabled: readOnly }]}
       leading={<Button size="small" variant="secondary" disabled={!page.length} onClick={selectPage}>
         <span data-copy-key={`jav.selection.page.${summary.all ? 'clear' : 'all'}`}>{summary.all ? t('catalog:javSelection.deselectPage') : t('catalog:javSelection.selectPage')}</span></Button>}>
-      <Button size="small" variant="secondary" disabled={!picked.size} onClick={() => setResources([...picked.values()])}>{t('catalog:shared.searchTorrents')}</Button>
+      <Button size="small" variant="secondary" disabled={!picked.size} onClick={() => setResources([...picked.values()].map(discoveryResourceWork))}>{t('catalog:shared.searchTorrents')}</Button>
       <Button size="small" variant="ghost" onClick={close}>{t('catalog:javSelection.exit')}</Button>
     </SelectionDock>
     <JavBatchResources items={resources} close={() => setResources(null)} readOnly={readOnly} receipt={receipt} />

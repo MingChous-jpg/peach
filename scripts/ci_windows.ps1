@@ -61,6 +61,8 @@ if ($Mode -eq 'build') {
     New-Item -ItemType Directory -Path release -Force | Out-Null
     & .venv/Scripts/python.exe scripts/package_windows_release.py --source dist/Peach --output release --version $Version --lite-installer
     Assert-Exit '发行包拆分失败'
+    & .venv/Scripts/python.exe scripts/windows_update_delta.py --output release --version $Version
+    if ($LASTEXITCODE -ne 0) { Write-Warning 'Windows 增量包未通过生成或重组校验，本版使用完整更新包' }
     & .venv/Scripts/python.exe scripts/update_compat.py --packages release --version $Version
     Assert-Exit '支持范围内的旧版客户端装不上这一版'
     Copy-Item -LiteralPath "dist/Peach-$Version-windows-x64-setup.exe" -Destination release/
@@ -169,7 +171,7 @@ try {
     Expand-Archive -LiteralPath "$Packages/Peach-$Version-windows-x64.zip" -DestinationPath candidate
     & $Python "$Packages/smoke_desktop.py" candidate/Peach/Peach.exe
     Assert-Exit '完整包运行验收失败'
-    & $Python "$Packages/smoke_split_update.py" --root $Packages --version $Version --destination split-candidate --prepare-with-app
+    & $Python "$Packages/smoke_split_update.py" --root $Packages --version $Version --destination split-candidate --prepare-with-app --defer-face-models
     Assert-Exit '拆分包重建失败'
     & $Python "$Packages/smoke_desktop.py" split-candidate/Peach/Peach.exe
     Assert-Exit '拆分包运行验收失败'

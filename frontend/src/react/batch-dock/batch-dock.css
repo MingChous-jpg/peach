@@ -5,23 +5,26 @@
  * 计数与键照 ADR-0031 的迁移前基线：正文 14/20 的壳字体，计数是次级墨色；键 36px 高、
  * `8px 12px` 内边距、10px 圆角、1px 描边加 xs 投影，字形 17px，字形与字之间 4px 间隙再加 6px 外边距。
  * 颜色全读 `:root` 上的壳 token（`--ink`、`--line`、`--surface`），`.peach-react` 里重定的
- * `--color-*` 是 BoardUI 的上游值，描边差一个色阶。危险键的红色归 `../styles.css` 的 `[data-danger]`。 */
+ * `--color-*` 是 BoardUI 的上游值，描边差一个色阶。 */
 
 [data-batch-dock],[data-batch-scope]{display:contents}
 
 [data-batch-scope] [data-selection-dock]{color:var(--ink);font:var(--board-body)}
 [data-batch-scope] [data-selection-dock]>[role="status"]{padding:0 8px;color:var(--ink-2);font:inherit;white-space:nowrap}
 [data-batch-scope] [data-selection-dock]>button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:4px;height:36px;min-height:36px;padding:8px 12px;border-radius:10px;font:var(--board-body-medium);white-space:nowrap;cursor:pointer}
-[data-batch-scope] [data-selection-dock]>button:not([data-danger]){border:1px solid var(--line);background:var(--surface);box-shadow:var(--elevation-xs);color:var(--ink);transition:background-color .15s ease}
-[data-batch-scope] [data-selection-dock]>button:not([data-danger]):hover:not(:disabled){background:var(--control-hover)}
-[data-batch-scope] [data-selection-dock]>button:not([data-danger]):disabled{border-color:var(--line);background:var(--ground);box-shadow:none;color:var(--muted)}
+[data-batch-scope] [data-selection-dock]>button{border:1px solid var(--line);background:var(--surface);box-shadow:var(--elevation-xs);color:var(--ink);transition:background-color .15s ease}
+[data-batch-scope] [data-selection-dock]>button:hover:not(:disabled){background:var(--control-hover)}
+[data-batch-scope] [data-selection-dock]>button:disabled{border-color:var(--line);background:var(--ground);box-shadow:none;color:var(--muted)}
 [data-batch-scope] [data-selection-dock]>button:focus-visible{outline:2px solid var(--tungsten);outline-offset:2px}
 [data-batch-scope] [data-selection-dock]>button svg{flex:none;width:var(--icon-inline);height:var(--icon-inline);margin-right:6px;fill:none;stroke:currentColor;stroke-width:2}
-[data-batch-scope] [data-selection-dock]>button[data-danger] svg{margin-right:0}
 
 /* 浮条出来时，作品详情那一层（`<dialog data-stage>`）的底部让出它的高度。开关是岛写在 `<body>` 上的
    属性，不用 `body:has(...)`：那种写法让每批插进页面的节点都把整棵 body 子树的样式重算一遍。 */
 body[data-batch-dock-open] :is(#grid,[data-stage]){padding-bottom:var(--selection-dock-space,180px)}
+/* 窄屏馆藏的页码也贴右，由反馈按钮的占位决定末行还能向上滚多少。 */
+@media(max-width:760px){
+  body[data-batch-dock-open] #grid{padding-bottom:max(var(--selection-dock-space,180px),var(--feedback-toast-floor,0px))}
+}
 
 /* 窄屏垃圾文件：三颗键一行等分、计数单占一行居中，横跨整行贴底。浮条的水平居中靠 SelectionDock 自己
    内联的 `translate(-50%)`，所以这里用「宽 = 视口减两边 12px」配 `left: 50%`，落点与贴边写法一样。 */

@@ -10,6 +10,7 @@ import re
 import stat
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -314,6 +315,7 @@ def _report(
 def _run(
     command: Sequence[str], environ: Mapping[str, str], data_root: Path,
 ) -> None:
+    started = time.monotonic_ns()
     if not command:
         raise EntrypointError("no command to run; the image provides the Peach command through CMD", EX_CONFIG)
 
@@ -339,6 +341,9 @@ def _run(
     verify_data_writable(data_root)
     child_environment = dict(environ)
     child_environment["HOME"] = str(data_root)
+    if tuple(command[1:3]) == ("-m", "peach.server"):
+        from .startup_diagnostics import CONTAINER_MS_ENV
+        child_environment[CONTAINER_MS_ENV] = str((time.monotonic_ns() - started) // 1_000_000)
     _report(data_root, identity, groups, preparation)
     try:
         os.execvpe(command[0], list(command), child_environment)

@@ -10,6 +10,7 @@
  * 首屏由壳铺骨架，身份资料就绪后挂载页面；作品、照片与新作各自替换对应区域的骨架。 */
 import { api } from '@peach/legacy/core';
 import { appSettingsStore } from '@peach/appearance';
+import { errorMessage } from '../../api';
 
 import type { CatalogGridProps, MediaPage, MediaPageOptions } from '../catalog-grid/types';
 import type { EntityBodyActions, EntityBodyHelpers, EntityCodeSet, EntityLocalPhoto, PhotoLayout, PhotoSize } from '../entity-body/entity-body';
@@ -21,8 +22,9 @@ import type { IndexPerson, PeopleLayout } from '../index/index-data';
 import { queryClient } from '../query';
 import { pendingRefetch } from '../components/pending-work';
 
-/** 地址栏上这一页的筛选，键同壳的 `ENTITY_FILTER_KEYS`。 */
-export const ENTITY_FILTER_KEYS = ['loc', 'creator', 'tag', 'state', 'dur_min', 'dur_max', 'orient', 'year', 'sort', 'dir', 'browse', 'folder', 'folder_recursive'] as const;
+/** 地址栏上这一页的筛选，键同壳的 `ENTITY_FILTER_KEYS`。`q` 是作品视图那枚查找框的词，随作品请求交给
+ *  `/api/items`，口径同首页搜索。 */
+export const ENTITY_FILTER_KEYS = ['loc', 'creator', 'tag', 'state', 'dur_min', 'dur_max', 'orient', 'year', 'q', 'sort', 'dir', 'browse', 'folder', 'folder_recursive'] as const;
 export type EntityFilters = Readonly<Record<string, string>>;
 
 /** 地址栏上的媒体视图：`media=photos`、`media=online` 与目录图集 `set=<id>`。名册不进地址栏，见 `rosterView`。 */
@@ -101,7 +103,7 @@ export interface EntityPageActions {
   clearFilter(key: string): void;
   clearAll(): void;
   /** 排序键：点未选中项换列，点选中项翻方向，判据同首页那一排。 */
-  setSort(key: string): void;
+  setSort(key: string, dir: 'asc' | 'desc'): void;
   /** 作品视图的换一批：种子是全站那一粒（`state.seed`），壳换好、写好地址再推回来；回的是新种子，
    *  页面据此先把那一页取到手，键上的转圈等的就是这一趟。 */
   reshuffleVideos(): string;
@@ -295,7 +297,7 @@ export const photosOptions = (kind: string, name: string, set: number, seed: str
     const page = await (api(photoUrl(kind, name, set, seed, pageParam?.offset || 0, pageParam?.seed || '')) as Promise<PhotoPage>)
       .catch((error: unknown) => {
         if (pageParam) throw error;
-        return { error: String(error) } as PhotoPage;
+        return { error: errorMessage(error) } as PhotoPage;
       });
     if (pageParam && page.error) throw new Error(page.error);
     return page;

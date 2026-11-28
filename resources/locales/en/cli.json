@@ -162,7 +162,8 @@
     "doctor": "Diagnose configuration, database, tools and mounts item by item without repairing anything",
     "doctorJson": "Print a redacted JSON report",
     "doctorHost": "Diagnose this service listen address",
-    "doctorPort": "Diagnose this service port"
+    "doctorPort": "Diagnose this service port",
+    "doctorStartupDiagnostics": "Read startup diagnostics or retain the next report for a script"
   },
   "server": {
     "description": "Run the Peach service managed from the browser",

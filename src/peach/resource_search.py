@@ -267,6 +267,20 @@ def _torrent_hash(client: httpx.Client, indexer: dict, link: str, deadline: floa
         return None
 
 
+def request_failure(error: Exception, *, status: int = 0) -> Said | None:
+    """用明确的连接错误或 HTTP 状态说明失败，不显示可能带令牌的请求地址。"""
+    if isinstance(error, (httpx.TimeoutException, TimeoutError)):
+        return Said('labels.resourceSearch.requestTimedOut')
+    if isinstance(error, httpx.TransportError):
+        return Said('labels.resourceSearch.connectionFailed')
+    if isinstance(error, httpx.HTTPStatusError):
+        status = error.response.status_code
+    if status:
+        code = {401: 'unauthorized', 403: 'accessDenied', 429: 'rateLimited'}.get(status)
+        return Said(f'labels.resourceSearch.{code}') if code else Said('labels.resourceSearch.httpFailure', status=status)
+    return None
+
+
 class Search:
     """一轮最多四个来源，每源两次查询、至多六份种子；同一进程串行并缓存一分钟。"""
     def __init__(self, *, transport=None, clock=time.monotonic):
@@ -276,7 +290,7 @@ class Search:
         self.cache: OrderedDict[tuple, tuple[float, dict]] = OrderedDict()
 
     def run(self, indexers: list[dict], code: str, filters: Filters, blocked=(), *,
-            priority: Callable[[dict], int] | None = None) -> dict:
+            priority: Callable[[dict], int] | None = None, retry: bool = False) -> dict:
         code = normalise_code_key(code)
         if not code or len(code) > 80 or not same_release_code(release_code_from_product(code), code):
             raise UserValueError("errors.resourceSearch.invalidCode")
@@ -292,7 +306,7 @@ class Search:
         try:
             key = (json.dumps(active, sort_keys=True), code, filters)
             cached = self.cache.get(key)
-            if cached and self.clock() - cached[0] < 60:
+            if not retry and cached and self.clock() - cached[0] < 60:
                 result = cached[1]
             else:
                 result = self._search(active, code, filters)
@@ -312,6 +326,8 @@ class Search:
         found: dict[str, dict] = {}
         retry_delays = []
         warnings = []
+        failures = []
+        retry_sources = []
         rejected: Counter = Counter()
         successful = 0
         deadline = time.monotonic() + 45
@@ -345,12 +361,21 @@ class Search:
                         else:
                             found[row["info_hash"]] = row
                 except (httpx.HTTPError, TimeoutError, UnicodeError, ParseError, TorznabAPIError) as error:
-                    warnings.append(Said("labels.resourceSearch.indexerFailed", indexer=indexer['name']))
+                    reason = request_failure(error) or Said(
+                        'labels.resourceSearch.indexerRejected' if isinstance(error, TorznabAPIError)
+                        else 'labels.resourceSearch.invalidResponse' if isinstance(error, (UnicodeError, ParseError))
+                        else 'labels.resourceSearch.requestFailed')
+                    failures.append(Said('labels.resourceSearch.indexerError', indexer=indexer['name'], error=reason))
+                    retry_sources.append(f"indexer:{indexer['key']}")
                     if (delay := transient_delay(error)) is not None:
                         retry_delays.append(delay)
                 except ValueError as error:
-                    warnings.append(Said("labels.resourceSearch.indexerError", indexer=indexer['name'],
-                                         error=nested_message(error)))
+                    failures.append(Said("labels.resourceSearch.indexerError", indexer=indexer['name'],
+                                         error=nested_message(error) if isinstance(error, UserValueError)
+                                         else Said('labels.resourceSearch.invalidResponse')))
+                    retry_sources.append(f"indexer:{indexer['key']}")
+        warnings.extend(failures)
+
         def rank(row):
             target = row[filters.goal] if filters.goal in ("chinese", "uncensored") else row["resolution"]
             return (-int(target), -row["resolution"], -row["seeders"], row["size"], row["info_hash"])
@@ -362,5 +387,7 @@ class Search:
         return {"ok": successful > 0, "state": "ready" if successful else "error",
                 "retry_after": max(retry_delays) if retry_delays else None,
                 "items": sorted(found.values(), key=rank), "warnings": warnings, **parallel("warning", warnings),
-                "rejected": dict(rejected),
+                "warning_sources": retry_sources + [""] * (len(warnings) - len(retry_sources)),
+                "retry_sources": retry_sources,
+                "rejected": dict(rejected), "failures": failures,
                 **coded("error", "" if successful else Said("labels.resourceSearch.allFailed"))}

@@ -7,10 +7,11 @@ import httpx
 from PIL import Image
 
 from .scraping_access import SOURCES, SourcePaused, SourceTransport, describe, save
+from .source_browser_login import cancel_source_browser_login
 
 from . import interface_text
 from .coded_text import coded
-from .source_checks import check_source
+from .source_checks import check_javdb_session, check_source
 from .user_messages import UserValueError, failure_fields
 
 
@@ -210,33 +211,67 @@ def w_scraping_settings(contract, body):
         from .scraping_access import save_browser_mode
         return {"ok": True, "browser_mode": save_browser_mode(contract.follow_secrets_root,
                                                               str(body.get("browser_mode") or ""))}
-    return {"ok": True, "saved": save(contract.follow_secrets_root, str(body.get("source", "")), body)}
+    source = str(body.get("source", ""))
+    if body.get("revoke") or body.get("cookie") or body.get("cookies_text"):
+        cancel_source_browser_login(contract, source)
+    return {"ok": True, "saved": save(contract.follow_secrets_root, source, body)}
 
 
 def w_scraping_check(contract, body):
-    return check_source(contract.follow_secrets_root, str(body.get("source", "")))
+    source = str(body.get("source", ""))
+    if source == "javdb" and body.get("verify_session") is True:
+        return check_javdb_session(contract.follow_secrets_root)
+    return check_source(contract.follow_secrets_root, source, lookup=body.get("lookup") is True)
 
 
-def w_scraping_check_all(contract, _body):
+def _failed_source_targets(previous: dict) -> dict[str, set[str]]:
+    return {
+        row["source"]: failed for row in previous.get("results", []) if (failed := {
+            check["target"] for check in row["results"]
+            if check.get("outcome") == "network"
+            or check.get("outcome") == "http" and check.get("reason") != "rate_limited"
+        })
+    }
+
+
+def w_scraping_check_all(contract, body):
     """全部来源跑一趟 `peach check-sources` 的同一检查。冷却中的来源在传输层直接判冷却，
     不发请求；不登记续跑：服务重启后不该自己再打一轮来源。"""
     from .source_preflight import check_sources, default_sources
     job = contract.source_check_job
-    sources = default_sources()
+    previous = job.snapshot() or {}
+    keep = {}
+    targets = None
+    if body.get("retry_failed") is True:
+        if previous.get("status") not in {"complete", "failed", "cancelled", "interrupted"}:
+            return previous
+        keep = {row["source"]: row for row in previous.get("results", [])}
+        targets = _failed_source_targets(previous)
+        if not targets:
+            return previous
+    sources = [key for key in default_sources() if targets is None or key in targets]
 
     def work(job_id):
         def done(row):
             with job.editing(job_id) as state:
                 if state is not None:
-                    state["results"].append(row)
+                    old = keep.get(row["source"])
+                    if old:
+                        changed = {check["target"]: check for check in row["results"]}
+                        row["results"] = [changed.get(check["target"], check) for check in old["results"]]
+                    keep[row["source"]] = row
+                    state["results"] = [keep[key] for key in default_sources() if key in keep]
                     state["checked"] += 1
                     state["current"] = {"label": row["label"]}
-        result = check_sources(contract.follow_secrets_root, sources, on_result=done)
-        targets = [target for row in result["sources"] for target in row["results"]]
-        job.update(job_id, status="complete", ok=result["ok"], results=result["sources"],
-                   failed=sum(target["outcome"] not in ("ok", "skipped") for target in targets),
+        options = {"targets": targets} if targets is not None else {}
+        result = check_sources(contract.follow_secrets_root, sources, on_result=done, **options)
+        results = [keep[key] for key in default_sources() if key in keep]
+        checks = [check for row in results for check in row["results"]]
+        failed = sum(check["outcome"] not in ("ok", "skipped") for check in checks)
+        ok = all(check["ok"] or check.get("reason") in {"needs_code", "not_configured"} for check in checks)
+        job.update(job_id, status="complete", ok=ok, results=results, failed=failed,
                    elapsed_s=result["elapsed_s"], completed_at=time.time())
-    return job.start(work, initial={"checked": 0, "total": len(sources), "results": []}, restart=True)
+    return job.start(work, initial={"checked": 0, "total": len(sources), "results": list(keep.values())}, restart=True)
 
 
 def q_scraping_amane_bridge(contract, args):

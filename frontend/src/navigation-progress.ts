@@ -14,6 +14,7 @@ import type { Query } from '@tanstack/query-core';
 
 import { listenManagedLoading, managedLoading } from './history/managed';
 import { queryClient } from './query';
+import { reportSlowLoad } from './slow-load';
 
 const SHOW_DELAY = 200;
 const MIN_SHOWN = 400;
@@ -32,10 +33,17 @@ export function installNavigationProgress(): () => void {
   let hideTimer = 0;
   let shownAt = 0;
   let queued = false;
+  let dataStarted: number | null = null;
+  let dataTimer = 0;
 
   const busy = () => managedLoading() || waiting.size > 0;
   const settle = () => {
     if (busy()) {
+      if (dataStarted === null) {
+        const started = performance.now();
+        dataStarted = started;
+        dataTimer = window.setTimeout(() => reportSlowLoad('page-data', performance.now() - started, {}, true), 5000);
+      }
       clearTimeout(hideTimer);
       hideTimer = 0;
       if (bar.dataset.state) {
@@ -48,6 +56,11 @@ export function installNavigationProgress(): () => void {
         bar.dataset.state = 'running';
       }, SHOW_DELAY);
       return;
+    }
+    if (dataStarted !== null) {
+      clearTimeout(dataTimer);
+      reportSlowLoad('page-data', performance.now() - dataStarted);
+      dataStarted = null;
     }
     clearTimeout(showTimer);
     showTimer = 0;
@@ -92,6 +105,7 @@ export function installNavigationProgress(): () => void {
     stopManaged();
     clearTimeout(showTimer);
     clearTimeout(hideTimer);
+    clearTimeout(dataTimer);
     bar.remove();
   };
 }

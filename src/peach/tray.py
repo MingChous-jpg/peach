@@ -16,6 +16,7 @@ import sys
 import threading
 import time
 import webbrowser
+from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -24,8 +25,8 @@ import httpx
 import pystray
 from PIL import Image
 
-from . import (desktop_startup, error_reporting, interface_text, ledger_backups, log_retention, onboarding,
-               retention_settings, runtime_prepare, settings_file, sparkle_update)
+from . import (desktop_alerts, desktop_startup, error_reporting, interface_text, ledger_backups, log_retention, onboarding,
+               retention_settings, runtime_prepare, settings_file, sparkle_update, startup_diagnostics)
 from .appid import MACOS_LAUNCH_AGENT_LABEL
 from .certs import ensure_certificate
 from .distribution import standalone
@@ -327,6 +328,7 @@ class ServiceManager:
             spec.name: (False, tray_text("tray.health.notChecked")) for spec in specs
         }
         self._mount_warnings: dict[str, tuple[str, ...]] = {}
+        self._desktop_health_faults: dict[str, set[str]] = {}
         # 拉起取证：诊断包要答得出「为什么拉起、拉起后多久才应答」。`_launched_at` 记本托盘
         # 拉起子进程的时刻，`_awaiting_ready` 是拉起后还没通过过健康检查的服务，
         # `_failures` 是自上次健康或拉起以来的连续失败（次数、首次失败时刻、最后一次的错误）。
@@ -367,6 +369,7 @@ class ServiceManager:
             self._last_health[spec.name] = (ok, detail)
             self._mount_warnings[spec.name] = warnings
             if ok:
+                self._desktop_health_faults[spec.name] = desktop_alerts.health_faults(payload)
                 self._failures.pop(spec.name, None)
                 if spec.name in self._awaiting_ready:
                     self._awaiting_ready.discard(spec.name)
@@ -377,6 +380,15 @@ class ServiceManager:
         if ready_after is not None:
             LOGGER.info("%s service passed its first health check %.1f s after launch", spec.name, ready_after)
         return ok
+
+    def desktop_faults(self) -> set[str]:
+        with self._lock:
+            active = set()
+            for spec in self.specs:
+                active.update(self._desktop_health_faults.get(spec.name, ()))
+                if not self._last_health.get(spec.name, (False, ""))[0]:
+                    active.add("service")
+        return active
 
     def _failure_summary(self, name: str) -> str:
         """自上次健康（或上次拉起、停止）以来的连续健康检查失败，写进拉起与超时日志。"""
@@ -470,6 +482,7 @@ class ServiceManager:
             # A frozen tray must not pass its one-file bootloader state to Peach.exe.
             environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
         environment.update(self._extra_env)
+        environment.update(startup_diagnostics.environment())
         environment["PEACH_TRAY_MANAGED"] = "1"
         return environment
 
@@ -515,7 +528,8 @@ class ServiceManager:
                         stderr=stderr,
                         shell=False,
                         creationflags=creationflags,
-                        env=environment,
+                        env=({**environment, startup_diagnostics.REASON_ENV: "restart_recovery"}
+                             if exit_code is not None else environment),
                     )
                 assign_to_job(self._job, process)
                 self._owned[spec.name] = process
@@ -1002,6 +1016,11 @@ def normal_url(config) -> str:
     return f"https://{normal_hostname(config)}/"
 
 
+def open_application(config, *, waiting: bool, open_browser: Callable[[str], object] | None = None) -> None:
+    url = setup_url(config) if waiting else normal_url(config)
+    (open_browser or webbrowser.open)(url)
+
+
 def configured_service_specs(config) -> tuple[ServiceSpec, ...]:
     """独立测试包按设置文件启动服务；源码入口沿用其生命周期。
 
@@ -1068,7 +1087,7 @@ class SetupGate:
         return self.manager.status_summary()
 
     def open(self) -> None:
-        self._open_browser(self.open_url())
+        open_application(self.config, waiting=self.waiting, open_browser=self._open_browser)
 
     def poll(self) -> bool:
         """设置完成了就切到正常服务。返回这一轮有没有切。
@@ -1180,6 +1199,15 @@ def show_message(title: str, message: str, *, error: bool = False) -> None:
         print(f"{title}: {message}")
 
 
+def _announce_desktop_faults(manager: ServiceManager, gate: SetupGate, alerts: desktop_alerts.FaultMonitor,
+                             notify: Callable[[str, str], None], *, action_in_progress: bool) -> None:
+    if action_in_progress:
+        return
+    allowed = not gate.waiting and desktop_alerts.enabled(gate.config.directory("state"))
+    for issue in alerts.observe(manager.desktop_faults(), allowed=allowed):
+        notify(tray_text(f"tray.desktopAlerts.{issue}"), "Peach")
+
+
 class PeachTray:
     def __init__(
         self,
@@ -1210,6 +1238,7 @@ class PeachTray:
         self._build_checked_at = time.monotonic()
         self._build_attempted_head: str | None = None
         self._pending_startup: tuple[list, bool, str | None] | None = None
+        self._desktop_alerts = desktop_alerts.FaultMonitor()
         enable_windows_menu_theme()
         version_menu = pystray.Menu(
             pystray.MenuItem(lambda _item: f"Peach {self.version.package_version}", None, enabled=False),
@@ -1353,13 +1382,20 @@ class PeachTray:
             return None, []
         migrated: list = []
         def prepare():
-            step = self._migrate()
-            migrated.append(step)
-            if step is not None and step.failed:
-                raise RuntimeError(step.message)
+            with startup_diagnostics.stage("ledger_migration"):
+                step = self._migrate()
+                migrated.append(step)
+                if step is not None and step.failed:
+                    raise RuntimeError(step.message)
         self._pending_startup = None
         try:
-            ready = self.manager.restart(prepare=prepare if self.preparation else None, reason=reason)
+            with startup_diagnostics.recording(STATE_DIR, "desktop",
+                                               reason="update_verification" if source_commit else ""):
+                if dependencies is not None:
+                    startup_diagnostics.stage_result("desktop_dependencies", "failed" if dependencies.failed else "completed")
+                ready = self.manager.restart(prepare=prepare if self.preparation else None, reason=reason)
+                if startup_diagnostics.active() and not ready and not self.manager.waiting_for_startup():
+                    startup_diagnostics.finish("failed")
         except RuntimeError:
             return False, self._record([dependencies, *migrated])
         return ready, self._complete_startup(ready, [dependencies, *migrated], source_commit=source_commit)
@@ -1598,13 +1634,20 @@ class PeachTray:
                             not down, steps, open_browser=open_browser, source_commit=source_commit,
                         )
                         if problems and self._pending_startup is None:
-                            self.icon.notify("；".join(problems), "Peach")
+                            self._notify_startup_problem()
                 finally:
                     self._action_lock.release()
             if down:
                 self.revive_services()
+            _announce_desktop_faults(self.manager, self.gate, self._desktop_alerts, self.icon.notify,
+                                     action_in_progress=self._action_lock.locked())
             self.icon.update_menu()
             self.poll_build_age()
+
+    def _notify_startup_problem(self) -> None:
+        if desktop_alerts.enabled(self.gate.config.directory("state")):
+            self._desktop_alerts.remember(self.manager.desktop_faults())
+            self.icon.notify(tray_text("tray.desktopAlerts.startup"), "Peach")
 
     def revive_services(self) -> bool:
         """有服务不健康、又不在本托盘手里跑着，就补拉一份。返回这一轮有没有动手。
@@ -1630,14 +1673,25 @@ class PeachTray:
         apply_macos_template(icon)
         self.gate.notify = lambda message, title: icon.notify(message, title)
         if self._startup_warning:
-            icon.notify(self._startup_warning, "Peach")
+            self._notify_startup_problem()
 
     def run(self) -> None:
         # 迁移排在第一次拉起子服务之前：服务查到还没建的表就是 500。依赖只读核对，
         # 托盘自己已经加载着这个 venv，换不了包。
-        startup = [self._check_dependencies(), self._migrate()]
+        with startup_diagnostics.stage("desktop_dependencies") as outcome:
+            dependencies = self._check_dependencies()
+            if dependencies is not None and dependencies.failed:
+                outcome("failed")
+        with startup_diagnostics.stage("ledger_migration") as outcome:
+            migration = self._migrate()
+            if migration is not None and migration.failed:
+                outcome("failed")
+        startup = [dependencies, migration]
         if not any(step is not None and step.failed for step in startup):
-            self.manager.start_missing(reason="tray startup")
+            with startup_diagnostics.stage("launch_services"):
+                self.manager.start_missing(reason="tray startup")
+        else:
+            startup_diagnostics.finish("failed")
         # 上一次更新留下的备份与暂存构建在这里清退：替换助手结束时托盘已经不在，
         # 只有下一次启动能确认「新托盘已经活下来、旧备份可以少留一份」。
         self.windows_updates.sweep_artifacts()
@@ -1772,6 +1826,28 @@ class MacUpdateEntry:
             self.sparkle.follow(state_dir)
 
 
+def _macos_open_callback(gate: SetupGate) -> Callable[[], None]:
+    """各菜单入口共享一个按需创建的原生窗口。"""
+    native_window = None
+
+    def open_peach() -> None:
+        nonlocal native_window
+        if gate.waiting:
+            gate.open()
+            return
+        try:
+            from .macos_webview import MacWindow
+
+            if native_window is None:
+                native_window = MacWindow(webbrowser.open)
+            native_window.open(gate.open_url())
+        except Exception:
+            LOGGER.exception("Could not open the Peach WebKit window")
+            gate.open()
+
+    return open_peach
+
+
 def run_macos_menu_bar(manager: "ServiceManager", gate: "SetupGate | None" = None, *, silent: bool = False, show_browser: bool = False) -> None:
     """macOS 走原生菜单栏项。
 
@@ -1781,6 +1857,7 @@ def run_macos_menu_bar(manager: "ServiceManager", gate: "SetupGate | None" = Non
     from .menubar import MenuBarApp, Submenu
 
     gate = gate or SetupGate(manager, settings_file.active(), waiting=False)
+    open_peach = _macos_open_callback(gate)
     versions = VersionManager()
     # 「同步开发进度」会把版本行写旧，所以标题读这个可变快照而不是闭包里那一份。
     # 不在标题里直接调 `inspect()`：它要开四次 git，而标题每 5 秒刷新一次。
@@ -1877,10 +1954,10 @@ def run_macos_menu_bar(manager: "ServiceManager", gate: "SetupGate | None" = Non
         create_icon(template=True),
         tray_text("tray.menu.tooltip"),
         [
-            (gate.open_label, gate.open),
+            (gate.open_label, open_peach),
             (lambda: tray_text("tray.menu.status", status=gate.status_line()), Submenu(lambda: [
                 *((line, None) for line in manager.status_details()),
-                (menu_text(tray_text("tray.menu.address", url=gate.open_url())), gate.open),
+                (menu_text(tray_text("tray.menu.address", url=gate.open_url())), open_peach),
                 (tray_text("tray.menu.fullConfiguration"), open_configuration),
             ])),
             (None, None),
@@ -1900,24 +1977,26 @@ def run_macos_menu_bar(manager: "ServiceManager", gate: "SetupGate | None" = Non
             (None, None),
             (tray_text("tray.menu.quit"), quit_now),
         ],
-        # 已在运行时再点开应用：和菜单第一项一样打开网页，图标被系统折叠时也有入口。
-        reopen=gate.open,
+        # Finder 重新打开应用时复用菜单第一项，保留窗口里的浏览状态。
+        reopen=open_peach,
     )
     app["app"] = menu
     updates.sparkle = sparkle_update.start(config=lambda: gate.config, stop_services=manager.stop_owned,
                                            notify=notify)
     gate.notify = lambda message, title: notify(message, title)
     if (gate.waiting and not silent) or show_browser:
-        gate.open()
+        open_peach()
 
     # `manager.status()` 读的是 `healthy()` 写下的缓存。pystray 那条路径有 `_monitor`
     # 线程定时重采样，这条路径漏了，于是缓存永远停在启动那一刻——服务还没起来时测的
     # 那一次 False，菜单里就一直显示「未运行」。
     def poll_health() -> None:
+        alerts = desktop_alerts.FaultMonitor()
         while not stopped.wait(5.0):
             gate.poll()
             for spec in manager.specs:
                 manager.healthy(spec)
+            _announce_desktop_faults(manager, gate, alerts, notify, action_in_progress=action_lock.locked())
             updates.follow(gate.config.directory("state"))
 
     def refresh_certificate() -> bool:
@@ -2042,18 +2121,30 @@ def main(argv: list[str] | None = None) -> int:
         return failure_exit_code()
 
 
+def _load_startup_config() -> tuple[settings_file.PeachConfig, int]:
+    started = time.monotonic_ns()
+    try:
+        config = settings_file.load_config()
+    except settings_file.SettingsFileError:
+        fallback = settings_file.load_config(strict=False)
+        with startup_diagnostics.recording(fallback.directory("state"), "desktop"):
+            startup_diagnostics.stage_result("configuration", "failed", (time.monotonic_ns() - started) // 1_000_000)
+            raise
+    return config, (time.monotonic_ns() - started) // 1_000_000
+
+
 def _main(argv: list[str] | None = None) -> int:
     # 参数解析必须排在任何进程级副作用之前：`--help` 和拼错的参数都要在 HiDPI 设置、
     # 单实例锁和目录创建之前退出，否则一条试探命令就会在磁盘上凭空造出一个 Peach 数据目录，
     # 让之后的安装探测把这台机器误判成已配置。
     args = build_parser().parse_args(argv)
-    config = settings_file.load_config()
+    config, config_elapsed = _load_startup_config()
     error_reporting.install(config.directory("logs"))
     waiting = needs_setup(config)
     instance = SingleInstance(config.directory("state") / "peach-tray.lock")
     if instance.is_running():
         if not args.silent:
-            webbrowser.open(setup_url(config) if waiting else normal_url(config))
+            open_application(config, waiting=waiting)
         return 0
     try:
         if handoff_tray(sys.argv[1:] if argv is None else argv, PROJECT_ROOT):
@@ -2073,9 +2164,13 @@ def _main(argv: list[str] | None = None) -> int:
         instance.acquire()
     except AlreadyRunning:
         if not args.silent:
-            webbrowser.open(setup_url(config) if waiting else normal_url(config))
+            open_application(config, waiting=waiting)
         return 0
+    capture = ExitStack()
     try:
+        reason = "restart_recovery" if os.environ.get("PEACH_TRAY_RECOVERIES") else ""
+        capture.enter_context(startup_diagnostics.recording(config.directory("state"), "desktop", reason=reason))
+        startup_diagnostics.stage_result("configuration", "completed", config_elapsed)
         # 日志按设置的天数保留、按月切段，必须排在任何子进程打开日志之前：Windows 上被占着的
         # 文件改不了名也删不掉。整理不了只记日志，不能因此不起托盘。
         try:
@@ -2105,15 +2200,18 @@ def _main(argv: list[str] | None = None) -> int:
                 LOGGER.exception("Failed to enable automatic recovery after abnormal tray exits")
                 lifecycle.stop("watchdog-start-failed", os.getpid())
                 lifecycle = None
-        specs = build_setup_service_specs(config) if waiting else configured_service_specs(config)
+        with startup_diagnostics.stage("desktop_services"):
+            specs = build_setup_service_specs(config) if waiting else configured_service_specs(config)
         manager = ServiceManager(specs, log_dir=config.directory("logs"))
         gate = SetupGate(manager, config, waiting=waiting, instance=instance)
         if sys.platform == "darwin":
             if not waiting:
-                migration = tray_preparation(config, manager).migrations.apply()
-                if migration.failed:
-                    raise RuntimeError(migration.message)
-            manager.start_missing(reason="tray startup")
+                with startup_diagnostics.stage("ledger_migration"):
+                    migration = tray_preparation(config, manager).migrations.apply()
+                    if migration.failed:
+                        raise RuntimeError(migration.message)
+            with startup_diagnostics.stage("launch_services"):
+                manager.start_missing(reason="tray startup")
             run_macos_menu_bar(manager, gate, silent=args.silent, show_browser=args.show)
         else:
             tray = PeachTray(manager, gate=gate, silent=args.silent, show_browser=args.show,
@@ -2124,12 +2222,15 @@ def _main(argv: list[str] | None = None) -> int:
             tray.run()
         exit_code = 0
     except Exception as exc:
+        startup_diagnostics.finish("failed")
         LOGGER.exception("Tray run failed")
         if not os.environ.get("PEACH_TRAY_RECOVERIES"):
             show_message(tray_text("tray.title.startFailed"), error_reporting.failure_details("tray-runtime", exc),
                          error=True)
         return failure_exit_code()
     finally:
+        startup_diagnostics.finish("interrupted")
+        capture.close()
         if lifecycle is not None:
             lifecycle.exited(exit_code)
         if manager is not None:

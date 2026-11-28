@@ -36,7 +36,7 @@ if(location.pathname==='/wall')document.documentElement.setAttribute('data-wall-
 </head>
 <body>
 <a class="skiplink" href="#main" data-i18n="shell:chrome.skipToContent">跳到正文</a>
-<!-- Lucide static 1.77.0, ISC. Local pinned subset; no CDN/runtime dependency.
+<!-- Lucide static 1.79.0, ISC. Local pinned subset; no CDN/runtime dependency.
      Climax uses Health Icons 3.1.0 sperm outline-24px, CC0/public domain.
      Phosphor 2.1.1 regular, MIT: filled glyphs where a stroked icon cannot say it. -->
 <svg aria-hidden="true" width="0" height="0" style="position:absolute;overflow:hidden">
@@ -85,6 +85,7 @@ if(location.pathname==='/wall')document.documentElement.setAttribute('data-wall-
   <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" /></symbol>
   <symbol id="i-columns-2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M12 3v18" /></symbol>
   <symbol id="i-layout-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol>
   <symbol id="i-gallery-thumbnails" viewBox="0 0 24 24"><rect width="18" height="14" x="3" y="3" rx="2" /><path d="M4 21h1" /><path d="M9 21h1" /><path d="M14 21h1" /><path d="M19 21h1" /></symbol>
   <!-- Lucide captions-off（lucide-static 1.40.0）：关注图片墙上「仅显示图片」开关的字形——收起说明、徽标、状态，只留图。 -->
   <symbol id="i-captions-off" viewBox="0 0 24 24"><path d="M10.5 5H19a2 2 0 0 1 2 2v8.5" /><path d="M17 11h-.5" /><path d="M19 19H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2" /><path d="m2 2 20 20" /><path d="M7 11h4" /><path d="M7 15h2.5" /></symbol>
@@ -138,6 +139,7 @@ if(location.pathname==='/wall')document.documentElement.setAttribute('data-wall-
   <!-- JAV 入口：外框与其余 Lucide 图标同为 24×24 描边方框，字面走填色。
        用 SVG 而不是 CSS 边框加文字，才能和其它图标共用同一套描边渲染。 -->
   <symbol id="i-jav" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><text x="12" y="16.6" text-anchor="middle" font-size="11.5" font-weight="600" fill="currentColor" stroke="none">番</text></symbol>
+  <symbol id="i-bot-orb" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 11v2m6-2v2"/></symbol>
   <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /></symbol>
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></symbol>
   <symbol id="i-hard-drive" viewBox="0 0 24 24"><path d="M10 16h.01" /><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /><path d="M21.946 12.013H2.054" /><path d="M6 16h.01" /></symbol>
@@ -228,12 +230,14 @@ if(location.pathname==='/wall')document.documentElement.setAttribute('data-wall-
   <button class="ib searchback" id="searchBack" title="退出搜索" aria-label="退出搜索" data-i18n-title="shell:chrome.exitSearch" data-i18n-aria-label="shell:chrome.exitSearch"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron-left"/></svg><span data-glass-drift aria-hidden="true"><span data-drift="b"><span></span></span><span data-drift="a"><span></span></span></span></button>
   <div class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
     <input id="q" name="q" type="search" enterkeyhint="search" placeholder="搜索馆藏" data-suggestion="" autocomplete="off" aria-label="搜索作品、女优、厂牌或标签" data-i18n-placeholder="catalog:searchSuggest.placeholder" data-i18n-aria-label="shell:chrome.searchLabel">
+    <span id="aiSearchAction" class="peach-react"></span>
     <div class="searchmenu" id="searchMenu" data-search-menu hidden></div><span data-glass-drift aria-hidden="true"><span data-drift="b"><span></span></span><span data-drift="a"><span></span></span></span></div>
   <button class="ib" id="searchBtn" title="搜索" aria-label="搜索" data-i18n-title="catalog:shared.search" data-i18n-aria-label="catalog:shared.search"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg><span data-glass-drift aria-hidden="true"><span data-drift="b"><span></span></span><span data-drift="a"><span></span></span></span></button>
   <button class="ib" id="immerseBtn" title="沉浸模式 · 随机连播" aria-label="进入沉浸模式" data-i18n-title="shell:chrome.immersiveTitle" data-i18n-aria-label="catalog:shortsStrip.enterImmersive"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-play"/></svg><span data-glass-drift aria-hidden="true"><span data-drift="b"><span></span></span><span data-drift="a"><span></span></span></span></button>
   <button class="ib" id="wallBtn" title="播放墙" aria-label="进入播放墙" data-i18n-title="shell:routeTitle.videoWall" data-i18n-aria-label="shell:chrome.openWall"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gallery-thumbnails"/></svg><span data-glass-drift aria-hidden="true"><span data-drift="b"><span></span></span><span data-drift="a"><span></span></span></span></button>
   <button class="ib" id="selectMode" title="多选（Ctrl 单项，Shift 连续）" aria-label="多选模式" data-i18n-title="shell:chrome.selectTitle" data-i18n-aria-label="shell:chrome.selectMode" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-square-check-big"/></svg><span data-glass-drift aria-hidden="true"><span data-drift="b"><span></span></span><span data-drift="a"><span></span></span></span></button>
   <button class="ib" id="density" aria-label="切换卡片密度" data-i18n-aria-label="shell:chrome.densityToggle"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layout-grid"/></svg><span data-glass-drift aria-hidden="true"><span data-drift="b"><span></span></span><span data-drift="a"><span></span></span></span></button>
+  <button type="button" class="ib" id="notificationCenter" disabled aria-haspopup="dialog" aria-expanded="false" aria-label="通知中心" title="通知中心" data-i18n-aria-label="shell:notifications.title" data-i18n-title="shell:notifications.title"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bell"/></svg><span data-glass-drift aria-hidden="true"><span data-drift="b"><span></span></span><span data-drift="a"><span></span></span></span></button>
   <button class="ib" id="settingsBtn" title="设置" aria-label="打开设置" data-i18n-title="shell:routeTitle.preferences" data-i18n-aria-label="shell:chrome.openPreferences"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-settings"/></svg><span data-glass-drift aria-hidden="true"><span data-drift="b"><span></span></span><span data-drift="a"><span></span></span></span></button>
 
 <button class="ib" id="tutorialBtn" title="新手教程" aria-label="打开新手教程" data-i18n-title="onboarding:tutorialCenter.title" data-i18n-aria-label="shell:chrome.openTutorial"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compass"/></svg></button>

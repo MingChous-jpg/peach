@@ -765,7 +765,7 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
           })(),
           circle: read('[data-immerse-circle]', ['width', 'height', 'border-radius', 'background-color', 'color']),
           glyph: read('[data-immerse-circle] svg', ['width', 'height', 'fill', 'stroke']),
-          author: read('[data-immerse-author]>a', ['color', 'font-weight']),
+          author: read('[data-immerse-owner]', ['color', 'font-weight']),
           title: read('[data-immerse-title]', ['font-size', 'font-weight', 'text-overflow', 'white-space', 'pointer-events']),
           caption: read('[data-immerse-ui]', ['pointer-events']),
           progress: read('[data-immerse-bar] i', ['height']),
@@ -821,7 +821,7 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
       await page.evaluate(() => { document.documentElement.dataset.theme = 'light' });
       assert.deepEqual(await page.evaluate(() => [
         getComputedStyle(document.querySelector('[data-immerse]')!).backgroundColor,
-        getComputedStyle(document.querySelector('[data-immerse-author]>a')!).color,
+        getComputedStyle(document.querySelector('[data-immerse-owner]')!).color,
       ]), ['rgb(15, 15, 15)', 'rgb(241, 241, 241)']);
       assert.deepEqual(opened.problems.filter((line) => !line.includes('VIDEOJS')), []);
     } finally {
@@ -946,7 +946,7 @@ describe('设计决定：关注详情、作品详情、播放器与侧栏', () =
         return {
           toggle: [Math.round(toggle.width), Math.round(toggle.height)],
           groups: [...new Set([...drawer.querySelectorAll('[data-sidebar-group]')].map((group) => getComputedStyle(group).display))],
-          labels: [...new Set([...drawer.querySelectorAll('[data-sidebar-nav] button span')].map((span) => getComputedStyle(span).maxWidth))],
+          labels: [...new Set([...drawer.querySelectorAll('[data-sidebar-nav] [data-nav] span')].map((span) => getComputedStyle(span).maxWidth))],
         };
       });
       assert.deepEqual(rail, { toggle: [36, 20], groups: ['none'], labels: ['0px'] }, '收起的窄栏不是一列图标');

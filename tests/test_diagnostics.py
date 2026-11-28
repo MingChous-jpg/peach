@@ -12,7 +12,7 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
-from peach import cli, diagnostics, health
+from peach import cli, diagnostics, health, startup_diagnostics
 from peach.config import PeachSettings
 from peach.ffmpeg import BinaryChoice
 from peach.migrations import upgrade
@@ -40,6 +40,45 @@ class DiagnosticsTests(unittest.TestCase):
 
     def inspect(self):
         return diagnostics.report(self.settings, EMPTY_MOUNTS, config=self.config)
+
+    def test_next_startup_is_consumed_once_and_a_child_shares_the_report(self):
+        state = self.root / "state"
+        self.assertTrue(startup_diagnostics.request(state, "workflow_probe")["pending"])
+        with startup_diagnostics.recording(state, "desktop"):
+            ticket = startup_diagnostics.environment()[startup_diagnostics.TICKET_ENV]
+            with startup_diagnostics.stage("ledger_migration"):
+                pass
+            with startup_diagnostics.recording(state, "web"):
+                self.assertFalse(startup_diagnostics.active())
+            with startup_diagnostics.recording(state, "web", inherited=ticket):
+                with startup_diagnostics.stage("web_startup"):
+                    pass
+                startup_diagnostics.finish("completed")
+                startup_diagnostics.mount_results({"missing": 1, "ok": 2})
+        report = startup_diagnostics.snapshot(state)
+        self.assertFalse(report["pending"])
+        self.assertEqual(report["capture"]["status"], "completed")
+        self.assertEqual(report["capture"]["mounts"], {"missing": 1, "ok": 2})
+        self.assertEqual([row["role"] for row in report["capture"]["stages"]], ["desktop", "web"])
+        self.assertNotIn(ticket, json.dumps(report))
+        with startup_diagnostics.recording(state, "supervisor"):
+            self.assertTrue(startup_diagnostics.active())
+            startup_diagnostics.finish("completed")
+        self.assertEqual(startup_diagnostics.snapshot(state), report)
+
+    def test_dead_capture_is_interrupted_and_no_private_error_text_is_exported(self):
+        state = self.root / "state"
+        with startup_diagnostics.recording(state, "web"):
+            with patch.object(startup_diagnostics, "_owner_alive", return_value=False):
+                self.assertEqual(startup_diagnostics.snapshot(state)["capture"]["status"], "interrupted")
+        with patch.object(startup_diagnostics, "_owner_alive", return_value=False):
+            with self.assertRaises(PermissionError), startup_diagnostics.recording(state, "supervisor"):
+                with startup_diagnostics.stage("ledger_migration"):
+                    raise PermissionError("private-path")
+        public = startup_diagnostics.snapshot(state)["capture"]
+        self.assertEqual(public["status"], "failed")
+        self.assertEqual(public["stages"][0]["status"], "failed")
+        self.assertNotIn("private-path", (state / startup_diagnostics.NAME).read_text(encoding="utf-8"))
 
     def test_missing_empty_and_corrupt_databases_are_distinct_and_never_created(self):
         self.assertEqual(health.inspect_database(self.db)["database"], "missing")

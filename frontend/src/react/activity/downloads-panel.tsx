@@ -9,35 +9,38 @@
  * 违规的不给（服务端也会拒）。每张卡都能复制磁力：接口失效时退回手动添加。 */
 import { useId, useState, type CSSProperties } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { IndexSearch } from '../index/index-search';
 import { showToast } from '../toaster';
 
 import { Chip } from '@/components/base/badges/chip';
-import { Button } from '@/components/base/buttons/button';
+import { Button, ButtonLink } from '@/components/base/buttons/button';
 
-import { apiGet, apiSend, errorMessage } from '../../api';
+import { apiSend } from '../../api';
 import { javTitleParts } from '../../core/jav-title';
 import { codedText, serverLabel } from '../../core/server-text';
 import { entityDisplayName } from '../../core/entity-names';
+import { PerformerCredit } from '../components/performer-credit';
 import { useEntityNames } from '../use-entity-names';
 import type { DownloadsSnapshot, DownloadTask } from '../bundle';
 import { cardClass } from '../components/card';
 import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { Progress } from '../components/progress';
 import { DataTableFooter } from '../components/table-controls';
 import { CollapseRegion } from '../components/collapse-region';
 import { ErrorText } from '../settings/section';
 import { busyProps, useAction } from '../settings/use-action';
-import { momentText } from './tasks';
+import { DOWNLOADS_KEY, DOWNLOADS_URL, downloadsPageQuery, momentText } from './tasks';
 import { withBackoff } from '../../polling';
 import { SourceLabel } from '../components/source-label';
 import { ArtSlot } from '../components/art-slot';
+import { CastPopover } from '../components/cast-popover';
 import { avatarInner, coverImage, relayoutCovers } from '@peach/card-art';
 import { entityPath } from '@peach/legacy/core';
 import { COVER_FRONT_RATIO } from '@peach/appearance';
 import { joinList, t } from '../../i18n';
 
-export const DOWNLOADS_URL = '/api/downloads';
-export const DOWNLOADS_KEY = ['downloads'] as const;
+export { DOWNLOADS_KEY, DOWNLOADS_URL } from './tasks';
 const CANCEL_URL = '/api/downloads/cancel';
 const POSTPROCESS_URL = '/api/downloads/postprocess';
 
@@ -82,9 +85,10 @@ export function DownloadsPanel() {
   const id = useId();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  /* 按番号、标题或文件名找一次提交：服务端在全部任务里筛，翻页也在结果里翻。 */
+  const [search, setSearch] = useState('');
   const query = useQuery({
-    queryKey: [...DOWNLOADS_KEY, 'page', page, pageSize],
-    queryFn: ({ signal }) => apiGet<DownloadsSnapshot>(`${DOWNLOADS_URL}?limit=${pageSize}&page=${page}`, signal),
+    ...downloadsPageQuery(page, pageSize, search),
     refetchInterval: downloadsInterval,
     placeholderData: (previous) => previous,
   });
@@ -92,14 +96,22 @@ export function DownloadsPanel() {
   if (query.data && query.data !== lastData) setLastData(query.data);
   const data = query.data || lastData;
   const tasks = data?.tasks || [];
-  if (!tasks.length && !query.error) return null;
+  const alerts = data?.channel_alerts || [];
+  if (!tasks.length && !alerts.length && !query.error && !search) return null;
   return (
     <section id="cloudDownloads" aria-labelledby={id} className="flex min-w-0 flex-col gap-3">
-      <h3 id={id} className="text-title-2-medium text-text-primary">{t('manage:downloadsPanel.title')}</h3>
-      {query.error ? <Note tone="error">{errorMessage(query.error)}</Note> : null}
-      {(data?.channel_alerts || []).map((alert) => (
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <h3 id={id} className="text-title-2-medium text-text-primary">{t('manage:downloadsPanel.title')}</h3>
+        <IndexSearch label={t('manage:downloadsPanel.search')} value={search} onQuery={value => { setSearch(value); setPage(1) }} />
+      </div>
+      {query.error ? <QueryErrorNote titleKey="manage:downloadsPanel.loadFailed" query={query} /> : null}
+      {alerts.map((alert) => (
         // 配置失效与连不上要用户动手，按错误显示；空间与额度等着腾出来，按提醒显示。
         <Note key={alert.provider} tone={alert.failure === 'config' || alert.failure === 'network' ? 'error' : 'warning'}
+          action={alert.failure === 'config' || alert.failure === 'network' ?
+            <ButtonLink href="/settings/downloads" variant="secondary" size="small">
+              <span data-copy-key="shell.downloadChannels.settingsLink">{t('shell:downloadChannels.settingsLink')}</span>
+            </ButtonLink> : undefined}
           title={t('shell:format.labelValue', { label: alert.provider_label,
             value: serverLabel(`download.failure.${alert.failure}`, alert.failure) })}>
           {t('manage:downloadsPanel.channelAlert', {
@@ -110,7 +122,7 @@ export function DownloadsPanel() {
         ? <ul aria-live="polite" className="flex min-w-0 flex-col gap-3">
             {tasks.map((task) => <TaskCard key={task.id} task={task} writable={data?.available ?? false} />)}
           </ul>
-        : null}
+        : search && !query.isFetching && !query.isError ? <p role="status" className="text-body-2-regular text-text-secondary">{t('manage:downloadsPanel.noMatches')}</p> : null}
       <DataTableFooter label={t('manage:downloadsPanel.title')} total={data?.total ?? tasks.length}
         pagination={{ pageIndex: (data?.page || page) - 1, pageSize }}
         onChange={(next) => {
@@ -132,6 +144,8 @@ function TaskCard({ task, writable }: { task: DownloadTask; writable: boolean })
     || (task.cancellable && task.failure_detail ? t('manage:downloadsPanel.retryLater', { detail: codedText(task, 'failure_detail') }) : '');
   const artwork = task.artwork;
   const people = artwork?.performer_entities || [];
+  const lead = people[0];
+  const castNames = joinList(people.map(person => entityDisplayName('performer', person.name, person.id)));
   const detailHref = task.state === 'ingested' && task.asset_id ? `/assets/${task.asset_id}` : undefined;
   const failed = task.state === 'failed' || task.postprocess_state === 'failed';
   const meta = [task.display_code || task.code ? '' : t('manage:downloadsPanel.codeUnrecognized'), task.target, momentText(task.submitted_at)]
@@ -186,14 +200,15 @@ function TaskCard({ task, writable }: { task: DownloadTask; writable: boolean })
           </div>
         </div>
         <div className="flex min-w-0 items-center gap-2 text-caption-1-regular text-text-secondary"><span className="flex shrink-0"><SourceLabel source={task.provider} label={task.provider_label} /></span><span className="min-w-0 truncate" title={meta}>{meta}</span></div>
-        {people.length ? <div className="flex min-w-0 items-center gap-2">
+        {lead ? <div className="flex min-w-0 items-center gap-2 text-caption-1-regular">
           <div className="flex shrink-0 items-center gap-1">
             {people.slice(0, 3).map((person) => <a key={person.id || person.name} data-media-avatar=""
               href={entityPath('performer', person.name, person.id)} aria-label={t('manage:downloadsPanel.openActress', { name: entityDisplayName('performer', person.name, person.id) })} title={entityDisplayName('performer', person.name, person.id)}
               dangerouslySetInnerHTML={{ __html: avatarInner(person.name, person, null) }} />)}
           </div>
-          <span className="min-w-0 truncate text-caption-1-regular text-text-secondary"
-            title={joinList(people.map((person) => entityDisplayName('performer', person.name, person.id)))}>{joinList(people.map((person) => entityDisplayName('performer', person.name, person.id)))}{(artwork?.performer_total || 0) > people.length ? t('manage:downloadsPanel.performerTotal', { total: artwork!.performer_total, count: artwork!.performer_total! - people.length }) : ''}</span>
+          <PerformerCredit name={entityDisplayName('performer', lead.name, lead.id)} title={castNames}
+            href={entityPath('performer', lead.name, lead.id)} />
+          <CastPopover people={people} total={artwork?.performer_total} assetId={task.asset_id ?? undefined} />
         </div> : null}
         {task.state === 'remote_running' && task.progress != null
           ? <Progress label={t('manage:downloadsPanel.remoteProgress')} value={Math.round(task.progress * 100)} max={100} />

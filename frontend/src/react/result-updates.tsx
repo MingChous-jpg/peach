@@ -1,7 +1,7 @@
 /** 页面持续读取已提交结果；仅使发生变化的资料缓存失效。新到的入库通知弹 toast。
  *  这也是全站唯一常驻的那一处检查：在排在跑的任务（`running_tasks`）由它带来，别的页面只读缓存
  *  （`running-tasks.ts`），据此决定要不要开始盯自己那份进度。 */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ShellActions } from './router/shell-actions';
 
@@ -14,6 +14,7 @@ import { queryClient } from './query';
 import { showToast } from './toaster';
 import { t } from '../i18n';
 import { appSettingsStore } from '../appearance/settings';
+import { browserNoticePermission, deliverBrowserNotices, type BrowserNotice } from './browser-notifications';
 
 const CATALOG = ['catalog-grid', 'catalog-folders', 'item', 'item-related', 'item-queue',
   'entity', 'entity-items', 'entity-photos', 'entity-route', 'index', 'stats',
@@ -24,7 +25,7 @@ const DISCOVERIES = ['feed-new', 'jav-discoveries', 'jav-releases', 'jav-detail'
    算在线播放，口味页读关注来源推账号，所以它们也跟着 `follow` 刷新。对照见
    `tests/test_ledger_revision.py` 的 `ResultVersionTablesTests`。 */
 const READINGS: Record<string, string[]> = {
-  catalog: [...CATALOG, ...FOLLOW, 'review', 'taste'],
+  catalog: [...CATALOG, ...FOLLOW, 'review', 'taste', 'library-processing'],
   follow: [...FOLLOW, 'stats', 'taste'],
   discoveries: DISCOVERIES,
   review: ['review'],
@@ -90,21 +91,52 @@ export function announceIngests(seen: { epoch: string; last: number } | null,
 export const resultUpdatesInterval = withBackoff<ResultUpdatesData>((data) =>
   (data?.busy ? RESULT_BUSY_POLL_MS : RESULT_IDLE_POLL_MS));
 
-export function ResultUpdates({ openItem }: Pick<ShellActions, 'openItem'>) {
-  const query = useQuery({ queryKey: RESULT_UPDATES_KEY, queryFn: ({ signal }) => fetchResultUpdates(signal),
-    refetchInterval: resultUpdatesInterval });
+export function ResultUpdates({ openItem, navigate }: Pick<ShellActions, 'openItem'> & Partial<Pick<ShellActions, 'navigate'>>) {
+  const preferences = appSettingsStore();
+  useSyncExternalStore(preferences.subscribe, preferences.version);
+  const browser = preferences.value.browserNotices && browserNoticePermission() === 'granted';
+  const query = useQuery({ queryKey: RESULT_UPDATES_KEY, queryFn: ({ signal }) => fetchResultUpdates(signal, browser),
+    refetchInterval: resultUpdatesInterval, refetchIntervalInBackground: browser });
   const previous = useRef<Record<string, string> | undefined>(undefined);
   const announced = useRef<{ epoch: string; last: number } | null>(null);
+  const seenTasks = useRef<Set<string> | null>(null);
   const [refresh] = useState(createResultRefresher);
   const versions = query.data?.result_versions;
   const notices = query.data?.ingest_notices;
+  const tasks = query.data?.task_notices;
   useEffect(() => {
     if (!versions) return;
     if (previous.current) void refresh(previous.current, versions);
     previous.current = versions;
   }, [versions, refresh]);
   useEffect(() => {
-    announced.current = announceIngests(announced.current, notices, openItem, appSettingsStore().value.ingestNotices !== false);
-  }, [notices, openItem]);
+    const seen = announced.current;
+    const events: BrowserNotice[] = [];
+    if (browser && notices && seen?.epoch === notices.epoch) {
+      for (const item of notices.items) {
+        if (item.kind === 'download' && item.id > seen.last) {
+          events.push({ id: `peach-download-${notices.epoch}-${item.id}`, kind: 'download', href: `/assets/${item.asset_id}` });
+        }
+      }
+    }
+    if (!browser) seenTasks.current = null;
+    if (browser && tasks) {
+      const next = new Set<string>();
+      for (const task of tasks) {
+        const id = `peach-task-${task.id}-${task.finished_at}`;
+        next.add(id);
+        const ended = Date.parse(task.finished_at);
+        const started = task.started_at ? Date.parse(task.started_at) : NaN;
+        if (seenTasks.current && !seenTasks.current.has(id)
+          && (task.status === 'failed' || ended - started >= 30_000)) {
+          events.push({ id, kind: task.status === 'failed' ? 'failed' : 'completed', href: `/tasks#run-${task.id}` });
+        }
+      }
+      seenTasks.current = next;
+    }
+    if (browser) deliverBrowserNotices(events, navigate ?? (href => window.location.assign(href)));
+    announced.current = announceIngests(seen, notices, openItem,
+      preferences.value.ingestToasts && document.visibilityState === 'visible');
+  }, [notices, tasks, openItem, navigate, browser, preferences]);
   return null;
 }

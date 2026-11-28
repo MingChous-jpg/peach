@@ -69,8 +69,9 @@ export function storeJavLayout(value: unknown, store: LayoutStore = appSettingsS
   store.value.javLayout = normalizeJavLayout(value); store.save();
 }
 /** 设置面板那一组「视频封面默认大小」：首页与 JAV 一起改。 */
-export function storeVideoLayout(value: unknown, store: LayoutStore = appSettingsStore()): void {
-  store.value.homeLayout = store.value.javLayout = normalizeJavLayout(value); store.save();
+export function storeVideoLayout(value: unknown, store: LayoutStore = appSettingsStore()): boolean {
+  store.value.homeLayout = store.value.javLayout = normalizeJavLayout(value);
+  return store.save();
 }
 export function storePhotoSize(value: unknown, store: LayoutStore = appSettingsStore()): void {
   store.value.photoSize = allowedSetting(value, PHOTO_SIZE_KEYS, 'small'); store.save();

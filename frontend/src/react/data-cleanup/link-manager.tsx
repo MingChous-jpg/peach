@@ -13,9 +13,10 @@ import { useQuery } from '@tanstack/react-query';
 import { entityPath, esc, firstGrapheme } from '@peach/legacy/core';
 import { entityFaceImg } from '@peach/card-art';
 
-import { Button } from '@/components/base/buttons/button';
+import { Button, ButtonLink } from '@/components/base/buttons/button';
 import { Chip } from '@/components/base/badges/chip';
 import { StatusLabel } from '../components/status-label';
+import { QueryErrorNote } from '../components/query-error-note';
 
 import { errorMessage } from '../../api';
 import { ErrorExcerpt } from '../activity/error-excerpt';
@@ -30,6 +31,7 @@ import { Note } from '../components/note';
 import { SiteMark } from '../components/site-mark';
 import { ColumnFilterAvatar } from '../components/column-filter-avatar';
 import { TaskProgress } from '../components/task-progress';
+import { AnimatedNumber } from '../components/animated-number';
 import { activityKind } from '../../activity-kinds';
 import { spriteGlyph } from '../components/sprite-glyph';
 import { LEGACY_AVATAR_IMG } from '../components/legacy-avatar';
@@ -51,7 +53,6 @@ const GONE_HINT = t('cleanup:links.goneHint');
 /* 这一组大多是站点拒绝程序访问或一次抖动，换个时间再问一次就通了。 */
 const UNCLEAR_HINT = t('cleanup:links.unclearHint');
 const PRUNE_HINT = t('cleanup:links.pruneHint');
-const DISCONNECTED = t('cleanup:shared.reconnecting');
 
 const count = (value: number | undefined) => Number(value || 0).toLocaleString();
 
@@ -82,7 +83,8 @@ function LinkTable(
       filter: { values: item => item.entity, option: (name, item) => ({
         leading: item && <ColumnFilterAvatar person={{ ...item.face, id: item.entity_id, name }}
           kind={item.entity_kind} markId={item.entity_kind === 'studio' || item.entity_kind === 'agency' ? item.id : null} /> }) },
-      render: (item) => <a className="flex min-w-24 items-center gap-2 text-text-secondary hover:text-text-primary hover:underline"
+      render: (item) => <a className="flex min-w-24 items-center gap-2 text-text-secondary hover:text-text-primary"
+        data-inline-action={item.entity_id && item.entity_kind ? '' : undefined}
         href={item.entity_id && item.entity_kind ? entityPath(item.entity_kind, item.entity, item.entity_id) : undefined} data-link-identity="">
         <span data-link-avatar="" className={`relative flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-media-placeholder text-caption-1-medium text-text-primary ${LEGACY_AVATAR_IMG}`}
           aria-hidden dangerouslySetInnerHTML={{ __html: `<span>${esc(firstGrapheme(item.entity))}</span>` + entityFaceImg({
@@ -117,13 +119,13 @@ function LinkTable(
       render: (item) => <a href={item.url} target="_blank" rel="noopener noreferrer" title={item.url} data-link-address=""
         className="flex min-w-0 items-center gap-1 text-text-secondary hover:text-text-primary">
         <SiteMark linkId={item.id} />
-        <span data-middle-truncate className="min-w-0 truncate">{item.url}</span>
+        <span data-middle-truncate data-external-link-label="" className="min-w-0 truncate">{item.url}</span>
         <RiExternalLinkLine aria-hidden className="size-(--icon-inline) shrink-0" />
       </a> },
   ];
   return (
     <div className={RESULT_SECTION} data-link-results={confirmed ? 'gone' : 'unclear'}>
-      <DataTable label={title} items={items} columns={columns} rowId={(item) => String(item.id)}
+      <DataTable preferenceId={confirmed ? 'links-dead' : 'links-unreached'} label={title} items={items} columns={columns} rowId={(item) => String(item.id)}
         description={hint} unit={t('cleanup:links.unit')} panel={false} footerActions={footer}
         rowLabel={(item) => t('cleanup:links.rowLabel', { entity: item.entity, link: linkLabel(item.label) || item.url })}
         selected={picked.map(String)} onSelected={(ids) => onPick(ids.map(Number))}
@@ -165,6 +167,7 @@ export function LinkManager() {
 
   const running = check.running || check.start.isPending;
   const removing = prune.running || prune.start.isPending;
+  const pruneJob = prune.running ? prune.job : undefined;
   const actionsReady = !!check.job && !!prune.job;
   const done = state?.status === 'complete';
   const gone = state?.gone ?? [];
@@ -193,28 +196,39 @@ export function LinkManager() {
   };
 
   /* 删除那一趟跑完，结论就是那一句回执：旧清单里的行已经删掉或者确认保留了。 */
-  const pruned = prune.outcome;
+  const pruned = removing || prune.start.isError ? null : prune.outcome;
   const startError = check.start.error ?? prune.start.error;
   let progress: ReactNode = null;
   let result: ReactNode = null;
   if (pruned?.status === 'failed') {
-    result = <Note tone="error" title={t('cleanup:links.pruneIncomplete')}>{jobText(pruned, 'error') || t('cleanup:links.checkTaskLog')}</Note>;
+    result = <Note tone="error" title={t('cleanup:links.pruneIncomplete')} action={
+      <ButtonLink href="/tasks" size="small" variant="secondary">
+        <span data-copy-key="shell.routeTitle.tasks">{t('shell:routeTitle.tasks')}</span>
+      </ButtonLink>
+    }>{jobText(pruned, 'error') || t('cleanup:links.checkTaskLog')}</Note>;
   } else if (pruned && !gone.length && !unclear.length) {
     result = <Note tone="success" title={t('cleanup:links.pruneDone')}>{pruneText(pruned)}</Note>;
   } else if (startError) {
     result = <Note tone="error" title={t('cleanup:links.checkFailed')}>{errorMessage(startError)}</Note>;
-  } else if (check.query.isError && state) {
-    result = <Note tone="neutral" title={t('cleanup:shared.taskStatus')}>{DISCONNECTED}</Note>;
+  } else if (check.query.isError) {
+    result = <QueryErrorNote titleKey="cleanup:links.checkStatusFailed" query={check.query} />;
   } else if (state?.status === 'failed') {
-    result = <Note tone="error" title={t('cleanup:links.checkFailed')}>{jobText(state, 'error') || t('cleanup:links.checkFailed')}</Note>;
+    result = <Note tone="error" title={t('cleanup:links.checkFailed')} action={
+      <ButtonLink href="/tasks" size="small" variant="secondary">
+        <span data-copy-key="shell.routeTitle.tasks">{t('shell:routeTitle.tasks')}</span>
+      </ButtonLink>
+    }>{jobText(state, 'error') || t('cleanup:links.checkTaskLog')}</Note>;
   } else if (state && state.status !== 'idle') {
+    const reading = checkLine(state);
     progress = <>
       {state.status === 'running'
-        ? <TaskProgress embedded kind={activityKind('link-check')} label={checkLine(state)} value={Math.min(state.checked || 0, state.total || 0)} total={state.total} />
+        ? <TaskProgress embedded kind={activityKind('link-check')} label={reading}
+            labelContent={state.total ? <AnimatedNumber value={reading} /> : reading}
+            value={Math.min(state.checked || 0, state.total || 0)} total={state.total} />
         : null}
       {removing
-        ? <TaskProgress embedded kind={activityKind('link-prune')} label={jobText(prune.job) || t('cleanup:links.pruning')}
-            value={Math.min(prune.job?.checked || 0, prune.job?.total || 0)} total={prune.job?.total} />
+        ? <TaskProgress embedded kind={activityKind('link-prune')} label={jobText(pruneJob) || t('cleanup:links.pruning')}
+            value={pruneJob?.checked} total={pruneJob?.total} />
         : null}
     </>;
     const pickedLabel = t('cleanup:links.retrySelected', { count: selectedRetryable.length });
@@ -224,7 +238,7 @@ export function LinkManager() {
         <LinkTable title={t('cleanup:links.dead')} items={gone} hint={GONE_HINT} picked={gonePicked} onPick={setGonePicked} confirmed
           footer={done && gone.length ? <>
             <p className="mr-auto min-w-0 text-caption-1-regular text-text-secondary">{PRUNE_HINT}</p>
-            <Button variant="danger" {...busyProps(removing)} onClick={removeAll}>
+            <Button variant="secondary" {...busyProps(removing)} onClick={removeAll}>
               {t('cleanup:links.deleteDeadCount', { count: gone.length })}
             </Button>
           </> : null}
@@ -255,8 +269,9 @@ export function LinkManager() {
         </Button>
       }>
         <FieldsetTitle id="link-manager-title" gap="small">{t('cleanup:tools.links')}</FieldsetTitle>
+        {prune.query.isError ? <QueryErrorNote titleKey="cleanup:links.pruneStatusFailed" query={prune.query} /> : null}
         {stats.isError
-          ? <Note tone="error" title={t('cleanup:links.statsLoadFailed')}>{errorMessage(stats.error)}</Note>
+          ? <QueryErrorNote titleKey="cleanup:links.statsLoadFailed" query={stats} />
           : info
             ? <>
                 <div className="link-stat-grid mt-4 gap-x-8 gap-y-3">

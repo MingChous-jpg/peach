@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import threading
 import time
+from dataclasses import replace
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -224,6 +225,137 @@ class ScrapingAccessTests(unittest.TestCase):
         self.assertNotIn("password", json.dumps(result))
         self.assertFalse(result["results"][0]["ok"])
 
+    def test_manual_lookup_checks_the_returned_work_identity_and_title(self):
+        from peach.source_checks import LOOKUP_PROBES
+        from peach.sources.base import FailureReason, SiteRecord, SourceFailure
+        from peach.sources.dmm import MISSING
+
+        contract = SimpleNamespace(follow_secrets_root=self.root)
+        parser, code = LOOKUP_PROBES['dmm']
+        matched = SiteRecord('dmm', 'dmm-page', code, 'https://fixture.invalid', title='Fixture')
+        cases = ((matched, 'ok'), (replace(matched, code='OTHER-01'), 'parse_error'),
+                 (replace(matched, title=''), 'parse_error'),
+                 (SourceFailure(FailureReason.NOT_FOUND, MISSING), 'not_found'))
+        for output, reason in cases:
+            with self.subTest(reason=reason), patch('peach.source_checks.SourceTransport') as transport, \
+                    patch.object(parser, 'query') as query:
+                transport.return_value.return_value = HttpResponse(404, {}, b'')
+                if isinstance(output, Exception):
+                    query.side_effect = output
+                else:
+                    query.return_value = output
+                result = w_scraping_check(contract, {'source': 'dmm', 'lookup': True})['results'][-1]
+                query.assert_called_once()
+                self.assertEqual(query.call_args.args[0], code)
+                self.assertEqual((result['target'], result['reason'], result['ok']), ('lookup', reason, reason == 'ok'))
+                self.assertNotIn('fixture.invalid', str(result))
+
+    def test_javdb_session_check_uses_the_saved_cookie_and_no_other_origin(self):
+        contract = SimpleNamespace(follow_secrets_root=self.root)
+        request = {"source": "javdb", "verify_session": True}
+        with patch("peach.source_checks.SourceTransport") as factory:
+            self.assertEqual(w_scraping_check(contract, request)["results"][0]["reason"], "not_configured")
+            factory.assert_not_called()
+
+        save(self.root, "javdb", {"cookie": "session=fixture-private", "network": "direct"})
+        visited = []
+
+        def respond(outbound):
+            visited.append((str(outbound.url), outbound.headers.get("cookie")))
+            if outbound.url.host == "javdb.com":
+                return httpx.Response(302, headers={"location": "https://other.invalid/users/profile"})
+            return httpx.Response(200, text='<a href="/logout">Sign out</a>')
+
+        def mock_client(root, source, **options):
+            return client_for(root, source, transport=httpx.MockTransport(respond), **options)
+
+        with patch("peach.scraping_access.client_for", side_effect=mock_client):
+            report = w_scraping_check(contract, request)
+        self.assertEqual(visited, [("https://javdb.com/users/profile", "session=fixture-private")])
+        self.assertFalse(report["session_verified"])
+        self.assertNotIn("fixture-private", str(report))
+
+    def test_javdb_session_check_requires_an_authenticated_profile_response(self):
+        contract = SimpleNamespace(follow_secrets_root=self.root)
+        save(self.root, "javdb", {"cookie": "session=fixture"})
+        request = {"source": "javdb", "verify_session": True}
+        profile_url = "https://javdb.com/users/profile"
+        for final_url, status, html, reason in (
+            (profile_url, 200, b'<a href="/logout">Sign out</a>', "ok"),
+            (profile_url, 200, b'<form class="auth-view"><input type="password"></form>', "auth_required"),
+            (profile_url, 200, b'<div class="modal"><form class="auth-view"><input type="password"></form></div>', "unexpected_page"),
+            (profile_url, 403, b"", "unexpected_page"),
+            ("https://javdb.com/login", 200, b"", "auth_required"),
+        ):
+            with self.subTest(final_url=final_url, status=status, reason=reason), \
+                    patch("peach.source_checks.SourceTransport") as factory:
+                factory.return_value.return_value = HttpResponse(status, {}, html, final_url)
+                report = w_scraping_check(contract, request)
+                self.assertEqual(report["results"][0]["reason"], reason)
+                self.assertEqual(report["session_verified"], reason == "ok")
+
+    def test_javdb_background_retries_a_login_wall_with_the_saved_session(self):
+        save(self.root, "javdb", {"cookie": "_jdb_session=fixture-private", "network": "direct"})
+        wall = '<form class="auth-view"><input type="password"></form>'
+        visited = []
+
+        def respond(outbound):
+            cookie = outbound.headers.get("cookie")
+            visited.append((outbound.url.path, cookie, outbound.headers.get("if-none-match")))
+            return httpx.Response(200, text=wall if outbound.url.path == "/v/restricted" and not cookie else "content")
+
+        def mock_client(root, source, **options):
+            return client_for(root, source, transport=httpx.MockTransport(respond), **options)
+
+        with patch("peach.scraping_access.client_for", side_effect=mock_client), \
+                patch("peach.scraping_access._JAVDB_ACCOUNT_LIMITER") as limiter:
+            transport = SourceTransport(self.root, javdb_account_fallback=True)
+            try:
+                restricted = HttpRequest("GET", "https://javdb.com/v/restricted", {"If-None-Match": "old"})
+                self.assertEqual(transport(restricted, 3, 4096).body, b"content")
+                public = HttpRequest("GET", "https://javdb.com/v/public", {})
+                self.assertEqual(transport(public, 3, 4096).body, b"content")
+                self.assertEqual(transport.requests, 3)
+            finally:
+                transport.close()
+            limiter.wait.assert_called_once()
+        self.assertEqual(visited, [("/v/restricted", None, "old"),
+                                   ("/v/restricted", "_jdb_session=fixture-private", None),
+                                   ("/v/public", None, None)])
+
+    def test_javdb_background_only_retries_once_for_a_rejected_session(self):
+        save(self.root, "javdb", {"cookie": "_jdb_session=fixture-rejected", "network": "direct"})
+        wall = '<form class="auth-view"><input type="password"></form>'
+        request = HttpRequest("GET", "https://javdb.com/v/restricted", {})
+
+        def mock_client(root, source, **options):
+            return client_for(root, source, transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=wall)), **options)
+
+        with patch("peach.scraping_access.client_for", side_effect=mock_client), \
+                patch("peach.scraping_access._JAVDB_ACCOUNT_LIMITER") as limiter:
+            transport = SourceTransport(self.root, javdb_account_fallback=True)
+            try:
+                transport(request, 3, 4096)
+                transport(request, 3, 4096)
+                self.assertEqual(transport.requests, 3)
+                limiter.wait.assert_called_once()
+                save(self.root, "javdb", {"cookie": "_jdb_session=fixture-replacement"})
+                transport(request, 3, 4096)
+                self.assertEqual(transport.requests, 5)
+            finally:
+                transport.close()
+
+    def test_javdb_background_does_not_answer_an_ip_block_with_an_account(self):
+        from peach.scraping_access import SourcePaused
+        save(self.root, "javdb", {"cookie": "_jdb_session=fixture-private"})
+        transport = SourceTransport(self.root, javdb_account_fallback=True)
+        transport.transports["javdb"] = lambda *args: HttpResponse(403, {}, b"")
+        with patch("peach.scraping_access._JAVDB_ACCOUNT_LIMITER") as limiter:
+            with self.assertRaises(SourcePaused):
+                transport(HttpRequest("GET", "https://javdb.com/v/restricted", {}), 3, 4096)
+            limiter.wait.assert_not_called()
+
     def test_the_check_tells_a_login_wall_apart_from_an_unreachable_source(self):
         """页面上要分得开三种结果，因为用户的下一步各不相同。
 
@@ -294,7 +426,7 @@ class ScrapingAccessTests(unittest.TestCase):
         factory.assert_not_called()
 
     def test_a_spent_budget_says_what_to_do_instead_of_naming_the_counter(self):
-        """三条闸门按任务重新计数，所以话说到「再跑一次接着采」为止。
+        """三条闸门按任务重新计数，所以提示说明重新运行可继续。
 
         「请求预算」是这个类内部的词：看到它的人在问题清单里只能读出「有个数用完了」，
         既不知道那个数归谁管，也不知道自己还要不要动手。一趟任务的用量见
@@ -310,11 +442,12 @@ class ScrapingAccessTests(unittest.TestCase):
         budgets[0].requests = 1
         budgets[1].deadline = time.monotonic() - 1
         budgets[2].bytes = 1
-        for transport in budgets:
+        limits = ("本次查询次数上限", "本次查询的时间上限", "本次下载流量上限")
+        for transport, limit in zip(budgets, limits, strict=True):
             with self.assertRaises(SourcePaused) as spent:
                 transport(request, 1, 100)
-            self.assertIn("本趟", str(spent.exception))
-            self.assertIn("再跑一次接着采", str(spent.exception))
+            self.assertIn(limit, str(spent.exception))
+            self.assertIn("重新运行可继续", str(spent.exception))
             self.assertNotIn("预算", str(spent.exception))
 
     def test_a_library_scan_asks_for_enough_to_carry_a_batch_of_covers(self):
@@ -496,7 +629,9 @@ class ScrapingAccessTests(unittest.TestCase):
         """`cf_clearance` 绑着解题那台浏览器的 UA：整站 UA 与用户的 Chrome 一致，Cookie 由用户贴，卡上不另收 UA。"""
         from peach.user_agent import USER_AGENT
         shown = save(self.root, "fc2ppvdb", {"cookie": "cf_clearance=abc"})
-        self.assertEqual(set(shown), {"source", "label", "login", "accepts_cookie", "network", "cookie_saved", "browser", "cooldown_until"})
+        self.assertEqual(set(shown), {"source", "label", "login", "accepts_cookie", "network", "cookie_saved",
+                                      "browser", "browser_login", "cooldown_until"})
+        self.assertFalse(shown["browser_login"])
         self.assertTrue(shown["cookie_saved"])
         self.assertFalse(shown["browser"], "没有浏览器的机器上这张卡照旧收 Cookie")
         for name in ("fc2ppvdb", "javten"):
@@ -1100,7 +1235,7 @@ class SourcePreflightTests(unittest.TestCase):
         self.assertEqual({source for source, _ in seen}, set(reasons))
         self.assertTrue(all(thread is threading.current_thread() for _, thread in seen))
         self.assertEqual([row['results'][0]['outcome_label'] for row in result['sources']],
-                         ['登录或人机验证', '冷却', 'HTTP 错误'])
+                         ['登录或人机验证', '暂时停止访问', 'HTTP 错误'])
 
     def test_cooling_source_reports_cooldown_without_request(self):
         from peach.scraping_access import _pause, cooldown_path
@@ -1110,7 +1245,7 @@ class SourcePreflightTests(unittest.TestCase):
             _pause(cooldown_path(root, 'javdb'), time.time() + 600)
             with patch.object(SourceTransport, '_transport_for', side_effect=AssertionError('冷却中不应发请求')):
                 row = check_sources(root, ['javdb'])['sources'][0]['results'][0]
-        self.assertEqual((row['outcome'], row['outcome_label']), ('cooldown', '冷却'))
+        self.assertEqual((row['outcome'], row['outcome_label']), ('cooldown', '暂时停止访问'))
 
     def test_check_all_job_counts_progress_and_keeps_result(self):
         from peach.jobs import BackgroundJob
@@ -1130,6 +1265,33 @@ class SourcePreflightTests(unittest.TestCase):
         self.assertEqual(state['checked'], state['total'])
         self.assertEqual([row['source'] for row in state['results']], default_sources())
         self.assertEqual(state['failed'], state['total'] - 1)
+
+    def test_check_all_retries_only_failed_target_and_retains_other_checks(self):
+        from peach.jobs import BackgroundJob
+        from peach.source_preflight import default_sources
+        from peach.web_scraping import w_scraping_check_all
+
+        job = BackgroundJob('test-source-retry', task_key='source-check')
+        contract = SimpleNamespace(follow_secrets_root=Path('/unused'), source_check_job=job)
+
+        def check(_root, source, *, targets=None, preflight=False):
+            rows = [{'target': 'page', 'ok': True, 'checked_at': 1}]
+            if source == 'javdb':
+                rows.append({'target': 'cdn', 'ok': targets is not None, 'reason': 'timeout', 'checked_at': 2})
+            return {'results': [row for row in rows if targets is None or row['target'] in targets]}
+
+        with patch('peach.source_preflight.check_source', side_effect=check) as probe:
+            w_scraping_check_all(contract, {})
+            job.thread.join(10)
+            probe.reset_mock()
+            w_scraping_check_all(contract, {'retry_failed': True})
+            job.thread.join(10)
+        probe.assert_called_once_with(Path('/unused'), 'javdb', preflight=True, targets={'cdn'})
+        result = job.snapshot()
+        self.assertEqual([row['source'] for row in result['results']], default_sources())
+        item = next(row for row in result['results'] if row['source'] == 'javdb')
+        self.assertEqual([(row['target'], row['checked_at'], row['outcome']) for row in item['results']],
+                         [('page', 1, 'ok'), ('cdn', 2, 'ok')])
 
     def test_http_only_transport_does_not_launch_or_fix_browser_route(self):
         from peach.scraping_access import SourcePaused, fix_to_browser, fixed_to_browser

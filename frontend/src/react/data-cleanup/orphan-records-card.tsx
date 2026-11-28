@@ -4,6 +4,7 @@
  * 选一个文件接过去，记录搬到那个文件上、旧行删掉，整批可按批次号撤回；彻底删除连记录一起
  * 删，过危险档确认弹层。没有已消失的作品时整块不出现。 */
 import { useState } from 'react';
+import { ImageWithFallback } from '../components/image-with-fallback';
 import { RiDeleteBinLine, RiFolderTransferLine } from '@remixicon/react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { confirmModal } from '@peach/legacy/ui';
@@ -16,7 +17,7 @@ import { errorMessage } from '../../api';
 import { ORPHAN_RECORDS_TEXT } from '../../cleanup-tool-skeletons';
 import { DataTable, type DataColumn } from '../components/data-table';
 import { Fieldset, FieldsetTitle } from '../components/fieldset';
-import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { SourceLabel } from '../components/source-label';
 import { spriteGlyph } from '../components/sprite-glyph';
 import { queryClient } from '../query';
@@ -73,7 +74,7 @@ function OrphanActions({ item, toast }: { item: OrphanRecord; toast(message: str
   const busy = attach.isPending || purge.isPending;
   return (
     <span className="flex min-w-0 flex-wrap items-center gap-2">
-        <Button variant="danger" size="small" {...busyProps(busy)} onClick={remove}>{t('cleanup:orphans.deleteRecord')}</Button>
+        <Button variant="secondary" size="small" {...busyProps(busy)} onClick={remove}>{t('cleanup:orphans.deleteRecord')}</Button>
         {item.candidates.length
           ? <Select data-orphan-target="" aria-label={t('cleanup:orphans.targetLabel', { name: item.name })} prefix={t('cleanup:orphans.targetPrefix')} className="w-52" selectedKey={target}
               onSelectionChange={(key) => { if (key !== null) setTarget(Number(key)) }}>
@@ -100,8 +101,7 @@ function OrphanIdentity({ item }: { item: OrphanRecord }) {
           <span className="relative inline-grid aspect-16/10 w-24 flex-none place-items-center max-cleanup-tight:hidden overflow-hidden rounded-lg border border-separator-border bg-media-placeholder text-text-tertiary">
             <PLAY aria-hidden className="size-5" />
             {item.has_thumb
-              ? <img src={`/thumb?id=${item.id}&c=4`} alt="" loading="lazy"
-                  onError={(event) => event.currentTarget.remove()}
+              ? <ImageWithFallback src={`/thumb?id=${item.id}&c=4`} alt="" loading="lazy"
                   className="absolute inset-0 size-full object-contain" />
               : null}
           </span>
@@ -157,9 +157,9 @@ export function OrphanRecordsCard({ toast }: { toast(message: string): void }) {
         {query.isError
           ? <Fieldset layout="stack" labelledBy="orphan-records-title">
               <FieldsetTitle id="orphan-records-title">{t('cleanup:tools.orphanRecords')}</FieldsetTitle>
-              <Note tone="error" title={t('cleanup:orphans.loadFailed')}>{errorMessage(query.error)}</Note>
+              <QueryErrorNote titleKey="cleanup:orphans.loadFailed" query={query} />
             </Fieldset>
-          : <DataTable label={t('cleanup:orphans.tableLabel')} items={items} columns={columns}
+          : <DataTable preferenceId="orphan-records" label={t('cleanup:orphans.tableLabel')} items={items} columns={columns}
               contextOperations={contextOperations}
               title={t('cleanup:tools.orphanRecords')} titleId="orphan-records-title" unit={t('cleanup:orphans.unit')}
               description={ORPHAN_RECORDS_TEXT}

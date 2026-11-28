@@ -6,6 +6,10 @@
 
 `GET /api/result-updates` 是每个页面常驻的那一处轻量检查：返回结果版本 `result_versions`、入库通知 `ingest_notices`、有没有任务在排或在跑 `busy`，以及在排在跑的任务 `running_tasks`。`running_tasks` 每个 `task_key` 一项 `{task_key, run_id, status}`，按 `task_key` 排序；有一轮在跑时 `status` 为 `running`、`run_id` 是在跑的最新一轮，只在排队时为 `pending` 与最新排进来的那一轮，没有任务时是空数组。页面有任务时每 5 秒、闲着每 10 秒读一次，读失败按 4、8、16、30 秒退避；其余页面只读这份缓存决定要不要开始读自己的任务进度，闲着时不各自轮询。
 
+顶栏通知中心复用 `GET /api/background-issues` 的待处理事项和 `GET /api/result-updates` 的入库回执。打开下拉后才读取续播和近期结果。`GET /api/player/recent` 返回最近播放的候选、已保存的续播位置，以及馆藏卡片的封面、署名和标签。在线续播返回同一条关注帖子的来源和标签。接口需要登录，响应不缓存。`GET /api/notification-context` 的配置建议和诊断摘要只提供给当前实例的本机管理客户端。
+
+在「想要」和作品详情里，`GET /api/wants/magnets` 与 `GET /api/jav/resources` 接受 `retry_source`。来源必须来自上次的可重试列表，返回合并后的资源和失败状态。JAV 详情的 `part=preview` 只刷新预告，`part=metadata&refresh=1` 只刷新资料。`POST /api/scraping/check-all` 用 `retry_failed: true` 重检上轮未取到的网络与 HTTP 目标，保留其它结果。登录和冷却问题仍走各自的恢复入口。
+
 馆藏处理的 `POST /api/library-processing` 支持按 `job_id` 暂停、继续、取消及归档结束提示；`stopping` 仍占用当前范围，`cancelled` 不自动恢复。`scope=new` 在启动时解析成固定资产集合，不与 `asset_ids` 或失败重试混用。状态只返回新入库数量，不下发内部处理路径。
 
 `GET /api/library-processing/issues` 返回任务号、内容摘要 `revision`、总数、偏移和记录。导出后续页传入首份摘要；同任务追加、恢复或记录替换时拒绝混合读取。旧完整问题数组可分页读取，原始记录缺失或损坏作为失败返回。
@@ -14,13 +18,17 @@
 
 ## 详情对象
 
-Storage 分组标题的「浏览文件」打开独立模态弹窗，浏览和关闭不修改当前馆藏路由或筛选。
+Storage 分组标题的「浏览文件」打开文件管理弹窗。全屏与弹窗共用目录、排序、分页和选择状态；浏览和关闭不修改当前馆藏路由或筛选。
+从文件表打开已收录的作品后，关闭作品详情回到原目录、页码和滚动位置。
 `GET /api/media-directory` 沿用站内认证；无参数列出已配置并映射的媒体根，不探测挂载。
+Windows 下已配置为网盘来源的盘符根可直接浏览。系统盘根由浏览入口排除。
 `root` 为持久根 ID，`relative` 为根内相对目录，`offset` 为分页位置；`asset` 可按服务端账本定位父目录及文件，优先于调用方目录。
-回执包含 `roots`、`root`、`relative`、`directories`、`files`（名称与可空 `asset_id`）、`next_offset`、`offset` 和可空 `read_only`。
+回执包含 `roots`（含媒体库 `icon`）、`root`、`relative`、`directories`、`files`、`next_offset`、`offset` 和可空 `read_only`。目录和文件条目带名称和可空的 `modified_at`、`created_at`（Unix 秒），文件另带可空的 `size`（字节）和 `asset_id`。匹配账本的文件同时返回账本登记的 `duration`、`width`、`height`。
 `state` 区分 `roots`、`ready`、`unmapped`、`denied`、`missing`、`timeout`、`unreachable`；定位时附 `focus_name`，无映射时保留 `last_path`。
-每页最多枚举 500 个条目，文件夹在本页内排序在前；定位仅枚举当前目录，返回目标所在页。
+带 `sort` 时按整个目录排序后分页，文件夹在前。排序键为 `name`、`type`、`size`、`modified`、`created`、`duration` 和 `resolution`；`dir` 指定方向，`q` 按名称筛选，`column_filters` 接收列筛选，`limit` 为每页条数（最多 500），返回 `total` 和列分面计数。定位只枚举当前目录，返回目标所在页。
 目录读取不打开媒体内容、不写账本或文件；绝对路径、父级越界和越界符号链接均拒绝。
+`POST /api/media-directory` 沿用站内认证、同源检查和账本只读限制。支持在同一已配置媒体根内新建目录、重命名、移动和移入文件回收站，不覆盖目标。移动已收录文件会更新现有资产的账本路径，保留资产 ID。
+文件回收站在原媒体根上隔离文件，并保留原位置。`GET /api/media-directory/trash` 汇总所有媒体根的文件记录和馆藏回收站标记，已隔离的文件只显示一次。文件由 `POST /api/media-directory` 按原媒体根和记录 ID 还原，馆藏标记经 `POST /api/batch` 还原。批量返回各项结果，未完成的项目保留可重试状态。
 无桌面环境的 `POST /api/reveal` 返回服务端位置与资产 ID，由此弹窗呈现目录状态；桌面环境继续调用本机文件管理器。
 
 | 对象 | 规范地址 | 身份 |
@@ -64,7 +72,8 @@ Storage 分组标题的「浏览文件」打开独立模态弹窗，浏览和关
 | `/` | 全部馆藏，含本地硬盘与已挂载网盘；新作行使用作品详情地址 |
 | `/?browse=folders` | 按原目录浏览；`folder` 指定目录，`folder_recursive=0` 只看当前层 |
 | `/?jav=1` | JAV 馆藏 |
-| `/jav?tab=discover` | JAV 探索；`scope=library` 看馆藏，`scope=external` 看外部发现 |
+| `/jav?tab=discover` | JAV 探索；`scope=library` 看馆藏，`scope=external` 看外部发现。`performer`、`studio`、`tag`、`code` 和 `column_filters` 筛选当前推荐结果 |
+| `/ai` | 从左侧导航或全局搜索进入的 AI 助手。可接着上一轮查询调整条件，也可输入作品和处理要求，打开翻译、标签候选、元数据草稿或整理复核。查询条件和模型在输入框两侧，本对话用量可在输入框下展开，关键词可通过 `ask` 带入 |
 | `/jav?tab=wants` | 想要的作品 |
 | `/follow` | 关注更新；作者、来源、标签和观看状态使用查询参数 |
 | `/wall` | 视频播放墙 |
@@ -84,7 +93,15 @@ Storage 分组标题的「浏览文件」打开独立模态弹窗，浏览和关
 
 探索页将搜索词 `q`、标签 `tag`、排序 `sort`、方向 `dir` 与范围 `scope` 保存在地址中。点开详情和退出沿用原列表、滚动与筛选状态。
 
+JAV 在线目录 `/jav?tab=online` 从 DMM 配信目录取作品。`performer` 按艺名查找，命中多个 DMM 艺名页时可以切换。`actress`、`maker`、`genre` 分别使用 DMM 艺人、厂牌和类别编号。`genre` 接受逗号分隔的多个编号，按交集查询。`date` 按日本时间的配信日筛选。筛选选项和部数来自当前页，DMM 按选中条件查询整个目录。分页以 DMM 允许的最大起始位置为限，越界链接落到可浏览的尾页。默认沿用 DMM 时间顺序，指定 `sort` 和 `dir` 时可在本页按时间、时长或番号重排。目录查询不登记作品或订阅。
+
 馆藏支持 `year=2024,2023` 多选发行年份，`year=none` 筛选未知年份。年份按发行日期而非入库日期计算，与来源、实体、观看状态等条件共同生效；地址、保存筛选和侧栏使用同一口径。侧栏年份数量遵循其余筛选范围，保留其它年份以便继续多选。
+
+JAV 新作的 `code` 独立匹配番号，`column_filters.taste.range` 按 0–1 的口味分在分页前筛选。发现页也使用这两个键筛选当前推荐结果。
+
+在线目录的 `code` 筛选当前页的番号。`status=released` 或 `status=preOrder` 筛选当前页的已发行或预购作品。`column_filters` 保存当前页的发行日期范围和时长范围。起止日期相同则通过 `date` 查询 DMM 的单日目录。
+
+在线目录的列表使用 `tableLayouts.jav-online` 保存列宽、列顺序和列可见性。艺人、厂牌、标签、发行日期、时长和番号的表头筛选与页面上方的筛选控件共用当前条件。
 
 ## 播放上下文
 
@@ -108,6 +125,8 @@ Storage 分组标题的「浏览文件」打开独立模态弹窗，浏览和关
 | `/settings/content` | 内容显示 |
 | `/settings/library` | 媒体库与入库 |
 | `/settings/subscriptions` | 来源与订阅参数 |
+| `/settings/ai` | AI 模型服务、API Key、ChatGPT 授权、任务提示词和用量统计 |
+| `/settings/ai/authorization` | 本机 ChatGPT 授权结果，自动返回 AI 接入 |
 | `/settings/downloads` | 下载渠道 |
 | `/settings/network` | 网络与访问 |
 | `/settings/maintenance` | 应用与维护 |
@@ -130,6 +149,12 @@ Storage 分组标题的「浏览文件」打开独立模态弹窗，浏览和关
 | `/login` | 登录 |
 
 设置分区可直接打开、刷新和用浏览器前进后退。偏好面板从当前页面打开时保留背景；配置分区复用配置页及其权限检查。配置分类导航停在搜索栏下方，切换分类时显示所选分区的开头。
+
+「AI 用量」按日期和服务显示 Peach 已记录的请求与 Token。组织用量由服务端使用
+`OPENAI_ADMIN_KEY` 或 `ANTHROPIC_ADMIN_KEY` 读取。DeepSeek 使用已连接的 API Key 读取当前余额。
+ChatGPT 共享订阅额度在官方用量页查看。
+
+`GET /api/configuration/community-sharing` 返回馆藏研究 `library` 和公开资料 `metadata` 的实际状态。两份本机数据分别由原预览端点生成。开启时向同一路径 POST `{enabled: true, consent: true, library: {token, schema}, metadata: {token, schema}}`，两份凭据均有效才保存。关闭只需 `{enabled: false}`。响应返回两类状态及 `failed` 列表，保存失败时可核对哪一类仍在参与。配置接口要求本机管理权限，写入还要求同源。
 
 用户脚本通过专用令牌调用 `POST /api/jav-browser/errors`，仅接收白名单错误字段并写入本机日志；批次、体积、限频与诊断包范围见 [浏览器添加 JAV](JAV_BROWSER.md)。状态接口 `GET /api/jav-browser` 同时投影真实下载与整理进度，`GET /api/jav-browser/active` 以同一结构列出进行中与最近结束的任务，均不授予配置、账号或账本写入权限。`POST /api/jav-browser/postprocess` 只能重试该番号已失败的整理，走任务中心同一入口。`POST /api/jav-browser/dismiss` 只记下脚本确认过哪些已结束的任务，不改任务与账本。`GET`/`POST /api/jav-browser/performer` 认出女优页是哪位并开关她的「订阅新作」，与人物页开关同一套订阅；编号没人持有时会新建女优并绑上编号，规则见 ADR-0143。
 

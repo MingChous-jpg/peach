@@ -100,7 +100,8 @@ describe('取数', () => {
     await editTags(host);
     await click(host.querySelector('[aria-label="添加标签"]')); await settle();
     const selected = host.querySelector('[data-pick="3D"]')!;
-    expect(selected.getAttribute('aria-pressed')).toBe('true');
+    expect(selected.getAttribute('role')).toBe('option');
+    expect(selected.getAttribute('aria-selected')).toBe('true');
     expect(selected.getAttribute('data-tag-cat')).toBe('r34-general');
     expect(selected.querySelector('use')?.getAttribute('href')).toBe('#i-check');
     expect(host.querySelector('[data-pick="角色"]')?.getAttribute('data-tag-cat')).toBe('r34-character');
@@ -298,7 +299,7 @@ describe('侧栏', () => {
 
   it('媒体没取回来的原因画在侧栏里', async () => {
     const { host } = await show(data(item(3, { playable: false, media_kind: 'external', media_error: '附件要登录' })));
-    expect(host.querySelector('[data-follow-media-issue]:not([hidden])')?.textContent).toBe('媒体未取得：附件要登录');
+    expect(host.querySelector('[data-follow-media-issue]:not([hidden])')?.textContent).toBe('媒体加载失败：附件要登录');
   });
 });
 
@@ -347,8 +348,9 @@ describe('写操作', () => {
     const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.startsWith('/api/wants?follow=')) return { ok: true, status: 200, json: async () => ({ want }) };
       const body = JSON.parse(String(init?.body || '{}'));
+      const previous = want ? [want] : [];
       want = body.action === 'add' ? { id: 31 } : null;
-      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+      return { ok: true, status: 200, json: async () => body.action === 'add' ? { created: true, want } : { previous } };
     });
     vi.stubGlobal('fetch', fetcher);
     const { host, actions: given } = await show(data(item(7)));

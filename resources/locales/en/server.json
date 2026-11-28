@@ -89,11 +89,13 @@
     "paused": {
       "config": {
         "hint": "Resumes once the download settings are fixed",
-        "reason": "Cloud drive settings or sign-in problem"
+        "reason": "Download channel is temporarily unavailable"
       },
       "message": "{{reason}}, paused; {{hint}}",
       "network": {
-        "hint": "Resumes once CloudDrive2 is back",
+        "connectionRefused": "CloudDrive2 refused the connection",
+        "hint": "Resumes once the download service is back",
+        "timeout": "Connection to CloudDrive2 timed out",
         "reason": "Can't reach CloudDrive2"
       },
       "quota": {
@@ -281,6 +283,27 @@
         "english-interface": {
           "body": "Pages, messages and task progress can all show in English",
           "title": "Full English interface"
+        }
+      }
+    },
+    "v0-63-0": {
+      "headline": "Library AI, file management, in-app feedback, and list search",
+      "items": {
+        "library-ai": {
+          "body": "Connect your own AI service in Settings to search the library, translate titles and synopses, or suggest tags",
+          "title": "Search and organize your library with AI"
+        },
+        "file-management": {
+          "body": "Open Browse files in the sidebar to search, select, and move files in full screen, or restore them from Trash",
+          "title": "Browse and manage media files"
+        },
+        "in-app-feedback": {
+          "body": "Send feedback from the bottom-right button, annotate screenshots, and choose whether to attach diagnostics and what to publish on GitHub",
+          "title": "Send feedback with screenshots in Peach"
+        },
+        "list-search": {
+          "body": "Search by keyword in the follow feed, JAV subscriptions, playlists, task history, and more",
+          "title": "Search more lists"
         }
       }
     },
@@ -546,6 +569,11 @@
         "label": "Covers & web data",
         "note": "They'll be downloaded again. Sources that were taken down can't be fetched again"
       },
+      "follow_snapshots": {
+        "description": "Original responses saved when Peach checks followed sources",
+        "label": "Follow source snapshots",
+        "note": "Cleanup keeps the 3 latest snapshots per source and any snapshots still referenced by items"
+      },
       "logs": {
         "description": "Runtime logs and crash reports",
         "label": "Logs",
@@ -566,15 +594,25 @@
         "label": "Previews",
         "note": "Rebuilding reads each whole video again and downloads cloud drive videos again, so they aren't cleaned here"
       },
+      "project_archives": {
+        "description": "Locally archived project files such as builds, verification artifacts, and operations backups",
+        "label": "Local project archives",
+        "note": "Review these files individually before archiving or deleting them"
+      },
       "records": {
         "description": "Resume points, auto-repair receipts, review lists, and archives",
         "label": "Task & review records",
         "note": "Task progress and unfinished review decisions are lost"
       },
+      "source_snapshots": {
+        "description": "Original pages, responses, and files saved while fetching metadata",
+        "label": "Metadata source snapshots",
+        "note": "Peach reuses these files and may need to fetch them again if they're deleted"
+      },
       "sources": {
-        "description": "Metadata and raw records imported from other apps",
-        "label": "Imported data",
-        "note": "Peach can't rebuild these. You'll need to import them again"
+        "description": "Data imported from other apps and browsing history saved locally",
+        "label": "Imported data & browsing history",
+        "note": "Peach can't recreate these original records"
       },
       "thumbnails": {
         "description": "Small copies of covers and avatars shown in lists and grids",
@@ -826,8 +864,8 @@
     "skipped": "Skipped ",
     "skipNoSite": "{{count}} with no official site to ask",
     "skipRecentMiss": "{{count}} the site recently reported missing",
-    "skipPaused": "{{count}} while the source cools down",
-    "skipDeferred": "{{count}} left for the next round (network quota used up)",
+    "skipPaused": "{{count}} because the source is temporarily unavailable",
+    "skipDeferred": "{{count}} deferred until the next round after reaching the request limit",
     "remainingNext": "{{count}} left, queued for the next round",
     "remainingLater": "{{count}} left for next time",
     "seedAliases": "Aliases {{count}}",
@@ -846,19 +884,95 @@
     "scheduled": "{{count}} items scheduled",
     "videoUpgraded": "Video metadata upgrade complete",
     "videosUpgraded": "Upgraded metadata for {{count}} videos",
-    "videosDeferred": "{{count}} postponed: directory unreadable or source cooling down",
+    "videosDeferred": "{{count}} postponed because the directory couldn't be read or the source was temporarily unavailable",
     "videosMalformed": "{{count}} failed: unrecognized path",
     "dimensionsMeasured": "Display dimensions re-measured",
     "deferredBy": "Postponed: {{reason}}",
     "deferMountMedia": "The video's directory is unreadable, will retry when the mount is back",
     "deferMountDimensions": "The video's directory is unreadable, will re-measure when the mount is back",
     "deferBilling": "Traffic on the metered source isn't confirmed yet, will re-measure later",
-    "deferCooling": "The metadata source is cooling down, will retry when it's available",
+    "deferCooling": "The metadata source is temporarily unavailable. Processing will resume when it is available",
     "faceModelFetched": "Face model downloaded",
     "matchModelFetched": "Face matching model downloaded",
     "faceModelsReady": "Face models are ready"
   },
   "api": {
+    "feedback": {
+      "accessRequired": "Open Feedback on the computer running Peach. To send feedback from this device, set an access password under Network and access on that computer, then open Peach here and enter the password.",
+      "issueTemplate": {
+        "bugDescription": "What happened",
+        "reproduction": "Steps to reproduce",
+        "logs": "Logs and screenshots (optional)",
+        "useCase": "Use case",
+        "desiredBehavior": "Desired behavior",
+        "additionalContext": "Additional context (optional)",
+        "environmentPeach": "Peach version or build",
+        "environmentSystem": "OS version and architecture",
+        "environmentInstall": "Installation",
+        "environmentPython": "Python version (source installs, optional)",
+        "environmentHealth": "`/healthz` response (optional)",
+        "environment": "Environment"
+      },
+      "rateLimited": "Too many feedback submissions. Try again later.",
+      "unavailable": "Feedback delivery isn't configured for this Peach instance.",
+      "tooLarge": "These attachments are too large. Remove some images and try again.",
+      "invalid": "This report is invalid. Enter a description and add the images again.",
+      "unknown": "Couldn't confirm your feedback was received. Try again later.",
+      "sendFailed": "Couldn't send your feedback. Try again later."
+    },
+    "aiLibrary": {
+      "invalidSearch": "Enter a search and choose a valid scope.",
+      "invalidCustomTask": "Check the task name, prompt, and input",
+      "customTaskChanged": "This custom task changed in another window. Reload and try again",
+      "customTaskMissing": "This custom task could not be found",
+      "customTaskConnection": "The service endpoint changed. Save the task connection settings again",
+      "invalidPrompt": "Choose a valid prompt scope or shorten the prompt before saving.",
+      "credentialTransport": "Submit API keys over HTTPS or through the local loopback address.",
+      "privateAccess": "Saved AI services are unavailable over public or proxied connections. Open AI Connections on the computer running Peach.",
+      "lanSignIn": "Change AI settings on the computer running Peach. To use AI on this device, set an access password under Network and access on that computer, then open Peach here and enter the password.",
+      "searchUnsupported": "No supported filters were found. Add a keyword, performer, year, or tag.",
+      "invalid": "Check the AI service, model, and task settings.",
+      "unconfigured": "Set up an API key for this AI service first.",
+      "endpoint": "Check the API base URL, DNS, and port. Remote endpoints require HTTPS. Loopback addresses also support HTTP.",
+      "endpointKey": "The endpoint changed. Enter the API key for the new endpoint.",
+      "customLabel": "Enter a provider name of up to 80 characters.",
+      "changed": "The work’s metadata or settings changed. Refresh and try again.",
+      "notFound": "This work is no longer in the library.",
+      "noImage": "The selected image is unavailable. Choose another image.",
+      "noOfficialImages": "No official stills were available. Try timeline previews or the cover.",
+      "invalid_output": "The model returned no usable result. Try again or choose another model.",
+      "usageUnavailable": "Could not read AI usage. Refresh to try again.",
+      "permission_required": "Allow plan usage on the ChatGPT authorization page.",
+      "oauthAuth": "Peach could not read or update the saved ChatGPT authorization. Check access to the Peach data directory and try again.",
+      "oauthCallbackUnavailable": "Peach could not start the local authorization listener. Try connecting your ChatGPT plan again.",
+      "expired": "The connection or candidate expired. Generate it again or reconnect.",
+      "unavailable": "This model or plan cannot complete the request.",
+      "alreadySaved": "This source text already has a translation in that language.",
+      "provider": "This AI service is unavailable.",
+      "model_not_found": "This model ID is missing from the catalog. Check the model name provided by the service.",
+      "auth": "The AI service rejected the credentials. Check the API key and access permissions.",
+      "rate_limit": "The AI service is receiving too many requests. Try again shortly.",
+      "quota": "The AI service is out of quota. Check your usage and billing.",
+      "refused": "The model declined to process this input.",
+      "network": "Could not connect to the AI service. Check your network.",
+      "upstream": "The AI service did not complete the request. Check the model settings or try again later."
+    },
+    "fileBrowser": {
+      "invalidRequest": "The file operation request is invalid.",
+      "invalidName": "Enter a valid file or folder name.",
+      "invalidTarget": "Choose a different destination within the same media directory.",
+      "configuredRoot": "This path overlaps a configured media directory. Open that directory directly or change the mount in Settings.",
+      "catalogConflict": "A catalog record already uses the destination path.",
+      "changed": "The file or catalog record changed. Refresh the directory and try again.",
+      "catalogRolledBack": "The catalog update failed. The file was moved back. {{error}}",
+      "rollbackFailed": "The catalog update and move back both failed. Check the source and destination paths. {{error}}",
+      "targetExists": "An item with the same name already exists at the destination.",
+      "sourceMissing": "The file or destination directory no longer exists. Refresh and try again.",
+      "unverified": "The storage result could not be verified. Refresh the directory to check what changed.",
+      "operationFailed": "The file operation failed. {{error}}",
+      "trashMissing": "This entry is missing from the file trash.",
+      "restoreInBrowser": "This file is in the file trash. Open it from Browse files to restore the item."
+    },
     "listening": {
       "outsideLan": "This address only accepts connections from the local network"
     },
@@ -867,12 +981,13 @@
       "loginFormInvalid": "The sign-in form has too many fields.",
       "loginFormTooLarge": "The sign-in form is too large.",
       "sessionNotSaved": "Couldn't remember this device. Check that the data directory is writable, then try again.",
-      "submitFromSettings": "Submit from the Settings page.",
+      "submitFromSettings": "Peach could not verify where this request came from. Open this Peach instance directly and try the original action again.",
       "tooManyAttempts": "Too many attempts. Try again in a minute.",
       "assetTokenRequired": "?t=<access token> required"
     },
     "configuration": {
       "accessAlreadySet": "Access is already set up. Refresh the page.",
+      "invalidLibraryHealthSelection": "Invalid library issue selection. Refresh and try again.",
       "accessChanged": "Access settings have changed. Refresh, then save again.",
       "accessChangedRetry": "Access settings have changed. Refresh, then try again.",
       "accessSaving": "Access settings are being saved. Try again later.",
@@ -896,6 +1011,7 @@
       "deviceGone": "This device is no longer in the list.",
       "dockerUpdateOnly": "One-click updates are only available for the Docker image.",
       "enabledNotBoolean": "enabled must be true or false.",
+      "desktopAlertsUnavailable": "Configure desktop alerts on the computer running the Windows tray or Mac menu bar.",
       "errorLogUnwritable": "Can't write the error log.",
       "fieldNotText": "{{field}} must be text.",
       "fileManaged": "This deployment manages the service through a configuration file.",
@@ -909,6 +1025,7 @@
       "noLocalCertificate": "This device doesn't provide a local HTTPS certificate.",
       "noUpgradeReview": "No upgrade review record yet.",
       "openDiagnosticsOnHost": "Open system diagnostics on the device running Peach.",
+      "startupCaptureUnavailable": "The local startup diagnostics could not be updated.",
       "openOnHost": "Open Settings on the device running Peach.",
       "passwordNotText": "The password must be text.",
       "passwordRequired": "Enter an access password.",
@@ -944,6 +1061,7 @@
     },
     "pages": {
       "bodyNotObject": "The request body must be a JSON object.",
+      "librarySharingReview": "Refresh the page and review the current sharing rules before opting in.",
       "needsChanges": "Some fields need changes.",
       "openSetupLocally": "Open setup using this device's local address.",
       "passwordRequired": "Enter an access password.",
@@ -975,6 +1093,8 @@
       "navigationOrdersInvalid": "Navigation order needs known groups and order arrays.",
       "performerNameLanguageInvalid": "performerNameLanguage only accepts zh-CN, ja, en, ja-local or local-ja.",
       "sortControlsInvalid": "Sort options require valid groups, order arrays and hidden option arrays.",
+      "tableLayoutsInvalid": "Invalid table column layout settings.",
+      "browsePreferencesInvalid": "Invalid browsing or appearance preferences.",
       "profileMissing": "profile {{profile}} doesn't exist.",
       "searchHistoryLimitInvalid": "searchHistoryLimit only accepts integers from 0 to {{max}}.",
       "switchNotBoolean": "{{key}} only accepts true or false.",
@@ -1163,8 +1283,15 @@
       "javdbHttpStatus": "JavDB returned HTTP {{status}}.",
       "javdbSearchLogin": "JavDB returned its sign-in page, so this search can't run. Try again later.",
       "nameEmpty": "Actress name can't be empty.",
-      "cardRequired": "Select at least one performer card first.",
-      "cardsSpanPeople": "These cards belong to different people in the database: {{names}}"
+      "cardRequired": "Select at least one source page.",
+      "cardsSpanPeople": "These pages belong to different people in the database: {{names}}",
+      "dmmPagesNotLinked": "The selected DMM pages aren't linked to this performer. Search again and select the pages from the results.",
+      "dmmSearchFailed": "DMM search request failed ({{error}})",
+      "catalogDateInvalid": "Choose a valid release date",
+      "catalogFacetInvalid": "Choose a valid studio or tag",
+      "catalogUnavailable": "DMM catalog request failed ({{error}})",
+      "invalidActorId": "A selected JavDB page has an invalid ID.",
+      "pageLinkedElsewhere": "A selected page is already subscribed under another performer."
     },
     "catalog": {
       "invalidReleaseYear": "Release year must be a four-digit year or unknown.",
@@ -1197,6 +1324,7 @@
       "invalidReleaseMetadataAction": "action must be start or cancel."
     },
     "libraryShortcuts": {
+      "filterMissing": "This filter no longer exists. Choose another saved filter.",
       "invalidFilterHref": "The filter URL is too long or malformed.",
       "collectionFiltersOnly": "Only collection filters can be saved.",
       "unsupportedFilterCondition": "The filter contains an unsupported condition.",
@@ -1316,7 +1444,11 @@
     "strm": {
       "urlInvalid": "STRM needs an HTTP or HTTPS playback URL without an account or password",
       "fileTooLarge": "STRM file exceeds 64 KiB",
-      "fileUnreadable": "STRM file could not be read or is not UTF-8 text",
+      "fileUnreadable": "Couldn't read the STRM file",
+      "fileMissing": "STRM file not found",
+      "filePermissionDenied": "Permission denied reading the STRM file",
+      "fileTimedOut": "Reading the STRM file timed out",
+      "fileEncodingInvalid": "The STRM file is not UTF-8 text",
       "singleUrlRequired": "STRM file must contain exactly one playback URL",
       "contentUnparsable": "Can't parse the STRM content. Check the playback URL and list format",
       "mediaUnavailable": "Couldn't get the STRM media. Check the playback URL or update the STRM in the tool that made it"
@@ -1332,7 +1464,7 @@
       "backupExists": "A backup already exists in the same directory: {{name}}"
     },
     "javdbPublic": {
-      "budgetExceeded": "The metadata request budget for this run is used up",
+      "budgetExceeded": "This run reached its request count, data usage, or time limit",
       "imageSourcePaused": "The image source is temporarily unavailable. Try again later.",
       "sourcePaused": "The metadata source is temporarily unavailable. Try again later.",
       "notFound": "No metadata found for this code",
@@ -1481,7 +1613,7 @@
       "prefixNotUnique": "Set a single CloudDrive path prefix for this PikPak root in push discovery",
       "webdavResponseTooLarge": "The WebDAV response is over the size limit",
       "webdavNoResponse": "No network response from WebDAV",
-      "webdavTreeTooLarge": "The WebDAV directory walk is over the limit or loops",
+      "webdavTreeTooLarge": "Scanning the WebDAV directories reached the limit or encountered a directory loop",
       "webdavTooManyFiles": "The WebDAV directory has too many files",
       "targetParentNotDirectory": "The target parent path is not a directory",
       "webdavMkcolFailed": "WebDAV could not create the parent directory: HTTP {{status}}",
@@ -1507,7 +1639,7 @@
       "webdavSourceNotFound": "WebDAV source not found",
       "webdavTargetExists": "The WebDAV target already exists",
       "cloudParentMissing": "The official parent directory doesn't list the required directory",
-      "moveUnconfirmed": "Couldn't confirm the move. Kept the intent receipt and stopped; nothing is repeated or written to the database"
+      "moveUnconfirmed": "Couldn't confirm whether the files moved. Peach stopped and saved a record of the attempt, without moving the files again or updating the library"
     },
     "downloads": {
       "infohashInvalid": "The infohash in the magnet link is not 40 hex characters or 32 base32 characters",
@@ -1674,6 +1806,9 @@
       "choiceRequired": "Choose a media processing mode",
       "qualityRequired": "Quality limit only accepts {{choices}}"
     },
+    "backgroundWork": {
+      "invalidPrecompute": "Background computation must be on or off."
+    },
     "retentionSettings": {
       "choiceInvalid": "{{key}} only accepts {{choices}}.",
       "empty": "No retention settings to save."
@@ -1735,6 +1870,7 @@
       "tooManyIndexers": "You can configure at most {{max}} indexers",
       "indexerNotObject": "Each indexer setting must be an object",
       "invalidIndexerKey": "Indexer ID is empty or duplicated",
+      "invalidRetrySource": "This search source is no longer available",
       "invalidIndexerName": "Indexer name must be 1 to 80 characters",
       "invalidApiKey": "API key is not valid",
       "invalidSizeRange": "Size range must be between 0 and 1 TiB, and the minimum can't exceed the maximum",
@@ -1757,6 +1893,7 @@
       "cookieTooLarge": "Cookie text is larger than 256 KiB",
       "noValidCookie": "No unexpired cookies for this source were found",
       "redirectNotHttps": "Fetch redirects must use HTTPS",
+      "redirectOutsideSource": "The source request redirected to another site",
       "tooManyRedirects": "Too many fetch redirects",
       "accountSuspended": "{{label}} temporarily suspended the account for browsing too fast. It resumes {{time}}; the account is blocked, not the exit, so Peach pauses requests to it until then",
       "geoRestricted": "{{label}} isn't available in the region of your current exit. In your proxy, route it through an exit in a region it accepts; requests to it are paused for {{minutes}} minutes",
@@ -1764,9 +1901,9 @@
       "requestBudgetSpent": "This run's fetch request limit is used up. Run it again to continue; existing images are kept",
       "timeBudgetSpent": "This run's fetch time limit is used up. Run it again to continue; existing images are kept",
       "downloadBudgetSpent": "This run's download limit is used up. Run it again to continue; existing images are kept",
-      "coolingDown": "The source is cooling down. Try again later; existing images are kept",
+      "coolingDown": "Peach has temporarily paused requests to the source. Try again later. Existing images are kept",
       "challengeTimedOut": "Verification timed out. Existing images are kept. Retry after the source recovers. For manual verification, select Keep window and switch to the scraping browser on the computer running Peach",
-      "rateLimited": "The source is rate limiting requests; the cooldown has been recorded. Existing images are kept",
+      "rateLimited": "The source is limiting requests. Try again later. Existing images are kept",
       "coolingDownNamed": "{{label}} is paused. Try again in about {{minutes}} min",
       "rateLimitedNamed": "{{label}} is rate limiting. Try again in about {{minutes}} min",
       "refusedNamed": "{{label}} refused requests from the current exit, most likely too many requests or a blocked exit. Paused for about {{minutes}} min; you can also give it another exit in the proxy",
@@ -1775,10 +1912,10 @@
       "browserModeInvalid": "The collection browser mode must be one of {{choices}}"
     },
     "downloadPostprocess": {
-      "noLandingPath": "The download task has no landing path",
-      "noVideoInLanding": "No recognizable video in the landing directory",
+      "noLandingPath": "The download service did not provide a location for the files",
+      "noVideoInLanding": "No recognizable video in the download directory",
       "mainBoundToOtherCode": "The full video is already linked to another code: {{code}}",
-      "configMismatchProbe": "The current collection doesn't match the storage settings, so downloaded media can't be probed",
+      "configMismatchProbe": "The current collection doesn't match the storage settings, so Peach can't read information about the downloaded files",
       "configMismatchCollect": "The current collection doesn't match the storage settings, so metadata for the download can't be fetched",
       "collectFailed": "Fetching metadata failed",
       "organizeIncomplete": "Organizing files didn't finish: {{reasons}}",
@@ -1792,6 +1929,9 @@
       "invalidRotation": "Invalid rotation",
       "invalidRate": "Invalid playback speed",
       "invalidCaptionStyle": "Invalid subtitle appearance",
+      "invalidPosition": "Invalid playback position",
+      "invalidOffsets": "Invalid subtitle timing offsets.",
+      "invalidQuality": "Invalid playback quality.",
       "invalidSelection": "Invalid subtitle selection",
       "invalidVideoKey": "Invalid video ID",
       "invalidTrack": "Invalid subtitle track",
@@ -2239,8 +2379,8 @@
       "previewsNeedWriter": "Generating preview images requires a write connection to the shared collection.",
       "nfoCodeConflict": "The file name and NFO code conflict. Review it.",
       "notInLibrary": "The selected videos don't belong to the current library.",
-      "deadlineRetryLater": "External metadata wasn't found within the time limit. You can try again later",
-      "deadline": "External metadata wasn't found within the time limit",
+      "deadlineRetryLater": "The request for external metadata timed out. Try again later",
+      "deadline": "The request for external metadata timed out",
       "noAmaneSites": "This code's source chain has no sites queried through the amane bridge",
       "amaneBridgeFailed": "amane bridge: {{error}}",
       "amaneSitesSaidNo": "None of the sites queried through the amane bridge have this code",
@@ -2284,7 +2424,7 @@
       "someCoverSourcesUnfetched": "A cover is in place; these image sources did not answer: {{problems}}"
     },
     "followStream": {
-      "coolingDown": "{{provider}} is cooling down after rate limiting. Try again in {{seconds}} seconds.",
+      "coolingDown": "{{provider}} is limiting requests. Try again in {{seconds}} seconds.",
       "recentMiss": "The source media wasn't found just now. Try again later.",
       "noSuchMedia": "This media index doesn't exist.",
       "badMediaEntry": "The media entry has an unexpected format.",
@@ -2453,7 +2593,7 @@
       "emptyGenre": "The genre to add is empty."
     },
     "mediaProbe": {
-      "strmIsoNotProbed": "STRM and ISO files aren't probed."
+      "strmIsoNotProbed": "Peach skips reading video information from STRM and ISO files."
     },
     "platform": {
       "windowsDirectoryUnavailable": "Couldn't get the Windows system directory."
@@ -2703,12 +2843,12 @@
       "placeholder": "The source returned a \"coming soon\" placeholder image",
       "officialPlaceholderOnly": "The official cover URLs only return a \"coming soon\" placeholder: unreleased videos don't have official images yet, and older ones have most likely been taken down",
       "mibNotJav": "JAV cover sources don't apply to Korean MIB codes",
-      "noCandidates": "No source has a candidate",
+      "noCandidates": "No usable cover was found",
       "hostsUnreachable": "Can't connect to any official image host",
-      "deadline": "The time limit for this step is used up",
+      "deadline": "The request to the source timed out. Try again later",
       "dmmFailed": "DMM: {{error}}",
-      "coolingDown": "The cover source is cooling down. Try again later; existing images are kept",
-      "catalogUnfinished": "The official catalog lookup didn't finish, so no cover candidates were found yet",
+      "coolingDown": "Peach has temporarily paused requests to the cover source. Try again later. Existing images are kept",
+      "catalogUnfinished": "The official catalog lookup didn't finish, so Peach couldn't confirm whether a usable cover is available",
       "allAnimated": "All official candidates are animated images",
       "downloadsFailed": "Every usable candidate failed to download in full",
       "sizeChanged": "Size changed: log says {{expectedWidth}}x{{expectedHeight}}, now {{width}}x{{height}}",
@@ -2768,7 +2908,7 @@
       "loginRequired": "javdb requires sign-in",
       "identityAmbiguous": "javdb has several videos with this code. Check the source identity: {{identities}}",
       "detailCodeMismatch": "The code on the javdb detail page doesn't match the search result",
-      "budgetExceeded": "javdb metadata wasn't found within this run's limit"
+      "budgetExceeded": "The JavDB metadata lookup reached its limit"
     },
     "onepondo": {
       "unrecognizedCode": "This code isn't in {{label}} format",
@@ -2782,7 +2922,8 @@
       "conflictingRows": "The wiki has conflicting rows for this exact code; review the original page",
       "budgetStopped": "Wiki requests for this batch stopped or reached the limit",
       "networkFailed": "The wiki network request failed",
-      "httpFailed": "The wiki HTTP request failed",
+      "httpFailed": "The wiki request failed (HTTP {{status}})",
+      "requestTimedOut": "The wiki request timed out",
       "pageTooLarge": "The wiki page exceeds the read limit",
       "redirectUnverified": "The wiki redirect page couldn't be verified",
       "botCheckFailed": "The wiki bot check wasn't passed"
@@ -2804,6 +2945,7 @@
       "bridgeStartFailed": "Couldn't start the amane bridge: {{error}}",
       "bridgeNotJson": "The amane bridge returned non-JSON output: {{detail}}",
       "bridgeFailed": "The amane bridge query failed (exit {{exitCode}})",
+      "dateIdentityUnconfirmed": "Could not confirm that date-based code {{code}} from {{label}} matches the local video. Check the release code and studio.",
       "productMismatch": "The item returned by {{label}} isn't {{code}}: content_id={{contentId}}",
       "preparing": "The amane runtime is being prepared. Try again later",
       "installDirUnwritable": "Can't read or write the amane install directory: {{error}}",
@@ -2818,7 +2960,7 @@
       "selfCheckUnfinished": "The amane runtime self-check didn't finish. Try again on the Sources page"
     },
     "performerAliasFollowup": {
-      "coolingDown": "The source is cooling down",
+      "coolingDown": "Requests to the source are temporarily paused",
       "requestsUsedUp": "This item's request limit is used up",
       "networkFailed": "Network request failed: {{type}}",
       "rateLimited": "The source is rate limiting requests (429)",
@@ -2973,6 +3115,7 @@
       "unreadable": "Can't read the task recovery record. Start the task again."
     },
     "nasDirectories": {
+      "invalidOrder": "The directory sort, search, or page size is invalid.",
       "invalidPurpose": "Choose a media directory or a data directory.",
       "invalidOffset": "The directory page position is invalid. Read the directory again.",
       "outsideRoots": "Only mounted media directories can be browsed. Type a newly mounted path into the media directory field.",
@@ -3046,15 +3189,15 @@
       "resolveProgressLines": "Searching follow sources: source {{current}}/{{total}} · {{provider}} (line {{line}}/{{lines}})"
     },
     "webJavDiscovery": {
-      "byteBudget": "Data usage budget for this round is used up",
+      "byteBudget": "This run reached its data usage limit",
       "cancelled": "Metadata read canceled",
       "cancelling": "Canceling the metadata read",
       "complete": "Video metadata read",
       "reading": "Reading video metadata",
-      "requestBudget": "Request budget for this round is used up",
+      "requestBudget": "This run reached its request count limit",
       "sourceCooldown": "The source is temporarily unavailable; reading stopped",
       "stopped": "Stopped reading video metadata",
-      "timeBudget": "Time budget for this round is used up",
+      "timeBudget": "This run reached its time limit",
       "unfetched": "Video metadata not found"
     },
     "webLinks": {
@@ -3201,9 +3344,9 @@
       "stillOnDisk": "The file is still on disk"
     },
     "webFeeds": {
-      "cooling": "The source is cooling down; not fetched this round",
-      "deferredRest": "The other {{count}} feeds will be fetched after the cooldown",
-      "sourceCooling": "{{source}} is cooling down; not fetched this round"
+      "cooling": "Requests to the source are temporarily paused. It was skipped this time",
+      "deferredRest": "The other {{count}} feeds will be checked once requests resume",
+      "sourceCooling": "Requests to {{source}} are temporarily paused. It was skipped this time"
     },
     "webFollow": {
       "nameContainsEvidence": "One normalized name contains the other; confirm manually",
@@ -3291,7 +3434,7 @@
       "action": {
         "verifyToken": "checking the API token",
         "findTarget": "finding the target directory",
-        "refreshLanding": "refreshing the landing directory",
+        "refreshLanding": "refreshing the download directory",
         "readQuota": "checking the cloud download quota",
         "listOffline": "listing cloud download tasks",
         "createFolder": "creating the directory",
@@ -3312,6 +3455,7 @@
       "pikpakSignInUnreadable": "Cannot read the PikPak sign-in. Sign in again.",
       "tokenNeedsOffline": "The CloudDrive2 token needs permission to submit and view cloud download tasks.",
       "libraryCapabilityUnavailable": "Could not get cloud download support for {{name}}.",
+      "libraryCapabilityCheckFailed": "Cloud download check failed for {{name}}: {{reason}}",
       "clouddriveCapabilityUnavailable": "Could not get CloudDrive2 cloud download support. Check the connection and the token.",
       "libraryNotMapped": "{{name}} is not linked to a cloud directory yet. Check the mounts or the Push discovery settings.",
       "qbittorrentCredentialsUnreadable": "Cannot read the qBittorrent sign-in. Enter it again.",
@@ -3397,6 +3541,18 @@
       "accepted": "Uninstalling. Peach will quit. You can close this page when it's done."
     },
     "backgroundIssues": {
+      "mediaCapacity": {
+        "title": "Media repairs paused for storage capacity",
+        "link": "Open repair settings"
+      },
+      "mediaMounts": {
+        "title": "Media mounts need attention",
+        "link": "Open system diagnostics"
+      },
+      "sourceAuth": {
+        "title": "Sign-in expired or required · {{source}}",
+        "link": "Open source settings"
+      },
       "pushDiscovery": {
         "title": "Couldn't add newly found files automatically",
         "link": "Open push settings"
@@ -4201,7 +4357,7 @@
         "serverError": "The source's service is failing",
         "parseError": "Couldn't parse the metadata",
         "notFound": "The last lookup found nothing",
-        "cooling": "The source is cooling down",
+        "cooling": "Requests to the source are temporarily paused",
         "failed": "No metadata from the source",
         "parsed": "Metadata parsed",
         "parsedBefore": "Parsed before; recent parsing needs another check",
@@ -4320,13 +4476,38 @@
         "externalSource": "external source"
       }
     },
+    "javdbBrowserLogin": {
+      "waiting": "Sign in to JavDB in the browser window. Your session will be saved automatically.",
+      "done": "Connected to JavDB and saved the sign-in session.",
+      "cancelled": "JavDB sign-in was canceled.",
+      "windowClosed": "The JavDB sign-in window was closed.",
+      "timeout": "JavDB sign-in did not finish within {{minutes}} minutes. Open a new sign-in window.",
+      "failed": "Could not save the JavDB sign-in session. Reconnect or import the cookie manually.",
+      "browserMissing": "No supported local browser was found. Import the JavDB cookie manually.",
+      "proxyWithCredentials": "The browser cannot use a source proxy that requires authentication. Check the connection settings or import the JavDB cookie manually."
+    },
+    "sourceBrowserLogin": {
+      "waiting": "Sign in in the browser window. The session is saved once confirmed.",
+      "done": "Connected and saved the sign-in session.",
+      "cancelled": "Sign-in was canceled.",
+      "windowClosed": "The sign-in window was closed.",
+      "timeout": "The session could not be confirmed within {{minutes}} minutes. Open a new sign-in window.",
+      "failed": "Could not save the sign-in session. Reconnect or configure credentials manually.",
+      "browserMissing": "No supported local browser was found. Configure credentials manually.",
+      "proxyWithCredentials": "The browser cannot use a proxy that requires authentication. Check the connection settings or configure credentials manually."
+    },
     "sourceChecks": {
+      "sampleMatched": "Sample {{code}} was retrieved and matched.",
+      "sampleMissing": "Sample {{code}} was not found. Check whether lookup is available for this source.",
+      "sampleIncomplete": "The identity or title of sample {{code}} could not be verified.",
       "mobileBroadbandHint": "On China Mobile broadband, direct connections to DMM image hosts are often dropped after the handshake; set the DMM / FANZA connection to the Peach proxy.",
       "target": {
         "page": "Source page",
+        "lookup": "Work lookup sample",
+        "session": "Sign-in session",
         "cdn": "Image CDN"
       },
-      "cooldown": "The source is cooling down. Try again later.",
+      "cooldown": "Requests to the source are temporarily paused. Try again later.",
       "proxy": "The proxy connection failed. Check the Peach proxy.",
       "timeout": "The connection to the source timed out. Try again later or check the connection method.",
       "cdnUnreachable": "Can't connect. {{hint}}",
@@ -4335,6 +4516,10 @@
       "rateLimited": "The source is rate limiting. Try again later.",
       "notFound": "The check address doesn't exist on the source. Check the site address.",
       "signIn": "The source requires sign-in or verification. Sign in on the official site, then try again.",
+      "sessionMissing": "Save a JavDB cookie first.",
+      "sessionRejected": "JavDB requires you to sign in again. Sign in on JavDB and update the saved cookie.",
+      "sessionVerified": "The JavDB sign-in session is valid.",
+      "sessionUnconfirmed": "Could not confirm the JavDB sign-in status. Check whether your profile opens on JavDB.",
       "reason": "{{reason}}.",
       "unavailable": "The source is unavailable right now. Try again later.",
       "needsCode": "Studio sites are picked by code. Enter a code from your collection to check the HD cover.",
@@ -4345,7 +4530,7 @@
         "ok": "Reachable",
         "auth": "Sign-in or verification",
         "http": "HTTP error",
-        "cooldown": "Cooling down",
+        "cooldown": "Temporarily paused",
         "network": "Network failure",
         "skipped": "Not checked"
       }
@@ -4361,7 +4546,7 @@
       }
     },
     "followCheck": {
-      "coolingDown": "{{provider}} is cooling down after rate limiting. Retrying in {{seconds}} s; skipped this time"
+      "coolingDown": "{{provider}} was skipped this time because it is limiting requests. Try again in {{seconds}} seconds."
     },
     "followEvidence": {
       "runLabel": "Delete old snapshots",
@@ -4413,6 +4598,15 @@
       "incompleteCast": "The cast field has unrecognized or uncertain entries; the full cast wasn't found"
     },
     "resourceSearch": {
+      "requestTimedOut": "Request timed out",
+      "connectionFailed": "Unable to connect",
+      "unauthorized": "Authentication required (HTTP 401)",
+      "accessDenied": "Access denied (HTTP 403)",
+      "rateLimited": "Too many requests (HTTP 429)",
+      "httpFailure": "Request failed (HTTP {{status}})",
+      "invalidResponse": "Invalid response format",
+      "indexerRejected": "The indexer returned an error",
+      "requestFailed": "Request failed",
       "reject": {
         "code": "code mismatch",
         "size": "size out of range",
@@ -4421,7 +4615,7 @@
       },
       "rejectedCount": "{{reason}}: {{count}}",
       "allRejected": "Indexers returned {{total}} results, but none passed the filters: {{counts}}",
-      "noIndexer": "Add and enable an indexer in Settings → Downloads on this device",
+      "noIndexer": "No fallback indexer is enabled",
       "busy": "A torrent search is already running. Try again later",
       "indexerFailed": "{{indexer}}: the request failed or the response format is wrong. Check the indexer",
       "indexerError": "{{indexer}}: {{error}}",
@@ -4438,14 +4632,18 @@
     "magnetChain": {
       "staleReused": "Reused the previous result: {{error}}",
       "sourceFailed": "{{source}}: {{error}}",
-      "sourceUnfetched": "{{source}}: search incomplete",
+      "sourceUnfetched": "{{source}}: Search failed",
       "incomplete": "Some source searches are incomplete. Try searching again later."
     },
     "wantsMagnets": {
-      "linksUnfetched": "Couldn't get the download links. Try again later or check the source connections.",
-      "chainUnfetched": "The magnet link search couldn't reach its sources. Try again later or check the source connections."
+      "linksUnfetched": "Download link lookup failed. Try again later.",
+      "chainUnfetched": "Resource search failed. Try again later."
     },
     "javBrowser": {
+      "sourceFailures": "{{failures}}",
+      "sourceFailuresWaiting": "{{error}}. Waiting to retry automatically",
+      "searchRetriesExhausted": "Search still failing after {{attempts}} automatic retries. {{error}}",
+      "noMatchWithSourceFailure": "No results from the other sources. {{error}}. Search will resume when the source recovers",
       "idle": "Can be added to your Peach collection",
       "queued": "Waiting to search for magnet links",
       "searching": "Searching for magnet links",
@@ -4454,7 +4652,7 @@
       "owned": "This code is already in your collection",
       "failed": "Couldn't add it. You can retry",
       "noMatch": "No magnet link to download automatically. You can retry",
-      "noMatchSourcesPaused": "Not found on the other sources; {{sources}} is unreachable for now and will be checked again when it recovers",
+      "noMatchSourcesPaused": "No results from the other sources. Search failed on {{sources}} and will be retried when available",
       "searchFailedWith": "Resource search failed: {{error}}",
       "noOtherMagnet": "No other magnet link available. Pick one manually in Peach",
       "disabled": "Adding from the browser is turned off",
@@ -4462,10 +4660,10 @@
       "retriesExhausted": "Still not done after {{attempts}} automatic retries. The search or cloud download submission failed; check the sources and download channels in Peach, then retry",
       "submitFailed": "The search or cloud download submission failed. Check the sources and download channels in Peach, then retry",
       "retryWaiting": "Temporarily unavailable. Waiting to retry automatically",
-      "sourcesWaiting": "Couldn't reach {{sources}}. Waiting to retry automatically",
-      "sourcesUnfetched": "Couldn't reach {{sources}}",
+      "sourcesWaiting": "Search failed on {{sources}}. Waiting to retry automatically",
+      "sourcesUnfetched": "Search failed on {{sources}}",
       "searchFailedWaiting": "Resource search failed: {{error}}. Waiting to retry automatically",
-      "sourcesExhausted": "Still couldn't reach {{sources}} after {{attempts}} automatic retries. Check the sources in Peach, then retry"
+      "sourcesExhausted": "Search still failed on {{sources}} after {{attempts}} automatic retries"
     },
     "followCreators": {
       "evidence": {
@@ -4629,6 +4827,13 @@
     }
   },
   "tray": {
+    "desktopAlerts": {
+      "startup": "Peach ran into a startup problem. Check startup diagnostics.",
+      "service": "The Peach service is still unavailable. Check system diagnostics.",
+      "database": "Peach cannot read the library database. Check system diagnostics.",
+      "mounts": "A library directory is still unavailable. Check your mounts.",
+      "capacity": "Storage limits paused some background processing. Check your storage settings."
+    },
     "listSeparator": ", ",
     "clauseSeparator": "; ",
     "menu": {

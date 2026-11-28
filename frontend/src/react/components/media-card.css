@@ -13,14 +13,49 @@
  * 目录列表是一叠：连续的一段视频合成一格网格，竖屏带插进来时从行边界剪开，上下两半各是
  * 一段。列距 16px 是给悬停面留的：卡片悬停时底色往盒外多铺 8px，列距再窄就顶到邻卡。 */
 .peach-react [data-media-sections] { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-[data-rectangle-select] { position: relative; user-select: none; }
+[data-rectangle-area] { position: relative; }
+[data-rectangle-select]:not([data-board-data-table]),
+[data-board-data-table]:has(> [data-card-selection-rectangle]) { user-select: none; }
+/* 外侧留白可起拖，四边等量抵消，保留内容区域的落点和宽度。 */
+.peach-react :is([data-media-sections], [data-media-grid], [data-follow-list], [data-local-wall],
+  [data-index-grid], [data-alphabet], [data-tag-cloud], [data-rectangle-gutter])[data-rectangle-area] {
+  margin: -16px;
+  padding: 16px;
+}
+.peach-react [data-media-sections][data-rectangle-area] {
+  margin-block-start: 0;
+  padding-block-start: 0;
+}
+.peach-react [data-media-grid][data-rectangle-area] { width: auto; }
 [data-card-selection-rectangle] {
   position: absolute; z-index: 3; pointer-events: none;
-  border: 1px solid var(--color-border-focus-ring, var(--tungsten));
-  background: color-mix(in oklab, var(--color-border-focus-ring, var(--tungsten)) 14%, transparent);
+  border: 1px solid var(--color-accent-500);
+  background: color-mix(in oklab, var(--color-accent-500) 8%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ground) 55%, transparent);
 }
 [data-rectangle-hit] {
-  outline: 2px solid var(--color-border-focus-ring, var(--tungsten)); outline-offset: -2px;
+  outline: 2px solid var(--color-accent-500); outline-offset: -2px;
+}
+/* 媒体描边单独铺在封面上方，亮暗图片上都能看清整圈边界。 */
+:is([data-media-card], [data-feed-id], [data-photo-cell])[data-rectangle-hit] { outline: none; }
+:is([data-media-card], [data-feed-id], [data-photo-cell])[data-rectangle-hit]::after,
+[data-feed-id][data-feed-selected]::after,
+[data-photo-cell][data-selected]::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: 7;
+  border: 2px solid var(--ink);
+  border-radius: inherit;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ground) 68%, transparent);
+  pointer-events: none;
+}
+:is([data-media-card], [data-feed-id], [data-photo-cell])[data-rectangle-hit]::after {
+  border-color: var(--color-accent-500);
+}
+[data-photo-cell]:is([data-selected], [data-rectangle-hit])::after {
+  inset: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ground) 68%, transparent);
 }
 .peach-react [data-media-grid] {
   display: grid;
@@ -30,7 +65,7 @@
 /* 同一网格行里的卡片共享完整高度。 */
 .peach-react [data-media-grid] > [data-media-card] { align-self: stretch; }
 /* 详情页接着看那一排：岛根挂在作品详情的横排 `[data-related-row]` 里，卡片在这一层横着排，卡距同那一排。 */
-.peach-react [data-media-next-row] { display: flex; gap: 16px; }
+.peach-react [data-media-next-row] { display: flex; gap: var(--detail-card-gap); }
 
 /* ── 卡片盒 ──
  * 字体与行高取页面正文那一档（14px/20px），卡里没写行高的每一格都按它排，不继承岛根的 1.5。 */
@@ -73,13 +108,16 @@
 body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] { width: calc(214px * 168 / 336); }
 /* 悬停面往卡片盒外多铺 8px：不动网格尺寸、不挤相邻卡，只让命中反馈比内容大一圈；同一时刻
  * 只有一张卡在铺，列距另一半留给邻卡。 */
-.peach-react [data-media-card]:is(:hover, :focus-within) {
-  background: var(--hover);
-  box-shadow: 0 0 0 8px var(--hover);
+.peach-react [data-media-card]:is(:hover, :has(:focus-visible)) {
+  --card-hover-surface: var(--hover);
 }
-.peach-react [data-media-card][data-library]:not([data-pending-delete], [data-variant="resource"]):is(:hover, :focus-within) {
-  background: var(--library-hover);
-  box-shadow: 0 0 0 8px var(--library-hover);
+.peach-react [data-media-card][data-library]:not([data-pending-delete], [data-variant="resource"]):is(:hover, :has(:focus-visible)) {
+  --card-hover-surface: var(--library-hover);
+}
+.peach-react [data-media-card]:is(:hover, :has(:focus-visible)):not(:where(:has([data-media-meta] :is(a[href], button):not([data-media-title], [data-open]):is(:hover, :focus-visible)))) {
+  --card-hover-active: 1;
+  background: var(--card-hover-surface);
+  box-shadow: 0 0 0 8px var(--card-hover-surface);
 }
 /* 稍后看与已标记是个人状态，和来源色分开：封面左下角各一枚带色图标，两枚可以同时出现。
  * 鼠标不在卡上时也一直显示；颜色之外还有字形，不靠颜色单独分辨。 */
@@ -107,7 +145,7 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
 .peach-react [data-media-status] svg { width: 15px; height: 15px; fill: currentColor; stroke: currentColor; stroke-width: 1.5; }
 .peach-react [data-media-status] [data-status="later"] { color: var(--color-sky-500); }
 .peach-react [data-media-status] [data-status="flagged"] { color: var(--color-rose-500); }
-.peach-react [data-media-card]:hover [data-media-pic] { filter: saturate(.9) brightness(.94); }
+.peach-react [data-media-card]:hover:not(:has([data-media-meta] :is(a[href], button):not([data-media-title], [data-open]):hover)) [data-media-pic] { filter: saturate(.9) brightness(.94); }
 .peach-react [data-select-mode] [data-media-card] { cursor: default; user-select: none; }
 .peach-react [data-select-mode] :is([data-media-open], [data-media-preview], [data-media-later], [data-media-seek]),
 .peach-react [data-select-mode] :is([data-media-later], [data-media-seek]) button { pointer-events: none !important; }
@@ -177,7 +215,8 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
 .peach-react :is([data-media-pic], [data-mix-cover]) {
   --pic-radius: var(--surface-radius);
   /* 左上角标、右上分卷徽标与右下时长离格边 6px，圆角与格子同心。 */
-  --pic-inner-radius: calc(var(--pic-radius) - 6px);
+  --pic-badge-inset: 6px;
+  --pic-inner-radius: calc(var(--pic-radius) - var(--pic-badge-inset));
   clip-path: inset(0 round var(--pic-radius));
   mask-image: linear-gradient(#000 0 0);
 }
@@ -205,8 +244,9 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
   inset: 0;
   z-index: 6;
   box-sizing: border-box;
-  border: 2px solid var(--on-media);
+  border: 2px solid var(--ink);
   border-radius: var(--pic-radius);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ground) 68%, transparent);
   pointer-events: none;
 }
 /* 封面那一层铺满格子，图本身的几何归旧样式表的 `.poster`。 */
@@ -267,8 +307,8 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
 /* ── 封面上的角标 ── */
 .peach-react [data-media-badge] {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: var(--pic-badge-inset, 6px);
+  left: var(--pic-badge-inset, 6px);
   z-index: 2;
   display: flex;
   align-items: center;
@@ -291,8 +331,8 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
 .peach-react [data-media-badge] > span[class~="metered"] { color: var(--meter); }
 .peach-react [data-media-duration] {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
+  right: var(--pic-badge-inset, 6px);
+  bottom: var(--pic-badge-inset, 6px);
   z-index: 2;
   padding: 2px 6px;
   border-radius: var(--pic-inner-radius, 8px);
@@ -319,8 +359,8 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
 }
 .peach-react [data-media-group] {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: var(--pic-badge-inset, 6px);
+  right: var(--pic-badge-inset, 6px);
   z-index: 6;
   min-height: 27px;
   padding: 5px 9px;
@@ -358,7 +398,7 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
 .peach-react [data-media-progress] > i { display: block; width: var(--media-fill); height: 100%; background: var(--tungsten); }
 
 /* 多选的勾是正圆，全站一个形状。多选模式下每张都亮出空圈，选中的那张填满。 */
-.peach-react [data-media-check] {
+:is(.peach-react, [data-feed-selection]) [data-media-check] {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -374,12 +414,14 @@ body[data-density="dense"] .peach-react [data-media-card][data-variant="short"] 
   backdrop-filter: saturate(1.8) blur(12px);
   -webkit-backdrop-filter: saturate(1.8) blur(12px);
 }
-.peach-react :is([data-select-mode] [data-media-check], [data-media-card][data-selected] [data-media-check]) { display: grid; }
-.peach-react [data-media-card][data-selected] [data-media-check] {
-  border-color: var(--on-media);
-  background: var(--on-media);
-  color: var(--on-media-ink);
-  box-shadow: 0 3px 12px #0008;
+.peach-react :is([data-select-mode] [data-media-check], [data-media-card][data-selected] [data-media-check]),
+[data-feed-selection][data-rectangle-select] [data-media-check] { display: grid; }
+:is(.peach-react :is([data-media-card], [data-photo-cell])[data-selected], [data-feed-selection] [data-feed-selected],
+  [data-rectangle-hit]) [data-media-check] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--ground);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ground) 68%, transparent), 0 3px 12px #0008;
 }
 .peach-react [data-media-trash-mark] {
   position: absolute;
@@ -420,7 +462,7 @@ body[data-density="dense"] .peach-react :is([data-media-trash-mark], [data-media
   stroke-linejoin: round;
 }
 /* 勾在作品卡以外（照片墙、名册格）也用同一副线稿。 */
-.peach-react [data-media-check] svg {
+:is(.peach-react, [data-feed-selection]) [data-media-check] svg {
   width: 16px;
   height: 16px;
   fill: none;
@@ -528,8 +570,6 @@ body[data-density="dense"] .peach-react :is([data-media-trash-mark], [data-media
   overflow: hidden;
   border: 0;
   border-radius: 50%;
-  background: var(--media-placeholder);
-  color: inherit;
   cursor: pointer;
 }
 .peach-react :is(button, a)[data-media-avatar]:hover { box-shadow: 0 0 0 2px var(--ink-2); }
@@ -552,7 +592,7 @@ body[data-density="dense"] .peach-react :is([data-media-trash-mark], [data-media
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
+  color: inherit;
   font-family: Bahnschrift, "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
   font-size: var(--fs-sm);
 }
@@ -581,14 +621,14 @@ body[data-density="dense"] .peach-react :is([data-media-trash-mark], [data-media
   transform: translate(var(--lift-x, 0), var(--lift-y, 0)) scale(var(--lift-scale, 1));
   transition: left var(--lift-motion, var(--board-motion)), transform var(--lift-motion, var(--board-motion));
 }
-.peach-react [data-media-avatars]:is(:hover, :has(:focus-visible)) > [data-media-avatar] {
+.peach-react [data-media-avatars]:not([data-list-people] [data-media-avatars]):is(:hover, :has(:focus-visible)) > [data-media-avatar] {
   left: calc(5px + 30px * var(--media-avatar-index));
 }
-.peach-react [data-media-avatars] > :nth-child(1) { z-index: 5; }
-.peach-react [data-media-avatars] > :nth-child(2) { z-index: 4; }
-.peach-react [data-media-avatars] > :nth-child(3) { z-index: 3; }
-.peach-react [data-media-avatars] > :nth-child(4) { z-index: 2; }
-.peach-react [data-media-avatars] > :nth-child(5) { z-index: 1; }
+.peach-react [data-media-avatars] > :nth-child(1) { --media-avatar-index: 0; z-index: 5; }
+.peach-react [data-media-avatars] > :nth-child(2) { --media-avatar-index: 1; z-index: 4; }
+.peach-react [data-media-avatars] > :nth-child(3) { --media-avatar-index: 2; z-index: 3; }
+.peach-react [data-media-avatars] > :nth-child(4) { --media-avatar-index: 3; z-index: 2; }
+.peach-react [data-media-avatars] > :nth-child(5) { --media-avatar-index: 4; z-index: 1; }
 .peach-react [data-media-avatars] > :is(:hover, :focus-visible) {
   z-index: 6;
   box-shadow: 0 0 0 2px var(--ink-2);
@@ -671,7 +711,8 @@ body .peach-react [data-media-card][data-pending-delete][data-jav-card] button[d
   min-width: 0;
   min-height: 1.5em;
   line-height: 1.5;
-  overflow: hidden;
+  overflow: clip;
+  overflow-clip-margin: 4px;
   white-space: nowrap;
   gap: 8px;
   color: var(--muted);
@@ -697,17 +738,20 @@ body .peach-react [data-media-card][data-pending-delete][data-jav-card] button[d
   vertical-align: bottom;
 }
 .peach-react button[data-media-who] { cursor: pointer; }
-.peach-react [data-media-who] > span { overflow: hidden; text-overflow: ellipsis; }
+.peach-react [data-media-who][data-inline-action] { overflow: visible; }
+.peach-react [data-media-who][data-inline-action]:is(:hover, :focus-visible) { color: var(--color-text-primary); }
+.peach-react [data-media-who] > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .peach-react :is([data-media-release], [data-media-size]) { display: inline-flex; flex: none; align-items: center; gap: 4px; white-space: nowrap; }
 .peach-react [data-media-facts] { display: inline-flex; flex: none; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
 .peach-react [data-media-byline] svg { width: var(--icon-inline); height: var(--icon-inline); flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .peach-react span[data-media-who] { cursor: default; }
-.peach-react [data-media-who-more] { flex: none; color: var(--muted); white-space: nowrap; }
+.peach-react [data-cast-trigger] { flex: none; white-space: nowrap; }
+.peach-react :is([data-cast-trigger] > button, [data-media-credit-action]) { color: var(--color-text-primary); }
+.peach-react [data-media-credit-action]:hover { color: var(--tungsten); }
 .peach-react [data-media-why] { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .peach-react [data-variant="next"] [data-media-why] { color: var(--loupe); }
-.peach-react [data-variant="next"] [data-media-byline] { flex-wrap: nowrap; overflow: hidden; }
+.peach-react [data-variant="next"] [data-media-byline] { flex-wrap: nowrap; }
 .peach-react [data-variant="next"] [data-media-who] { flex: 0 1 auto; max-width: 55%; }
-.peach-react [data-variant="next"] [data-media-who-more] { flex: none; white-space: nowrap; }
 .peach-react [data-variant="next"] [data-media-why] { flex: 1 1 0; }
 .peach-react [data-variant="next"] :is([data-media-size], [data-media-release]) { display: none; }
 .peach-react [data-variant="next"] [data-media-facts] { display: none; }
@@ -743,12 +787,6 @@ body .peach-react [data-media-card][data-pending-delete][data-jav-card] button[d
   .peach-react [data-media-card][data-jav-card] [data-media-byline] { flex-wrap: wrap; row-gap: 2px; }
   .peach-react [data-media-card][data-jav-card] [data-media-facts] { flex-basis: 100%; }
 }
-@container media-meta (width < 200px) {
-  .peach-react [data-media-card]:not([data-variant="next"]) [data-media-who-more] { display: none; }
-}
-@container media-meta (width < 140px) {
-  .peach-react [data-media-who-more] { display: none; }
-}
 @container media-meta (width < 110px) {
   .peach-react [data-media-size] { display: none; }
 }
@@ -782,7 +820,7 @@ body .peach-react [data-media-card][data-pending-delete][data-jav-card] button[d
   white-space: nowrap;
   cursor: pointer;
 }
-.peach-react [data-media-tag]:hover { background: var(--hover); color: var(--ink); }
+.peach-react :is(a, button)[data-media-tag]:is(:hover, :focus-visible) { background: var(--hover); color: var(--ink); }
 /* 只读的标签（关注卡、关注来的作品）是同一张脸的文字，不接筛选：不给手形，悬停也不变色。 */
 .peach-react span[data-media-tag] { cursor: default; }
 .peach-react span[data-media-tag]:hover { background: var(--tag-fill); color: var(--ink-2); }
@@ -819,20 +857,18 @@ body[data-density="dense"] .peach-react [data-media-card] [data-media-byline] {
   height: 1.35em;
   line-height: 1.35em;
   min-height: 0;
-  overflow: hidden;
   white-space: nowrap;
 }
 body[data-density="dense"] .peach-react [data-media-card] [data-media-who] { flex: 0 1 auto; }
-body[data-density="dense"] .peach-react [data-media-card] :is([data-media-who-more], [data-media-size]) { flex: none; white-space: nowrap; }
 body[data-density="dense"] .peach-react [data-media-card] [data-media-why] { display: none; }
 body[data-density="dense"] .peach-react [data-media-card] [data-media-tags] { flex-wrap: nowrap; align-items: flex-start; height: 38px; overflow: hidden; }
 body[data-density="dense"] .peach-react [data-media-text] > [data-media-tags] { margin-top: -4px; }
 body[data-density="dense"] .peach-react [data-media-card] [data-media-tag]:nth-child(n+2) { display: none; }
 /* 密集一档的署名始终一行，窄卡也不像宽松档那样把日期折到下一行，屏外卡按标题、署名、标签
-   各一行估高。放不下时作者名先省略，再依次让出「等 N 人」、体积，最窄时日期也让出。 */
+   各一行估高。放不下时作者名先省略，再让出体积和日期。 */
 body[data-density="dense"] .peach-react [data-media-card]:not([data-variant="next"]) [data-media-facts] { flex-basis: auto; }
 @container media-meta (width < 360px) {
-  body[data-density="dense"] .peach-react [data-media-card]:not([data-variant="next"]) :is([data-media-who-more], [data-media-size]) { display: none; }
+  body[data-density="dense"] .peach-react [data-media-card]:not([data-variant="next"]) [data-media-size] { display: none; }
 }
 @container media-meta (width < 160px) {
   body[data-density="dense"] .peach-react [data-media-card]:not([data-variant="next"]) [data-media-facts] { display: none; }

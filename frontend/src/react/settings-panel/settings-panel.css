@@ -159,25 +159,6 @@
 [data-settings-panel] [data-sidebar-setting]{display:grid;gap:12px;padding:0}
 [data-settings-panel] [data-sidebar-setting]>span b,[data-settings-panel] [data-sidebar-setting]>span small{display:block}
 [data-settings-panel] [data-sidebar-setting]>span small{margin-top:3px;color:var(--muted);line-height:1.45}
-[data-settings-panel] [data-sidebar-order]{display:grid;gap:6px}
-/* 这一列的行、下面那个下拉和「添加」按钮同高：它们是同一张清单的三段，差几像素就
-   看得出是两拨控件。紧凑档的图标钮加上下 1px 内边距和 1px 边框正好是 --control-h。 */
-[data-settings-panel] [data-sidebar-row]{position:relative;display:flex;align-items:center;justify-content:space-between;min-height:var(--control-h);padding:1px 5px;border:1px solid var(--line-soft);border-radius:var(--surface-radius);background:var(--surface);cursor:grab}
-[data-settings-panel] [data-sidebar-row]:active{cursor:grabbing}
-[data-settings-panel] [data-sidebar-row]>span{display:flex;align-items:center;gap:8px}
-[data-settings-panel] [data-sidebar-row] svg{width:18px;height:18px;stroke:currentColor;fill:none}
-/* 名目前那枚字形与名字同行，随字号缩放；拖柄和右端的上移、下移键仍按键的尺寸。 */
-[data-settings-panel] [data-sidebar-label]>svg{width:var(--icon-inline);height:var(--icon-inline)}
-[data-settings-panel] [data-sidebar-label]{min-width:0}
-[data-settings-panel] [data-sidebar-label]>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-[data-settings-panel] [data-sidebar-grip]{display:grid;place-items:center;width:24px;color:var(--muted)}
-[data-settings-panel] [data-sidebar-grip] svg{width:20px;height:20px}
-[data-settings-panel] [data-sidebar-actions]{flex:none}
-[data-settings-panel] [data-sidebar-row] button{display:grid;place-items:center;min-width:var(--control-h-compact);height:var(--control-h-compact);border:0;border-radius:var(--control-radius);background:transparent;color:var(--muted);cursor:pointer}
-[data-settings-panel] [data-sidebar-row] button:hover:not(:disabled){background:var(--hover);color:var(--ink)}
-[data-settings-panel] [data-sidebar-row] button:disabled{opacity:.25;cursor:not-allowed}
-[data-settings-panel] [data-sidebar-add-row]{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:5px}
-[data-settings-panel] [data-sidebar-picker-icon] svg{width:var(--icon-inline);height:var(--icon-inline);stroke:currentColor;fill:none}
 [data-settings-panel]>[data-react-overlays]{display:contents}
 @media (max-width:600px){[data-settings-panel] [data-settings-scroll]{padding:0 17px 17px}}
 @media (max-width:600px){[data-settings-panel] [data-settings-head]{padding:17px 17px 14px}}
@@ -272,7 +253,7 @@ html[data-theme-snapshot] [data-settings-panel] :is([data-settings-glide],[data-
 :is([data-settings-panel],[data-modal-kind="collections"]){--settings-card-drop:#0000000d;--settings-error-drop:#0002}
 .dark :is([data-settings-panel],[data-modal-kind="collections"]){--settings-card-drop:#00000080;--settings-error-drop:#0008}
 :is([data-settings-panel] [data-settings-card],.peach-react [data-modal-width="collections"]){box-shadow:0 12px 40px var(--settings-card-drop)}
-[data-settings-panel] [data-settings-card]{border:1px solid var(--line)}
+[data-settings-panel] [data-settings-card]{border:1px solid var(--color-separator-border)}
 [data-settings-panel] [data-settings-nav]{display:flex;gap:4px;overflow-x:auto;flex:none;border-bottom:1px solid var(--line);margin:0 0 24px;padding:0;scrollbar-width:none}
 [data-settings-panel] [data-settings-nav] button{flex:none;background:none;border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;font-family:inherit;font-size:14px;font-weight:400;line-height:20px;color:var(--ink-2);cursor:pointer;white-space:nowrap}
 [data-settings-panel] [data-settings-nav] button[aria-selected="true"]{border-bottom-color:var(--tungsten);color:var(--tungsten);font-weight:500}
@@ -308,6 +289,15 @@ html[data-theme-snapshot] [data-settings-panel] :is([data-settings-glide],[data-
 [data-settings-panel] [data-settings-card] [data-number-control] input{border:0;box-shadow:none;background:transparent;width:64px;min-width:0;height:30px;border-radius:0;padding:6px 8px;font:inherit;outline:none}
 [data-settings-panel] [data-settings-card] [data-number-control]:focus-within{box-shadow:0 0 0 3px var(--line);border-color:var(--muted)}
 [data-settings-panel] [data-settings-card] [data-number-control]>span{display:flex;align-items:center;padding:0 8px;border-left:1px solid var(--line);color:var(--muted);font-size:12px;background:var(--ground)}
+[data-settings-panel] [data-number-steppers]{display:grid;grid-template-rows:repeat(2,minmax(0,1fr));flex:none;border-inline-start:1px solid var(--line)}
+[data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]{width:26px;height:auto;min-height:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--color-foreground-icon-secondary);box-shadow:none}
+[data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]+[data-number-step]{border-block-start:1px solid var(--line)}
+[data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]:hover:not(:disabled){background:var(--color-background-tertiary-hover);color:var(--color-text-primary)}
+[data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]:disabled{cursor:not-allowed;color:var(--color-text-placeholder)}
+[data-settings-panel] [data-number-step]:focus-visible{outline:2px solid var(--color-border-focus-ring);outline-offset:-2px}
+@media (max-width:760px){
+  [data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]{width:36px}
+}
 [data-settings-panel] [data-settings-card] [data-number-control]:has([aria-invalid=true]){border-color:var(--error,#e5484d);box-shadow:0 0 0 2px color-mix(in srgb,var(--error,#e5484d) 15%,transparent)}
 [data-settings-panel] [data-settings-card] [data-number-error]:not(:empty){position:absolute;z-index:10;right:0;top:calc(100% + 6px);width:max-content;max-width:240px;padding:6px 10px;background:var(--ground);border:1px solid color-mix(in srgb,var(--error,#e5484d) 35%,var(--line));border-radius:8px;box-shadow:0 4px 14px var(--settings-error-drop);color:var(--error,#e5484d);font-size:12px;line-height:18px;margin:0}
 [data-settings-panel] [data-settings-card] [data-number-error][hidden]{display:none}
@@ -331,7 +321,7 @@ html[data-theme-snapshot] [data-settings-panel] :is([data-settings-glide],[data-
 @media (max-width:760px){
   [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]{display:flex;flex-wrap:wrap;gap:8px 12px}
   [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]>:first-child{flex:1 1 max-content;min-width:0}
-  [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]:has(>span>small)>:first-child{flex-basis:0}
+  [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]>span>small{contain:inline-size}
   /* 说明折成几行时整块变高，控件居中会落到标题下面；对齐到顶部，和标题同一行。 */
   [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]:has(>span>small)>:last-child{align-self:flex-start}
   [data-settings-panel] [data-settings-card] [data-settings-scroll] [data-setting-row]>:last-child{flex:0 0 auto;margin-left:auto;max-width:100%}
@@ -339,14 +329,14 @@ html[data-theme-snapshot] [data-settings-panel] :is([data-settings-glide],[data-
 }
 @media (max-width:760px){[data-settings-panel] [data-settings-card]>[data-settings-nav]{min-width:0;max-width:100%}}
 /* 纯图标按钮不继承浏览器按钮的水平内边距。 */
-[data-settings-panel] :is([data-settings-head] button,[data-sidebar-row] button){padding:0;display:inline-grid;place-items:center;line-height:1;flex-shrink:0}
-[data-settings-panel] :is([data-settings-head] button,[data-sidebar-row] button)>svg{display:block;margin:0;flex-shrink:0;align-self:center;justify-self:center}
-[data-settings-panel] :is([data-settings-head] button,[data-sidebar-row] button)[hidden]{display:none}
+[data-settings-panel] [data-settings-head] button{padding:0;display:inline-grid;place-items:center;line-height:1;flex-shrink:0}
+[data-settings-panel] [data-settings-head] button>svg{display:block;margin:0;flex-shrink:0;align-self:center;justify-self:center}
+[data-settings-panel] [data-settings-head] button[hidden]{display:none}
 /* 进场用 backwards 而不是 both：终点帧本来就是元素的自然状态，保留它只多留下一个
    `filter:blur(0)`。非 none 的 filter 会另起一个 backdrop root，卡片里任何
    backdrop-filter 从此只采样得到卡片自己的内容——左栏的玻璃于是退化成一块半透明色。
    退场那条仍要 both，它的终点（透明）不是自然状态。 */
-[data-settings-panel] [data-settings-card][data-settings-card]{border:0;animation:board-dialog-in var(--board-dialog-motion) backwards}
+[data-settings-panel] [data-settings-card][data-settings-card]{animation:board-dialog-in var(--board-dialog-motion) backwards}
 [data-settings-panel][data-closing] [data-settings-card][data-settings-card]{animation:board-dialog-out var(--board-dialog-motion) both}
 /* 设置弹层左栏跟左侧抽屉走同一张面：两者是同一件事的两种形态——抽屉是全站导航，
    这一栏是设置内部的导航，抽屉上的液态玻璃没有理由进了弹层就换成一块实色。
@@ -376,6 +366,13 @@ html[class~=board-high-contrast] [data-settings-panel] [data-settings-card][data
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-number-control]>span{font-size:14px}}
 @media (prefers-reduced-motion:reduce){[data-settings-panel] [data-settings-card] [data-settings-head]{transition:none}}
 [data-settings-panel] [data-settings-card] [data-settings-head] h2{font:var(--board-heading);letter-spacing:0}
+[data-settings-panel] [data-settings-head]{gap:12px}
+[data-settings-panel] [data-settings-save-status]{display:inline-flex;align-items:center;gap:4px;margin-inline-start:auto;min-width:0;color:var(--color-text-secondary);font:var(--board-compact)}
+[data-settings-panel] [data-settings-save-status="saved"]{color:var(--color-notification-success-foreground)}
+[data-settings-panel] [data-settings-save-status="failed"]{color:var(--color-notification-error-foreground)}
+[data-settings-panel] [data-setting-row] [data-setting-save-error]{color:var(--color-notification-error-foreground)}
+[data-settings-panel] [data-settings-save-status] span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+[data-settings-panel] [data-settings-save-status] svg{width:14px;height:14px;flex:none}
 [data-settings-panel] [data-setting-row] b{font:var(--board-body)}
 [data-settings-panel] [data-setting-row] small{font:var(--board-compact)}
 @media (max-width:760px){[data-settings-panel] [data-settings-card][data-settings-card] [data-settings-scroll]{padding-top:16px}}
@@ -392,6 +389,10 @@ html[class~=board-high-contrast] [data-settings-panel] [data-settings-card][data
 [data-settings-panel] [data-settings-service] button:disabled{color:var(--muted);cursor:not-allowed}
 [data-settings-panel] [data-settings-subheading]{margin:0;padding:16px 0 6px;color:var(--muted);font:var(--board-compact)}
 [data-settings-panel] [data-setting-layout="cards"] [data-settings-subheading]{padding:0 12px}
+[data-settings-panel] [data-settings-group-heading]{color:var(--color-text-primary);font:var(--board-body-medium)}
+[data-settings-panel] [data-setting-block]>[data-setting-block]+[data-setting-block]{margin-block-start:8px}
+[data-settings-panel] [data-setting-block]>[data-glow-setting]{margin-block-start:8px}
+[data-settings-panel] :is(#notification-settings,#homeGlowControls){scroll-margin-block-start:16px}
 [data-settings-panel] [data-settings-scroll] [data-settings-subheading]+[data-setting-row]{border-top:0}
 @media(max-width:760px){[data-settings-panel] [data-settings-service]{margin-top:0;padding:0 0 0 12px;border-top:0;border-left:1px solid var(--line-soft);flex-shrink:0}}
 @keyframes settings-backdrop-in{from{opacity:0}to{opacity:1}}

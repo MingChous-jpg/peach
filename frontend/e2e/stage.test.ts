@@ -35,6 +35,35 @@ const stageShape = (page: Page) => page.evaluate(() => {
   };
 });
 
+async function checkStageCorners(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const stage = document.querySelector('#stage[open]');
+    return stage?.querySelector('[data-feedback-launcher]:popover-open') && getComputedStyle(stage).transform === 'none';
+  });
+  const corners = await page.evaluate(() => {
+    const stage = document.querySelector('#stage[open]')!;
+    const drawer = document.querySelector('#drawer')!;
+    const media = stage.querySelector('[data-stage-media]')!;
+    const feedback = stage.querySelector('[data-feedback-launcher] button')!;
+    const frame = stage.getBoundingClientRect(), sidebar = drawer.getBoundingClientRect(), button = feedback.getBoundingClientRect();
+    const css = getComputedStyle(stage);
+    return {
+      frameRadius: parseFloat(css.borderTopLeftRadius), border: parseFloat(css.borderTopWidth),
+      sidebarRadius: parseFloat(getComputedStyle(drawer).borderTopLeftRadius),
+      mediaRadius: parseFloat(getComputedStyle(media).borderTopLeftRadius),
+      feedbackRadius: parseFloat(getComputedStyle(feedback).borderBottomRightRadius),
+      topDifference: frame.top - sidebar.top, bottomDifference: frame.bottom - sidebar.bottom,
+      feedbackRightGap: frame.right - button.right, feedbackBottomGap: frame.bottom - button.bottom,
+    };
+  });
+  assert.equal(corners.frameRadius, corners.sidebarRadius, '详情和侧栏外框圆角不一致');
+  assert.equal(corners.mediaRadius + corners.border, corners.frameRadius, '媒体和详情外框的圆角不同心');
+  assert.ok(Math.abs(corners.topDifference) < 1 && Math.abs(corners.bottomDifference) < 1, '详情与侧栏上下边缘未对齐');
+  const inset = corners.frameRadius - corners.feedbackRadius;
+  assert.ok(inset > 0 && Math.abs(corners.feedbackRightGap - inset) < 1 && Math.abs(corners.feedbackBottomGap - inset) < 1,
+    `反馈按钮未与详情右下角同心：${JSON.stringify(corners)}`);
+}
+
 /** 给舞台上此刻那个播放器做记号：之后找得到同一个记号，就是同一个实例。 */
 const markPlayer = (page: Page, selector: string) => page.evaluate((scope) => {
   const player = document.querySelector<HTMLElement>(`${scope} .video-js`)!;
@@ -61,13 +90,25 @@ describe('舞台岛', () => {
   });
 
   it('目录卡与关注卡走同一个舞台：宿主常驻 body，关掉回来处，列表不重取', { timeout: 90_000 }, async () => {
-    const catalog = await openItemPage(browser, '/', DESKTOP, { ready: card(ITEM.plain) });
+    const catalog = await openItemPage(browser, '/', { ...DESKTOP, width: 1600 }, { ready: card(ITEM.plain) });
     try {
       const page = catalog.page;
       const listed = catalog.stub.reads.get('/api/items') || 0;
       await page.locator(card(ITEM.plain)).first().click();
       await page.locator(ITEM_READY).waitFor();
       assert.deepEqual(await stageShape(page), { host: true, modal: true, stages: 1, hosts: 1 });
+      const feedback = page.locator('#stage [data-feedback-launcher] button');
+      await feedback.waitFor();
+      await page.waitForFunction(() => {
+        const trigger = document.querySelector('#stage [data-feedback-launcher] button');
+        if (!trigger) return false;
+        const box = trigger.getBoundingClientRect();
+        const middle = box.left + box.width / 2;
+        return box.top > innerHeight / 2 && box.bottom <= innerHeight &&
+          trigger.contains(document.elementFromPoint(middle, box.top + 2)) &&
+          trigger.contains(document.elementFromPoint(middle, box.bottom - 2));
+      });
+      await checkStageCorners(page);
       await page.evaluate(() => { (window as unknown as { stageHost: Element }).stageHost = document.querySelector('[data-stage-host]')! });
       await page.locator('#closeStage').click();
       await pathIs(page, '/');
@@ -347,11 +388,20 @@ describe('舞台岛', () => {
 
       const info = await page.locator('#miniplayerInfo').boundingBox();
       assert.ok(info);
+      await page.evaluate(() => {
+        const notice = document.createElement('div');
+        notice.id = 'miniplayer-layer-probe';
+        Object.assign(notice.style, { position: 'fixed', left: '100px', top: '140px', width: '40px', height: '40px',
+          zIndex: 'var(--layer-popover)', background: 'var(--surface)' });
+        document.body.append(notice);
+      });
       await page.mouse.move(info.x + info.width / 2, info.y + info.height / 2);
       await page.mouse.down();
       await page.mouse.move(info.x - 200, info.y - 200, { steps: 6 });
       await page.mouse.move(120, 160, { steps: 6 });
+      assert.equal(await page.evaluate(() => document.elementFromPoint(120, 160)?.closest('#miniplayer')?.id), 'miniplayer');
       await page.mouse.up();
+      await page.locator('#miniplayer-layer-probe').evaluate(node => node.remove());
       await page.waitForFunction(() => document.getElementById('miniplayer')?.dataset.corner === 'tl', null, { timeout: 5_000 });
       assert.equal(await page.locator('#miniplayer').evaluate((node) => (node as HTMLElement).style.transform), '');
       await pathIs(page, '/');
@@ -466,6 +516,7 @@ describe('舞台岛', () => {
         null, { timeout: 5_000 });
       const measured = await layout(page);
       assert.equal(measured.scrollWidth, measured.viewportWidth, `横向溢出：${measured.offenders.join(', ')}`);
+      await checkStageCorners(page);
       await toMiniplayer(page);
       const box = await page.locator('#miniplayerCard').boundingBox();
       assert.ok(box);

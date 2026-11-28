@@ -5,6 +5,7 @@
 import { api } from '@peach/legacy/core';
 
 import { randomId } from '../core/random-id';
+import { reportSlowLoad } from '../slow-load';
 import { decodeParam, rememberDecodeFailure, type HevcPlayback } from './decode-support';
 import type { PlayerItem, PlayerSource } from './types';
 
@@ -77,6 +78,7 @@ export async function playableStreamSource(
   const proxied = followStreamSource(item);
   if (proxied) return proxied;
   const decode = await decodeParam(hevc).catch(() => '');
+  const started = performance.now();
   try {
     const plan = await api(`/api/stream-plan?id=${item.id}&session=${encodeURIComponent(session)}`
       + (decode ? `&decode=${decode}` : '')) as
@@ -96,6 +98,9 @@ export async function playableStreamSource(
       return planned;
     }
   } catch { /* 取不到计划就直读 */ }
+  finally {
+    reportSlowLoad('playback-plan', performance.now() - started, { asset_id: item.id });
+  }
   return directStreamSource(item, session);
 }
 

@@ -24,6 +24,7 @@ import { queryClient } from '../query';
 import { localTime } from '../time';
 import { t } from '../../i18n';
 import { codedText } from '../../core/server-text';
+import { rememberFeedSourceCount } from './feed-source-layout';
 
 export const FOLLOW_URL = '/api/follow';
 export const FOLLOW_CREDENTIALS_URL = '/api/follow/credentials';
@@ -40,6 +41,7 @@ export const FEEDS_CHECK_URL = '/api/feeds/check';
 /** 订阅拉取在后台跑时，隔多久读一次进度。 */
 const FEED_CHECK_POLL_MS = 3000;
 export const FEEDS_LOOKUP_URL = '/api/feeds/lookup';
+const FEEDS_SUGGEST_URL = '/api/feeds/suggest';
 
 /** 来源清单、创作者别名与推荐共用这一个键。 */
 export const FOLLOW_MANAGE_KEY = ['follow-manage'] as const;
@@ -52,7 +54,6 @@ export const FOLLOW_RESOLVE_KEY = ['follow-manage', 'resolve'] as const;
 /** 订阅源清单与未读数。 */
 export const FEEDS_KEY = ['follow-manage', 'feeds'] as const;
 /** 敲字建议按词各存一份：同一个词回头再敲不必再打一趟站点的公开补全。 */
-export const followSuggestKey = (term: string) => ['follow-manage', 'suggest', term] as const;
 
 /** 一条关注来源。字段以 `_source_payload`（`src/peach/web_follow.py`）为准。 */
 export interface FollowSource extends AuthorSource {
@@ -112,6 +113,7 @@ export interface CredentialRow {
   provider: string;
   provider_label: string;
   followable: boolean;
+  browser_login?: boolean;
   requirement: 'required' | 'optional' | 'none' | 'blocked';
   needs: string[];
   fields: string[];
@@ -170,6 +172,7 @@ export interface ResolveCandidate {
   provider_label: string;
   url: string;
   label: string;
+  avatar_url?: string | null;
   /** 站上没给标题时（「线程 123」）`label` 的 code 与参数。 */
   label_code?: string;
   label_params?: Record<string, unknown>;
@@ -183,6 +186,7 @@ export interface ResolveCandidate {
 
 /** 站内索引没命中时交给人继续核对的外部搜索入口；`label`、`evidence` 各配 code 与参数。 */
 export interface ExternalSearch {
+  provider: string; provider_label: string;
   label: string; label_code?: string; label_params?: Record<string, unknown>;
   query: string; url: string;
   evidence: string; evidence_code?: string; evidence_params?: Record<string, unknown>;
@@ -216,7 +220,7 @@ export interface SuggestGroup {
   kind: string;
   label: string;
   label_code?: string;
-  items: { value: string; matched?: string; matched_code?: string; n?: number }[];
+  items: { value: string; matched?: string; matched_code?: string; n?: number; avatar_url?: string | null }[];
 }
 export interface SuggestData { q: string; groups: SuggestGroup[] }
 
@@ -601,6 +605,7 @@ export interface FeedsData {
 export async function fetchFeeds(signal?: AbortSignal): Promise<FeedsData> {
   const payload = await apiGet<FeedsData>(FEEDS_URL, signal);
   if (!Array.isArray(payload?.sources)) throw new Error(t('follow:feedSources.readFailed'));
+  rememberFeedSourceCount(payload.sources.length);
   return payload;
 }
 
@@ -624,6 +629,8 @@ export async function checkFeeds(signal?: AbortSignal, ids?: number[]): Promise<
   });
 }
 
+export type FeedSubscription = 'enabled' | 'paused' | 'missing';
+
 /** JavDB 搜出来的一张演员卡。字段以 `web_feeds.q_feed_lookup` 为准。 */
 export interface FeedCandidate {
   /** 站内 id，登记时送回去的就是它。 */
@@ -633,6 +640,9 @@ export interface FeedCandidate {
   /** 记录类型：無碼那条带 `無碼`，有碼那条是空串。 */
   record: string;
   url: string;
+  subscription: FeedSubscription;
+  avatar_url?: string | null;
+  portrait?: FaceRef | null;
   /** 这个 id 已经在数据库里谁名下。 */
   held_by: { id: number; name: string } | null;
   /** 卡上的写法对得上数据库里哪几位的正名或别名。 */
@@ -645,10 +655,17 @@ export interface FeedLookup {
   candidates: FeedCandidate[];
   /** 名字对得上、又只有一个人的那几张，先替用户勾上；同名不止一位时是空的。 */
   suggested: string[];
+  dmm_candidates?: Omit<FeedCandidate, 'matched' | 'record'>[];
+  dmm_selection?: string;
+  dmm_unavailable?: { error: string; error_code?: string; error_params?: Record<string, unknown> };
   /** 数据库里按这个名字认得出的那位；认不出是 null，登记时会新建。`subscribable` 是她已有
    *  JavDB 演员页或 DMM 编号、不经搜索就能订，`following` 是已经在订。 */
-  known: { id: number; name: string; subscribable: boolean; following: boolean } | null;
-  /** JavDB 这一趟没搜成的原因；只在库里的她能直接订时随结果一起回来，否则整次查找报错。 */
+  known: {
+    id: number; name: string; subscribable: boolean; following: boolean;
+    sources: { id: string; provider: 'javdb' | 'dmm'; url: string; names: string[]; subscription: FeedSubscription }[];
+    portrait?: FaceRef;
+  } | null;
+  /** JavDB 这一趟没搜成的原因。 */
   unavailable?: string;
   unavailable_code?: string;
   unavailable_params?: Record<string, unknown>;
@@ -656,6 +673,10 @@ export interface FeedLookup {
 
 export const lookupFeedActor = (name: string, signal?: AbortSignal) =>
   apiGet<FeedLookup>(`${FEEDS_LOOKUP_URL}?q=${encodeURIComponent(name)}`, signal);
+
+export const suggestFeedActors = (name: string, signal: AbortSignal) =>
+  apiGet<{ items: { name: string; provider: 'JavDB' | 'DMM'; avatar_url?: string }[] }>(
+    `${FEEDS_SUGGEST_URL}?q=${encodeURIComponent(name)}`, signal);
 
 export interface FeedFollowed {
   entity_id: number;
@@ -665,23 +686,18 @@ export interface FeedFollowed {
   sources: number[];
 }
 
-/** 勾选的演员卡登记到这位名下并订上她的演员页。地址仍由服务端拼，页面只送 id。 */
-export const followFeedByName = (name: string, ids: string[], signal?: AbortSignal) =>
-  apiSend<FeedFollowed>(FEED_SOURCE_URL, { action: 'follow-name', name, ids }, 'POST', signal);
+/** 来源地址由服务端按勾选的演员编号拼出。 */
+export const followFeedPages = (name: string, ids: string[], dmmIds: string[], dmmSelection?: string, signal?: AbortSignal) =>
+  apiSend<FeedFollowed>(FEED_SOURCE_URL, {
+    action: 'follow-pages', name, ids, dmm_ids: dmmIds, dmm_selection: dmmSelection,
+  }, 'POST', signal);
 
-/** 按库里认出的这位直接订，和人物页「订阅新作」开关同一个动作。 */
-export const followFeedEntity = (entityId: number, signal?: AbortSignal) =>
-  apiSend<{ entity_id: number; following: boolean; sources: number[] }>(
-    FEED_SOURCE_URL, { action: 'follow', entity_id: entityId, enabled: true }, 'POST', signal);
-
-/** 创作者来源、JAV 订阅与凭据分别读取，页面按各区域的状态显示。
- *
- * 两趟后台任务不在首屏里：它们的快照常年躺着上一趟的回执，等它们只会让首屏多等一个
- * 往返，而它们自己的键挂上去就会读。中止时 `fetchQuery` 把 `AbortError` 抛回挂载方。 */
-export async function prefetchFollowManage(signal: AbortSignal): Promise<void> {
-  void queryClient.prefetchQuery({ queryKey: FOLLOW_CREDENTIALS_KEY, queryFn: () => fetchCredentials(signal) });
-  void queryClient.prefetchQuery({ queryKey: FEEDS_KEY, queryFn: () => fetchFeeds(signal) });
-  void queryClient.prefetchQuery({ queryKey: FOLLOW_MANAGE_KEY, queryFn: () => fetchFollow(signal) });
+/** 列表的首屏顺序同时取决于关注和订阅；添加页则需要关注和凭据。 */
+export async function prefetchFollowManage(signal: AbortSignal, tab = 'list'): Promise<void> {
+  const follow = queryClient.prefetchQuery({ queryKey: FOLLOW_MANAGE_KEY, queryFn: () => fetchFollow(signal) });
+  const credentials = queryClient.prefetchQuery({ queryKey: FOLLOW_CREDENTIALS_KEY, queryFn: () => fetchCredentials(signal) });
+  const feeds = queryClient.prefetchQuery({ queryKey: FEEDS_KEY, queryFn: () => fetchFeeds(signal) });
+  await Promise.all([follow, tab === 'add' ? credentials : feeds]);
 }
 
 /** 把改动的那一条换进缓存。整页重取会把用户正在填的表单一起重画，也会让正在读这一屏的

@@ -17,10 +17,11 @@ export interface ResultUpdatesPayload {
   ingest_notices?: { epoch: string; items: { id: number; kind: 'download' | 'discovered'; asset_id: number; label: string; at: number }[] };
   busy?: boolean;
   running_tasks?: RunningTask[];
+  task_notices?: { id: number; status: 'succeeded' | 'failed'; started_at: string | null; finished_at: string }[];
 }
 
-export const fetchResultUpdates = (signal?: AbortSignal) =>
-  apiGet<ResultUpdatesPayload>('/api/result-updates', signal);
+export const fetchResultUpdates = (signal?: AbortSignal, taskNotices = false) =>
+  apiGet<ResultUpdatesPayload>(taskNotices ? '/api/result-updates?task_notices=1' : '/api/result-updates', signal);
 
 /** 缓存里最近一次读到的在排在跑任务。全站那一处还没读到时是空的。 */
 export const runningTasks = (): RunningTask[] =>

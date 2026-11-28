@@ -68,7 +68,7 @@ if HAS_DEPS:
     from fastapi.routing import APIRoute
     from starlette.routing import Mount
     from peach import api as api_module
-    from peach import routes_auth
+    from peach import routes_auth, routes_feedback
     from peach import routes_jav_browser
     from peach.api import create_app
     from peach.follow_secrets import credential_store_for
@@ -355,6 +355,9 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         # 删除与清空回收站后的缓存清理按想要清单认封面的主人；整份 0042 迁移还要连带
         # 修订号与账户表，这里只建清理读的两列。
         con.execute("CREATE TABLE want_item(code_key TEXT, state TEXT NOT NULL)")
+        # 批量删除与目录筛选只读取译文的作品、语言两列；完整迁移与修订触发器由迁移测试验证。
+        con.execute("CREATE TABLE asset_content_translation(asset_id INTEGER NOT NULL, language TEXT NOT NULL, "
+                    "PRIMARY KEY(asset_id, language))")
         con.execute(
             """INSERT INTO asset(id,location,path,name,medium,size,creator,studio,duration,
                                   width,height,ctx_orient,snapshot_path,first_seen)
@@ -428,6 +431,25 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.client.aclose()
         self.tmp.cleanup()
+
+    async def test_background_precompute_is_local_explicit_and_saved(self):
+        from peach import background_work
+
+        endpoint = "/api/configuration/background-work"
+        self.assertEqual((await self.client.get(endpoint)).status_code, 401)
+        endpoint += "?t=secret"
+        initial = await self.client.get(endpoint)
+        self.assertEqual(initial.json(), {"precompute": False})
+        malformed = await self.client.post(endpoint, json={"precompute": "true"})
+        self.assertEqual(malformed.status_code, 400)
+        self.assertFalse((self.settings.follow_state_root / background_work.FILENAME).exists())
+        for enabled in (True, False):
+            saved = await self.client.post(endpoint, json={"precompute": enabled})
+            self.assertEqual(saved.json(), {"precompute": enabled})
+            self.assertIs(background_work.enabled(self.settings.follow_state_root), enabled)
+        transport = httpx.ASGITransport(app=self.app, client=("192.0.2.5", 12345))
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as remote:
+            self.assertEqual((await remote.get(endpoint)).status_code, 403)
 
     async def test_health_is_side_effect_free(self):
         response = await self.client.get("http://127.0.0.1/healthz")
@@ -564,7 +586,9 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(denied.status_code, 401)
             accepted = await self.client.get("/api/diagnostics?t=secret")
             self.assertEqual(accepted.status_code, 200)
-            self.assertEqual(accepted.json(), report)
+            self.assertEqual(accepted.json(), {
+                **report, 'runtime_diagnostics': self.app.state.runtime_diagnostics.snapshot(),
+            })
             shared.assert_called_once_with(self.settings, self.app.state.mount_reachability.summary(),
                                            known_corruption=False)
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app, client=("192.0.2.10", 1234)),
@@ -583,6 +607,27 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
                           BuildInfo("c0ffee1234", __version__, "2026-09-07T00:00:00")):
             served = (await self.client.get("http://127.0.0.1/healthz")).json()
         self.assertEqual(served["build_commit"], "c0ffee1234")
+
+    async def test_diagnostics_export_contains_resource_and_first_media_body_samples(self):
+        from io import BytesIO
+        from zipfile import ZipFile
+        from peach.settings_file import PeachConfig
+        from peach.support_bundle import bundle_bytes
+
+        runtime = self.app.state.runtime_diagnostics
+        runtime.collect()
+        video = await self.client.get('/stream?id=1&t=secret', headers={'Range': 'bytes=0-3'})
+        self.assertEqual(video.content, b'0123')
+        snapshot = runtime.snapshot()
+        self.assertEqual(snapshot['status'], 'available')
+        server = snapshot['resource_samples'][-1]['processes']['server']
+        self.assertGreater(server['rss_bytes'], 0)
+        playback = snapshot['media_first_body_samples'][-1]
+        self.assertEqual((playback['route'], playback['source'], playback['http_status']), ('range', 'local', 206))
+        config = PeachConfig(data_root=self.root, path=self.root / 'config.toml')
+        payload = bundle_bytes(report={'runtime_diagnostics': snapshot}, config=config, include_scraping=False)
+        with ZipFile(BytesIO(payload)) as bundle:
+            self.assertEqual(json.loads(bundle.read('report.json'))['runtime_diagnostics'], snapshot)
 
     async def test_background_issues_reads_app_and_contract_services_behind_auth(self):
         from peach.metadata_amane import bridge_python
@@ -1912,13 +1957,25 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(decided.status_code, 200)
 
     async def test_quality_goal_queue_is_readable_from_management(self):
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            connection.execute("UPDATE asset SET release_date='2026-08-12' WHERE id=1")
+            connection.execute(
+                "INSERT INTO entity(id,kind,canonical_name,normalized_name) VALUES(3001,'performer','Cast A','cast a')"
+            )
+            connection.execute(
+                "INSERT INTO asset_entity(asset_id,entity_id,role,source) VALUES(1,3001,'performer','test')"
+            )
         saved = await self.client.post(
             "/api/quality-goal?t=secret", json={"id": 1, "wanted": True},
         )
         self.assertEqual(saved.status_code, 200)
         response = await self.client.get("/api/quality-goals?t=secret&limit=20")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["items"][0]["id"], 1)
+        item = response.json()["items"][0]
+        self.assertEqual(item["id"], 1)
+        self.assertEqual(item["performers"], ["Cast A"])
+        self.assertEqual(item["studio"], "Studio A")
+        self.assertEqual(item["release_date"], "2026-08-12")
 
     async def test_metadata_field_candidate_is_approved_through_the_http_contract(self):
         connection = sqlite3.connect(self.db)
@@ -2179,6 +2236,31 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(scoped.json()["orientations"], [
             {"k": "landscape", "n": 1},
         ])
+
+    async def test_home_and_facets_follow_media_root_replacement_without_deleting_assets(self):
+        from contextlib import closing
+        from dataclasses import replace
+        from peach import settings_file
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            connection.execute("UPDATE asset SET path=? WHERE id=1", (r"R:\Large\Small\one.mp4",))
+            connection.executemany(
+                """INSERT INTO asset(id,location,path,name,medium,first_seen)
+                   VALUES(?,?,?,?,'video','2026-08-14')""",
+                [(2, 'local', r'R:\Large\Old\two.mp4', 'two.mp4'),
+                 (3, 'online', 'https://example.com/three', 'three.mp4')])
+        config = replace(settings_file.active(), present=True, data_root=self.root,
+                         directories={'database': '.'}, locations={'local': (r'R:\Large',)})
+        with patch.object(settings_file, 'active', return_value=config) as active:
+            first = (await self.client.get('/api/items?t=secret')).json()
+            self.assertEqual(first['total'], 3)
+            self.assertEqual((await self.client.get('/api/facets?t=secret')).status_code, 200)
+            active.return_value = replace(config, locations={'local': (r'R:\Large\Small',)})
+            current = (await self.client.get('/api/items?t=secret')).json()
+            self.assertEqual({row['id'] for row in current['items']}, {1, 3})
+            self.assertEqual(current['total'], 2)
+            facets = (await self.client.get('/api/facets?t=secret')).json()
+            self.assertEqual({entry['k']: entry['n'] for entry in facets['locations']}, {'local': 1, 'online': 1})
+            self.assertEqual((await self.client.get('/api/item?id=2&t=secret')).status_code, 200)
 
     async def test_global_facets_supply_recommendations_for_an_untagged_detail(self):
         connection = sqlite3.connect(self.db)
@@ -3682,9 +3764,10 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plan.json()["segment_seconds"], 6)
         self.assertIn("/stream/hls/1/index.m3u8?session=hls-test", plan.json()["src"])
 
-        playlist = await self.client.get(
-            "/stream/hls/1/index.m3u8?session=hls-test&t=secret",
-        )
+        with patch.object(self.app.state.hls_service, 'plan', side_effect=AssertionError('recomputed plan')):
+            playlist = await self.client.get(
+                "/stream/hls/1/index.m3u8?session=hls-test&t=secret",
+            )
         self.assertEqual(playlist.status_code, 200)
         self.assertEqual(playlist.headers["content-type"], "application/vnd.apple.mpegurl")
         self.assertEqual(playlist.text.count("#EXTINF:"), 3)
@@ -4889,6 +4972,9 @@ class RouteAuthContractTests(unittest.TestCase):
             follow_state_root=root / "state"))
         cls.guards = {getattr(routes_auth, name) for name in cls.GUARD_NAMES}
         cls.special_guards = {
+            ("GET", routes_feedback.ENVIRONMENT_PATH): routes_feedback.require_feedback_environment,
+            ("GET", routes_feedback.DIAGNOSTICS_PATH): routes_feedback.require_feedback_diagnostics,
+            ("POST", routes_feedback.PATH): routes_feedback.require_feedback_submission,
             ("GET", "/api/jav-browser"): routes_jav_browser.browser_client,
             ("GET", "/api/jav-browser/active"): routes_jav_browser.browser_client,
             ("GET", "/api/jav-browser/identify"): routes_jav_browser.browser_client,
@@ -4925,7 +5011,7 @@ class RouteAuthContractTests(unittest.TestCase):
                          "新路由没挂 routes_auth 的 require_* 依赖；确实该公开就写进 "
                          "PUBLIC_ROUTES 并注明理由")
 
-    def test_browser_addition_requires_its_scoped_bearer_dependency(self):
+    def test_special_routes_require_their_scoped_auth_dependency(self):
         for key, guard in self.special_guards.items():
             with self.subTest(route=key):
                 self.assertIn(guard, self.routes[key])

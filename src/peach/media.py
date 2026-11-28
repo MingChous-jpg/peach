@@ -288,6 +288,9 @@ class MediaEngine:
         return self.filesystem.file_for(self.asset(asset_id), thumbnail=thumbnail)
 
     def stream_plan(self, asset_id: int, *, mode: str = "auto") -> StreamPlan:
+        return self.plan_for(self.asset(asset_id), mode=mode)
+
+    def plan_for(self, asset: MediaAsset, *, mode: str = "auto") -> StreamPlan:
         """远端挂载的 MP4 默认走标准 Range；HLS 只在显式要求时给出。见 ADR-0016。
 
         默认 HLS 会把 HEVC 用 `-c copy` 原样装进 MPEG-TS，而 Chromium 的 MSE 不支持
@@ -298,7 +301,6 @@ class MediaEngine:
         哪些来源算远端挂载，按 `media_sources` 登记的来源能力（`cloud`）判断，不按网盘名点名：
         新登记的网盘自动得到同一套处理。
         """
-        asset = self.asset(asset_id)
         suffix = Path(asset.path or asset.name or "").suffix.lower()
         if (
             mode == "hls"

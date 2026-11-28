@@ -66,6 +66,35 @@ const field = (root: HTMLElement, label: string) =>
 
 const MAGNET = 'magnet:?xt=urn:btih:' + 'b'.repeat(40);
 
+it('体积条件的回车只查找，下载表单的按钮单独提交磁链', async () => {
+  const requests: { url: string; method?: string }[] = [];
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    requests.push({ url, method: init?.method });
+    return { ok: true, status: 200, json: async () => init?.method === 'POST'
+      ? { ok: true, outcome: 'submitted', task: task() }
+      : url.startsWith('/api/items') ? { items: [] }
+      : url.startsWith('/api/resources') ? { state: 'ready', warnings: [], error: '', items: [] }
+      : snapshot() };
+  }));
+  const { page } = await open({ code: 'ABC-123' });
+  await type(field(page, '磁力链接'), MAGNET);
+  const search = field(page, '按番号查找资源')!;
+  const volume = search.form!.querySelectorAll<HTMLInputElement>('input[inputmode="decimal"]')[0]!;
+  const download = buttonNamed('提交下载', page)!;
+  expect(volume.form).toBe(search.form);
+  expect(download.form).toBe(field(page, '磁力链接')!.form);
+  expect(volume.form).not.toBe(download.form);
+  await type(volume, '2');
+  await act(async () => volume.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
+  await settle();
+  expect(requests.filter(request => request.url.startsWith('/api/resources/search')).map(request => new URL(request.url, location.origin).searchParams.get('min_size')))
+    .toEqual([String(2 * 1024 ** 3)]);
+  expect(requests.filter(request => request.method === 'POST')).toEqual([]);
+  await submit(download.form!);
+  await settle();
+  expect(requests.filter(request => request.method === 'POST').map(request => request.url)).toEqual(['/api/downloads']);
+});
+
 it('带着番号与标题打开：标题行写番号与片名，搜索框与番号框已填，提交带上渠道、目录与来处', async () => {
   const posts = serve(snapshot(), { ok: true, outcome: 'submitted', task: task() });
   const { close, receipt, page } = await open({ code: 'ABC-123', title: '一部作品', origin: 'asset:12', searchReason: '中字' });
@@ -95,7 +124,7 @@ it('提交没成功时弹层不关，原因留在表单里', async () => {
   expect([close.mock.calls.length, receipt.mock.calls.length]).toEqual([0, 0]);
 });
 
-it('查找另一番号时清空先前的磁力和作品资料，资料未取得时提交不带其他作品的标题', async () => {
+it('查找另一番号时清空先前的磁力和作品资料，馆藏没有匹配资料时提交不带其他作品的标题', async () => {
   const posts: unknown[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === 'POST') posts.push(JSON.parse(String(init.body)));
@@ -110,7 +139,7 @@ it('查找另一番号时清空先前的磁力和作品资料，资料未取得�
   await type(field(page, '按番号查找资源'), 'ABC-999');
   await act(async () => field(page, '按番号查找资源')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
   await settle();
-  expect(page.querySelector('[data-resource-work]')?.textContent).toContain('作品资料未取得');
+  expect(page.querySelector('[data-resource-work]')?.textContent).toContain('馆藏中没有这部作品的资料');
   expect(page.querySelector('[data-resource-work]')?.textContent).not.toContain('原作品');
   expect(field(page, '磁力链接')?.value).toBe('');
   await type(field(page, '磁力链接'), MAGNET);

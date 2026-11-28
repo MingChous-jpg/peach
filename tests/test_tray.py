@@ -58,6 +58,15 @@ class Response:
 
 
 class TrayTests(unittest.TestCase):
+    def test_tray_open_uses_default_browser_after_setup(self):
+        config = Mock(data_root=Path("sample"))
+        browser = Mock()
+        gate = SetupGate(Mock(), config, waiting=False, open_browser=browser)
+        tray = Mock(gate=gate)
+        with patch.object(tray_module, "normal_url", return_value="https://peach.invalid/"):
+            PeachTray.open(tray)
+        browser.assert_called_once_with("https://peach.invalid/")
+
     def test_create_icon_has_expected_size_and_alpha(self):
         icon = create_icon(64)
         self.assertEqual(icon.size, (64, 64))
@@ -1548,6 +1557,7 @@ class ServiceRevivalTests(unittest.TestCase):
     def tray(self, manager):
         gate = Mock()
         gate.waiting = False
+        gate.config.directory.return_value = Path(self.enterContext(tempfile.TemporaryDirectory())) / "state"
         snapshot = VersionSnapshot("0.7.14", "master", "abc12345", False, True, "origin/master")
         with patch("peach.tray.pystray.Icon", return_value=Mock()):
             return PeachTray(manager, FakeVersions(snapshot), FakeUpdates(), gate)
@@ -1564,6 +1574,7 @@ class ServiceRevivalTests(unittest.TestCase):
         manager = Mock()
         manager.specs = (self.SPEC,)
         manager.healthy.return_value = healthy
+        manager.desktop_faults.return_value = set() if healthy else {"service"}
         return manager
 
     def test_a_port_that_went_dark_is_refilled_on_the_next_health_round(self):
@@ -1860,6 +1871,7 @@ class TrayPreparationTests(unittest.TestCase):
     def manager(self, *, ready=True, problems=()):
         manager = Mock()
         manager.specs = ()
+        manager.desktop_faults.return_value = set() if ready else {"service"}
         manager.start_missing.side_effect = lambda **_kwargs: self.events.append("start")
         manager.wait_until_ready.return_value = ready
         manager.waiting_for_startup.return_value = False
@@ -1878,6 +1890,7 @@ class TrayPreparationTests(unittest.TestCase):
     def tray(self, manager, preparation):
         gate = Mock()
         gate.waiting = False
+        gate.config.directory.return_value = self.root / "state"
         snapshot = VersionSnapshot("0.37.0", "master", "abc12345", False, True, "origin/master")
         updates = FakeUpdates()
         updates.sweep_artifacts = lambda: None

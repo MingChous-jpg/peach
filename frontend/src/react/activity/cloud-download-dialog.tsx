@@ -1,18 +1,20 @@
 /* 资源查找弹层：JAV、想要与高清版目标共用搜索、作品资料和下载提交。
  * 下载配置在弹层打开时读取；已提交的任务在活动页查看。 */
-import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { ImageWithFallback } from '../components/image-with-fallback';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Heading } from 'react-aria-components';
-import { RiCloseLine } from '@remixicon/react';
 
 import { Button } from '@/components/base/buttons/button';
+import { CloseButton } from '@/components/base/buttons/close-button';
 import { Input } from '@/components/base/input/input';
 import { Select, SelectItem } from '@/components/base/select/select';
 
-import { apiGet, apiSend, errorMessage } from '../../api';
+import { apiGet, apiSend } from '../../api';
 import type { DownloadProviderKey, DownloadsSnapshot, DownloadSubmitResult } from '../bundle';
 import { ModalFrame } from '../components/modal-frame';
 import { Note } from '../components/note';
+import { QueryErrorNote } from '../components/query-error-note';
 import { ErrorText, FieldLabel, Help } from '../settings/section';
 import { busyProps, useAction } from '../settings/use-action';
 import { DOWNLOADS_KEY, DOWNLOADS_URL, downloadsInterval, failureText } from './downloads-panel';
@@ -59,7 +61,7 @@ function Body({ prefill, close, receipt, provider }: {
   const header = (
     <div className="flex items-center justify-between gap-4 px-5 pt-5">
       <Heading slot="title" className="text-title-2-semibold text-text-primary">{t('manage:resourceSearch.searchTorrents')}</Heading>
-      <Button variant="ghost" iconOnly leadingIcon={RiCloseLine} aria-label={t('manage:cloudDownloadDialog.closePanel')} onClick={close} />
+      <CloseButton size="sm" aria-label={t('manage:cloudDownloadDialog.closePanel')} onClick={close} />
     </div>
   );
   if (data) {
@@ -69,7 +71,7 @@ function Body({ prefill, close, receipt, provider }: {
     <div className="flex min-h-0 flex-col">
       {header}
       <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-5">
-        {query.error ? <Note tone="error">{errorMessage(query.error)}</Note> : null}
+        {query.error ? <QueryErrorNote titleKey="manage:cloudDownloadDialog.settingsLoadFailed" query={query} /> : null}
       </div>
       <div className="flex justify-end p-3">
         <Button variant="secondary" onClick={close}>{t('manage:shared.close')}</Button>
@@ -90,10 +92,12 @@ function SubmitForm({ header, snapshot, prefill, close, receipt, provider: prefe
   const [code, setCode] = useState(prefill.code ?? '');
   const [target, setTarget] = useState(first?.target || '');
   const [work, setWork] = useState<DownloadPrefill | null>(prefill.code ? prefill : null);
+  const [metadataNotice, setMetadataNotice] = useState('');
   const [failure, setFailure] = useState('');
   const usable = snapshot.available && configured.some(row => row.key === provider);
   const action = useAction();
   const input = useRef<HTMLInputElement>(null);
+  const downloadForm = useId();
 
   const choose = (key: DownloadProviderKey) => {
     setProvider(key);
@@ -117,25 +121,33 @@ function SubmitForm({ header, snapshot, prefill, close, receipt, provider: prefe
   };
 
   return (
-    <form aria-label={t('manage:cloudDownloadDialog.submit')} noValidate onSubmit={submit} className="flex min-h-0 flex-col">
+    <div className="flex min-h-0 flex-col">
       {header}
       <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-5">
-        {work?.code || code.trim() ? <div className="flex min-w-0 items-start gap-4" data-resource-work="">
-          {work?.cover ? <img src={work.cover} alt="" referrerPolicy="no-referrer" onError={event => event.currentTarget.remove()}
+        {work?.code || metadataNotice ? <div className="flex min-w-0 items-start gap-4" data-resource-work="">
+          {work?.cover ? <ImageWithFallback src={work.cover} alt="" referrerPolicy="no-referrer"
             className="w-card-cover shrink-0 rounded-2lg" /> : null}
           <div className="flex min-w-0 flex-col gap-2">
-            <p className="break-words text-body-medium text-text-primary">{work ? [work.code, work.title].filter(Boolean).join(' · ') : t('manage:cloudDownloadDialog.noMetadata')}</p>
+            <p className="break-words text-body-medium text-text-primary">{work ? [work.code, work.title].filter(Boolean).join(' · ') : metadataNotice}</p>
             {work ? <Help>{[work.performers, work.studio, work.release_date, work.duration ? t('manage:cloudDownloadDialog.minutes', { count: Math.round(work.duration / 60) }) : ''].filter(Boolean).join(' · ')}</Help> : null}
           </div>
         </div> : null}
         <ResourceSearch initialCode={prefill.code ?? ''} reason={prefill.searchReason} onSearch={requested => {
           if (!sameWorkCode(requested, work?.code)) { setWork(sameWorkCode(requested, prefill.code) ? prefill : null); setMagnet('') }
           setCode(requested);
-        }} onWork={next => setWork(current => next ? sameWorkCode(current?.code, next.code)
-          ? { ...current, ...next, origin: current?.origin || next.origin } : next
-          : sameWorkCode(current?.code, prefill.code) ? current : null)} choose={(uri, selectedCode) => {
+          setMetadataNotice(t('manage:cloudDownloadDialog.loadingMetadata'));
+        }} onWork={(next, error) => {
+          setMetadataNotice(next ? '' : error
+            ? t('manage:cloudDownloadDialog.metadataLookupFailed', { error })
+            : t('manage:cloudDownloadDialog.noMetadata'));
+          setWork(current => next ? sameWorkCode(current?.code, next.code)
+            ? { ...current, ...next, origin: current?.origin || next.origin } : next
+            : sameWorkCode(current?.code, prefill.code) ? current : null);
+        }} choose={(uri, selectedCode) => {
           setMagnet(uri); setCode(selectedCode); input.current?.focus();
         }} />
+        <form id={downloadForm} aria-label={t('manage:cloudDownloadDialog.submit')} noValidate onSubmit={submit}
+          className="flex flex-col gap-4">
         <Input ref={input} label={t('manage:cloudDownloadDialog.magnetLink')} placeholder="magnet:?xt=urn:btih:…" autoComplete="off" maxLength={4000}
           value={magnet} onChange={setMagnet} />
         <div className="flex flex-col gap-1">
@@ -153,14 +165,15 @@ function SubmitForm({ header, snapshot, prefill, close, receipt, provider: prefe
         {/* 带着番号进来时它和搜索框是同一个值，选中候选也会跟着换，不再单列一格。 */}
         {prefill.code ? null
           : <Input label={t('manage:shared.code')} placeholder={t('manage:cloudDownloadDialog.optional')} autoComplete="off" maxLength={60} value={code} onChange={value => {
-            setCode(value); if (!sameWorkCode(value, work?.code)) setWork(null);
+            setCode(value); setMetadataNotice(''); if (!sameWorkCode(value, work?.code)) setWork(null);
           }} />}
         {failure || action.error ? <ErrorText>{failure || action.error}</ErrorText> : null}
+        </form>
       </div>
       <div className="flex justify-between gap-4 p-3">
         <Button variant="secondary" onClick={close}>{t('manage:shared.cancel')}</Button>
-        <Button type="submit" disabled={!magnet.trim() || !usable} {...busyProps(action.busy === 'submit')}>{t('manage:cloudDownloadDialog.submit')}</Button>
+        <Button type="submit" form={downloadForm} disabled={!magnet.trim() || !usable} {...busyProps(action.busy === 'submit')}>{t('manage:cloudDownloadDialog.submit')}</Button>
       </div>
-    </form>
+    </div>
   );
 }

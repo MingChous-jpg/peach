@@ -16,7 +16,7 @@ import type { ConfigurationPath } from '@peach/history';
 import { javDisplayName, javTitleHtml } from '@peach/legacy/jav-title';
 import { tagLabel } from '@peach/legacy/tags';
 
-import { prefetchTasks } from '../activity/tasks';
+import { prefetchActivity } from '../activity/tasks';
 import { BatchDockSurface } from '../batch-dock/batch-dock-island';
 import type { DataCleanupSection, LibraryProcessingProps } from '../bundle';
 import { CatalogFilterPage } from '../catalog-filter/catalog-filter-page';
@@ -96,6 +96,7 @@ async function withPage(chunk: RouteChunk<unknown>, data: Promise<void>): Promis
 }
 
 const javPage = routeChunk(() => import('../jav/jav-page'));
+const aiSearchPage = routeChunk(() => import('../search/library-assistant'));
 const statsPage = routeChunk(() => import('../stats/stats-page'));
 const tastePage = routeChunk(() => import('../taste/taste-page'));
 const reviewPage = routeChunk(() => import('../review/review-page'));
@@ -140,11 +141,11 @@ const configurationRoute = (path: ConfigurationPath): ManagedRoute<ManagedOpenPr
 const cleanupRoutes = CLEANUP_TOOLS.reduce((routes, tool) => {
   routes[tool.path] = {
     element: <ManagedMatch path={tool.path} />,
-    prefetch: (_open: Record<string, never>, signal: AbortSignal) =>
+    prefetch: (_open: ManagedOpenProps[CleanupToolPath], signal: AbortSignal) =>
       withPage(dataCleanupPage, prefetchDataCleanupTool(tool.key, signal)),
-    page: (_open: Record<string, never>, actions: ShellActions) => {
+    page: (open: ManagedOpenProps[CleanupToolPath], actions: ShellActions) => {
       const { DataCleanupToolPage } = dataCleanupPage.get();
-      return <DataCleanupToolPage tool={tool.key} failure={actions.failure}
+      return <DataCleanupToolPage tool={tool.key} writeAccess={open.writeAccess} failure={actions.failure}
         toast={(message, { warning = false, undo } = {}) => (
           warning ? actions.toast({ text: message }, { sound: 'warning' }) : actions.receipt(message, undo ? { undo } : {}))} />;
     },
@@ -154,6 +155,14 @@ const cleanupRoutes = CLEANUP_TOOLS.reduce((routes, tool) => {
 
 export const MANAGED_ROUTES: ManagedRouteTable = {
   ...cleanupRoutes,
+  '/ai': {
+    element: <ManagedMatch path="/ai" />,
+    prefetch: async () => { await aiSearchPage.preload(); },
+    page: () => {
+      const { LibraryAssistant } = aiSearchPage.get();
+      return <LibraryAssistant />;
+    },
+  },
   '/jav': {
     element: <ManagedMatch path="/jav" />,
     prefetch: (open, signal) => withPage(javPage, prefetchJav(open.tab, signal)),
@@ -231,6 +240,7 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
   },
   '/settings/library': configurationRoute('/settings/library'),
   '/settings/subscriptions': configurationRoute('/settings/subscriptions'),
+  '/settings/ai': configurationRoute('/settings/ai'),
   '/settings/downloads': configurationRoute('/settings/downloads'),
   '/settings/network': configurationRoute('/settings/network'),
   '/settings/maintenance': configurationRoute('/settings/maintenance'),
@@ -246,17 +256,15 @@ export const MANAGED_ROUTES: ManagedRouteTable = {
   },
   '/tasks': {
     element: <ManagedMatch path="/tasks" />,
-    prefetch: (_open, signal) => withPage(activityPage, prefetchTasks(signal)),
+    prefetch: (_open, signal) => withPage(activityPage, prefetchActivity(signal)),
     page: () => {
       const { ActivityPage } = activityPage.get();
       return <ActivityPage />;
     },
   },
-  /* 首屏只取来源清单与凭据状态，地址栏指着「订阅源」时连它一起取。检查更新与查找那两趟
-     后台任务的快照不在首屏里：它们常年躺着上一趟的回执，等它们只会让首屏多一个往返。 */
   '/subscriptions': {
     element: <ManagedMatch path="/subscriptions" />,
-    prefetch: (_open, signal) => withPage(followManagePage, prefetchFollowManage(signal)),
+    prefetch: (open, signal) => withPage(followManagePage, prefetchFollowManage(signal, open.tab)),
     page: (open, actions) => {
       const { FollowManagePage } = followManagePage.get();
       return <FollowManagePage {...open} route={actions.routeFollowManage} savePreference={actions.saveFollowPreference}

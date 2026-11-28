@@ -8,6 +8,7 @@
  * 选择跨页也跨视图：换页、换排序、从卡片切到表格，选中的仍是同一批来源，底部那条批量
  * 操作发出去的也是整个 ID 集合，而不是屏幕上这一页。 */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { IndexSearch } from '../index/index-search';
 import {
   RiCheckDoubleLine,
   RiDeleteBinLine, RiExternalLinkLine, RiLayoutGridLine, RiPauseLine, RiPlayLine, RiRefreshLine, RiRssLine, RiTableLine,
@@ -15,7 +16,7 @@ import {
 import { useMutation } from '@tanstack/react-query';
 import {
   createColumnHelper, createPaginatedRowModel, flexRender, rowPaginationFeature,
-  rowSelectionFeature, rowSortingFeature, columnVisibilityFeature, tableFeatures, useTable,
+  rowSelectionFeature, rowSortingFeature, columnOrderingFeature, columnVisibilityFeature, tableFeatures, useTable,
   type RowSelectionState, type SortingState,
 } from '@tanstack/react-table';
 import { VisuallyHidden } from 'react-aria-components';
@@ -77,6 +78,7 @@ const sourceTableFeatures = tableFeatures({
   rowSelectionFeature,
   rowSortingFeature,
   columnVisibilityFeature,
+  columnOrderingFeature,
   paginatedRowModel: createPaginatedRowModel(),
 });
 
@@ -167,7 +169,6 @@ export interface SourceListProps {
   onSelected(next: Set<number>): void;
   toast: Receipt;
   openFollow(): void;
-  onAdd(): void;
 }
 
 /** 一条来源在创作者卡里的那一行：勾选、站标与名字、状态、上次检查、动作。 */
@@ -294,21 +295,28 @@ function AuthorCard(
 export function SourceList(props: SourceListProps) {
   const {
     data, sort, dir, page, layout, pageSize, selected, readOnly,
-    onSort, onPage, onLayout, onPageSize, onSelected, toast, openFollow, onAdd,
+    onSort, onPage, onLayout, onPageSize, onSelected, toast, openFollow,
   } = props;
-  const commitRectangle = props.selecting
-    ? (keys: string[], add: boolean) => onSelected(new Set([...(add ? selected : []), ...keys.map(Number)])) : undefined;
-  const rectangle = useRectangleSelection(commitRectangle);
+  const commitRectangle = (keys: string[], add: boolean) => onSelected(new Set([...(add ? selected : []), ...keys.map(Number)]));
+  const rectangle = useRectangleSelection(commitRectangle, { selecting: props.selecting, start: '[data-source-divider]' });
   const sources = data.sources;
   const aliases = useMemo(() => data.author_aliases || [], [data.author_aliases]);
   const counts = data.counts || {};
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set<string>());
+  const tableTop = useRef<HTMLDivElement>(null);
   const [toolbar, compact] = useCompactToolbar();
   const [problem, setProblem] = useState('');
 
   const groups = useMemo(() => authorGroups(sources, sort, dir, aliases), [sources, sort, dir, aliases]);
   const rows = useMemo(() => tableRows(groups, sort, dir, aliases), [groups, sort, dir, aliases]);
-  const filtered = useTableFilters(rows, {
+  /* 名字筛选在本页做：创作者名、别名归并后的显示名、来源名与站点都算，换词回到第 1 页。 */
+  const [query, setQuery] = useState('');
+  const searched = useMemo(() => {
+    const needle = query.toLocaleLowerCase();
+    return needle ? rows.filter(row => [row.author, row.source.label, row.source.provider_label, row.source.url || '']
+      .join(' ').toLocaleLowerCase().includes(needle)) : rows;
+  }, [rows, query]);
+  const filtered = useTableFilters(searched, {
     author: { values: row => row.author, option: (name, row) => ({
       leading: row && <AuthorAvatar group={row.group} name={name} small /> }) },
     source: { values: row => row.source.label, option: (_, row) => ({
@@ -568,7 +576,8 @@ export function SourceList(props: SourceListProps) {
     /* 行的身份是来源 ID，不是它在这一页里的下标：换页、换排序之后 `rowSelection` 里记着的
        仍是同一批来源，卡片视图读的也是同一组数。 */
     getRowId: (row) => String(row.source.id),
-    state: { sorting, rowSelection, pagination: { pageIndex: win.page - 1, pageSize }, columnVisibility: preferences.visibility },
+    state: { sorting, rowSelection, pagination: { pageIndex: win.page - 1, pageSize },
+      columnOrder: preferences.columnOrder, columnVisibility: preferences.visibility },
     onColumnVisibilityChange: preferences.change,
     /* 排序由共用的比较器算好再交进来：表格自己再排一遍的话，卡片视图与表格视图会各有一套
        顺序，同一份数据在两个视图里的先后就不一样了。 */
@@ -605,14 +614,6 @@ export function SourceList(props: SourceListProps) {
   const evidence = checkEvidenceGap(outcome);
   const allCollapsed = cardGroups.length > 0 && cardGroups.every(({ key }) => collapsed.has(key));
 
-  if (!sources.length) {
-    return (
-      <EmptyState icon={RiRssLine} title={t('follow:sourceList.empty')} actions={
-        <Button variant="primary" size="small" onClick={onAdd}>{t('follow:followFeed.addFollow')}</Button>
-      }>{t('follow:sourceList.emptyHint')}</EmptyState>
-    );
-  }
-
   return (
     /* 旧 `.followmanage .fmain>.fsec`：整块关注列表是一张填充卡，标题、工具条、创作者分组
        和底下那条汇总都在同一张卡里，不是一个描边容器套着几行。 */
@@ -630,6 +631,7 @@ export function SourceList(props: SourceListProps) {
           </span>
         </span>
         <div data-follow-toolbar-actions="" data-toolbar-actions="">
+        <IndexSearch label={t('follow:sourceList.search')} value={query} onQuery={value => { setQuery(value); onPage(1) }} />
         {failedSourceIds.length ? <Button variant="secondary" disabled={readOnly}
           {...busyProps(rowHandlers.busy)} onClick={() => startChecking(failedSourceIds)}>{t('follow:sourceList.checkFailed')}</Button> : null}
         <Button variant="primary" leadingIcon={RiRefreshLine} disabled={readOnly}
@@ -707,8 +709,8 @@ export function SourceList(props: SourceListProps) {
         </SelectionDock>
 
       {asTable ? (
-        <DataTableFrame follow preferences={preferences} onRowClick={(key) => toggleOne(Number(key), !selected.has(Number(key)))}
-          onRectangle={commitRectangle}>
+        <DataTableFrame ref={tableTop} follow preferences={preferences} onRowClick={(key) => toggleOne(Number(key), !selected.has(Number(key)))}
+          rectangleSelecting={props.selecting} onRectangle={commitRectangle}>
           <Table aria-label={t('follow:sourceList.tableLabel')} size="sm"
             sortDescriptor={sorting[0]
               ? { column: sorting[0].id, direction: sorting[0].desc ? 'descending' : 'ascending' }
@@ -759,7 +761,7 @@ export function SourceList(props: SourceListProps) {
           {pageIds.length ? <Checkbox isSelected={pageState.all} isIndeterminate={pageState.some}
             onChange={(on) => toggleMany(pageIds, on)} aria-label={t('follow:sourceList.selectPage')}>{t('follow:sourceList.selectPageShort')}</Checkbox> : null}
           {!cardGroups.length ? <EmptyState icon={RiRssLine} title={t('follow:sourceList.pageEmpty')}>{null}</EmptyState> : null}
-          <div className="flex flex-col gap-3" {...rectangle}>
+          <div data-rectangle-gutter={cardGroups.length ? '' : undefined} className="flex flex-col gap-3" {...rectangle}>
             {cardGroups.slice(win.start, win.end).map(({ key, name, sources: group }) => {
               return (
                 <AuthorCard key={key} group={group} name={name}
@@ -778,6 +780,7 @@ export function SourceList(props: SourceListProps) {
       )}
 
       <DataTableFooter label={t('follow:followManageNav.list')} total={win.total} pagination={{ pageIndex: win.page - 1, pageSize }}
+        scrollTarget={asTable ? tableTop : undefined}
         unit={asTable ? t('follow:followOverview.sourceUnit') : t('follow:sourceList.creatorUnit')} pageUnit={asTable ? t('follow:followOverview.itemUnit') : t('follow:followOverview.creatorUnit')}
         onChange={(next) => { if (next.pageSize !== pageSize) table.setPageSize(next.pageSize); else table.setPageIndex(next.pageIndex); }} />
 

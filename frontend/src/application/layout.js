@@ -23,6 +23,8 @@ import { THEME_OPTIONS } from './../appearance/theme';
 import { JAV_LAYOUTS, cardLayoutFor, storeHomeLayout, storeJavLayout, storeVideoLayout } from './../appearance/layout';
 import { receiptsState } from './receipts.js';
 import { applySyncedSettings } from './../appearance/settings';
+import { queryClient } from '@peach/query';
+import { PROFILE_SETTINGS_KEY } from '../table-column-order';
 import { loadManageHeader, loadSettingsPanel, loadSidebar, manageHeaderApi, sidebarApi } from '../react/application-residents';
 import { sidebarSkeletonHtml } from './../sidebar-skeleton';
 import { trashFilterSkeletonHtml } from './../catalog-filter-skeleton';
@@ -54,7 +56,8 @@ export function showManagementBody({manage=true,placeholder=''}={}){
 }
 
 export function enterManagementSurface(){
-  $('#javLibraryHeader').hidden=true;
+  // JAV 的想要、新作、发现、在线目录画在管理区，页头与馆藏共用常驻的那一棵，留着不藏。
+  $('#javLibraryHeader').hidden=location.pathname!=='/jav';
   catalogState.hideCatalogCombo();
   hideDiscoveryBars();
   document.body.classList.remove('entity-open','index-open');
@@ -110,15 +113,23 @@ export function probeConfigurable(){
   }).catch(()=>{});
 }
 
-export function openSettings(section='',fromRoute=false){
+export function openSettings(section='',fromRoute=false,anchor='',search=''){
   if(!fromRoute&&!isPreferencePath(location.pathname)){
     const navigation=peachHistory.navigation;
-    peachHistory.push(settingsPath(section),{settingsBackground:{pathname:location.pathname,search:location.search,state:navigation.location.state,seq:navigation.seq}});
+    peachHistory.push(settingsPath(section)+search+anchor,{settingsBackground:{pathname:location.pathname,search:location.search,state:navigation.location.state,seq:navigation.seq}});
   }else if(!fromRoute&&section){
-    shellNavigate(settingsPath(section),{replace:true,state:peachHistory.navigation.location.state});
+    shellNavigate(settingsPath(section)+search+anchor,{replace:true,state:peachHistory.navigation.location.state});
   }
   section=section||preferenceSection(location.pathname);
-  return loadSettingsPanel(layoutState.settingsHost()).then(panel=>{panel.open(section);return panel});
+  return loadSettingsPanel(layoutState.settingsHost()).then(panel=>{
+    panel.open(section);
+    if(anchor.length>1){
+      let id;
+      try{id=decodeURIComponent(anchor.slice(1))}catch{return panel}
+      panel.reveal('#'+CSS.escape(id));
+    }
+    return panel;
+  });
 }
 
 export function closeSettingsRoute(){
@@ -130,7 +141,7 @@ export function closeSettingsRoute(){
 export function sidebarHost(){
   return {
     scroll:$('#drawerScroll'),store:preferencesState.settingsStore,navCatalog:layoutState.NAV_CATALOG,
-    navOn,navTo,navToTop:()=>{closeDrawerAfterNav();requestPageTop()},openDrawer,
+    navOn,navHref,navTo,navToTop:()=>{closeDrawerAfterNav();requestPageTop()},openDrawer,
     toggleChip:(key,value,multi)=>commitContextFilter(filters=>{
       if(multi){const cur=String(filters[key]||'').split(',').filter(Boolean);
         const i=cur.indexOf(value);if(i>=0)cur.splice(i,1);else cur.push(value);filters[key]=cur.join(',')}
@@ -140,7 +151,7 @@ export function sidebarHost(){
       filters.len='';filters.dur_min=lo?String(Math.round(lo*60)):'';filters.dur_max=hi===null?'':String(Math.round(hi*60))}),
     openFollowTag:tag=>{
       followState.followAuthors=new Set();followState.followProviders=new Set();followState.followMediaView='videos';followState.followFilter='saved';
-      followState.followDurMin=followState.followDurMax=0;followState.followTags=new Set([tag]);openDrawer(false);openRoutedPage(followViewPath())},
+      followState.followDurMin=followState.followDurMax=0;followState.followQuery='';followState.followTags=new Set([tag]);openDrawer(false);openRoutedPage(followViewPath())},
     selectFollowTag:tag=>{followState.followTags=new Set([tag]);openDrawer(false);openRoutedPage(followViewPath())},
     selectFollowProvider:provider=>routeFollowFromSidebar({provider:followState.followProviders.has(provider)?'':provider}),
     setFollowDuration:(lo,hi)=>routeFollowFromSidebar({durMin:Math.round(lo*60),durMax:hi===null?0:Math.round(hi*60)}),
@@ -151,12 +162,13 @@ export function sidebarHost(){
 export function mountSidebar(){
   const scroll=$('#drawerScroll');
   const anchors=[...(scroll.querySelector('[data-sidebar-head]')?.children||[])];
-  scroll.innerHTML=sidebarSkeletonHtml(preferencesState.appSettings.sidebarOrder,layoutState.NAV_CATALOG,navOn);
+  scroll.innerHTML=sidebarSkeletonHtml(preferencesState.appSettings.sidebarOrder,layoutState.NAV_CATALOG,navOn,navHref);
   scroll.querySelector('[data-sidebar-head]').append(...anchors);
   applicationEffects.listen(scroll, 'click', event=>{
     if(sidebarApi())return;
     const button=event.target.closest?.('[data-nav]');
-    if(button)navTo(button.dataset.nav);
+    if(!button||event.defaultPrevented||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button)return;
+    event.preventDefault();navTo(button.dataset.nav);
   });
   loadSidebar(sidebarHost()).then(sidebar=>sidebar.render(layoutState.sidebarProps)).catch(()=>{});
 }
@@ -164,9 +176,9 @@ export function mountSidebar(){
 export async function loadSyncedSettings(){
   const effects=applicationEffects;
   let remote=null;
-  try{remote=await api('/api/settings',{signal:effects.signal})}catch{return}
+  try{remote=await queryClient.fetchQuery({queryKey:PROFILE_SETTINGS_KEY,queryFn:({signal})=>api('/api/settings',{signal})})}catch{return}
   if(!effects.isActive)return;
-  applySyncedSettings(remote,effect=>preferencesState.settingsEffects[effect]?.());
+  applySyncedSettings(remote,(effect,keys)=>preferencesState.settingsEffects[effect]?.(keys));
 }
 
 export function manageSection(){
@@ -201,7 +213,7 @@ export function paintManageHeader(section=manageSection()){
   const props=manageHeaderProps(section),header=manageHeaderApi();
   if(header)header.render(props);
   else{
-    const html=manageHeaderSkeletonHtml(props);
+    const html=manageHeaderSkeletonHtml(props,manageHref);
     if(html!==layoutState.manageHeaderSkeleton){layoutState.manageHeaderSkeleton=html;layoutState.manageHeaderRoot().innerHTML=html}
   }
   /* 换了页才揭示一遍。同一页里的每一次重画（筛选、判完一批、翻页）走的也是这里，
@@ -217,13 +229,16 @@ export function mountManageHeader(){
   applicationEffects.listen(root, 'click', event=>{
     if(manageHeaderApi())return;
     const tab=event.target.closest?.('[data-manage]');
-    if(tab){openManage(tab.dataset.manage);return}
+    if(tab){
+      if(event.defaultPrevented||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button)return;
+      event.preventDefault();openManage(tab.dataset.manage);return;
+    }
     if(event.target.closest?.('[data-manage-crumb] a[href]')){
       if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button)return;
       event.preventDefault();navigationState.navigatePath('/data-cleanup');return;
     }
   });
-  loadManageHeader({root,store:preferencesState.settingsStore,openManage,openPath:path=>navigationState.navigatePath(path)})
+  loadManageHeader({root,store:preferencesState.settingsStore,openManage,manageHref,openPath:path=>navigationState.navigatePath(path)})
     .then(()=>paintManageHeader()).catch(()=>{});
 }
 
@@ -275,6 +290,8 @@ function fitTitleWords(title){
   span.textContent=parts.slice(0,best).join('')+'…';
 }
 
+const manageHref=(section='stats')=>navigationState.routePathOf('section',section)||junkPath();
+
 export function openManage(section='stats'){
   const path=navigationState.routePathOf('section',section);
   if(path){navigationState.openRoutePath(path);return}
@@ -322,9 +339,10 @@ export function syncVideoLayoutSetting(){
 }
 
 export function setVideoLayout(value){
-  storeVideoLayout(value);
+  const persisted=storeVideoLayout(value);
   syncVideoLayoutSetting();
   repaintCatalogGrid();
+  return persisted;
 }
 
 export function toggleJavMode(){
@@ -372,6 +390,17 @@ export function navOn(k){
   if(STATE_ROUTES[k])return nav===k&&state.orient!==PORTRAIT;
   if(nav)return nav===k;
   return path==='/'&&state.state===k&&state.orient!==PORTRAIT;
+}
+
+function navHref(k){
+  if(k==='shorts')return '';
+  const remembered=rememberedSidebarPath(k);
+  if(remembered)return remembered;
+  if(layoutState.DIRECT_MANAGE_NAV[k])return manageHref(layoutState.DIRECT_MANAGE_NAV[k]);
+  if(k==='manage')return manageHref();
+  if(k==='jav')return '/jav';
+  if(k==='')return '/';
+  return STATE_ROUTES[k]||navigationState.routePathOf('nav',k)||'';
 }
 
 export function navTo(k){
@@ -490,7 +519,7 @@ layoutState.settingsHost = ()=>({
   highContrast:()=>document.documentElement.classList.contains('board-high-contrast'),setHighContrast,
   receipt:message=>receiptsState.actionReceipt(message),
   failure:receiptsState.actionFailure,
-  syncRemote:remote=>applySyncedSettings(remote,effect=>preferencesState.settingsEffects[effect]?.()),
+  syncRemote:remote=>applySyncedSettings(remote,(effect,keys)=>preferencesState.settingsEffects[effect]?.(keys)),
   openConfiguration:()=>navigationState.navigatePath('/settings/library'),
   attached:()=>preferencesState.syncGlassOptics(),
   /* 「这台电脑」那一格的判据：服务由托盘管、已完成配置、请求来自本机三条同时成立。 */

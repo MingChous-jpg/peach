@@ -57,8 +57,14 @@ const statsInventoryTab = (page: Page): Locator =>
 const ROUTES: readonly Route[] = [
   { path: '/works/EXM-001', body: page => [page.locator('#stage [data-jav-detail] h1'), page.getByRole('img', { name: 'EXM-001 封面', exact: true })] },
   { path: '/jav', body: page => [heading(page, '#javLibraryHeader', 'JAV'), page.getByRole('tab', { name: '馆藏', exact: true, selected: true }), page.locator('#grid [data-media-card]:visible, #grid [data-media-empty]:visible').first()] },
-  { path: '/jav?tab=discover', body: page => [heading(page, '#stats', 'JAV'), page.getByRole('tab', { name: '发现', exact: true, selected: true }), page.getByText('暂无匹配口味的作品', { exact: true })] },
-  { path: '/jav?tab=wants', body: page => [heading(page, '#stats', 'JAV'), page.getByRole('tab', { name: '想要', exact: true, selected: true }), page.getByText('还没有想要的作品', { exact: true })] },
+  { path: '/jav?tab=discover', body: page => [heading(page, '#javLibraryHeader', 'JAV'), page.getByRole('tab', { name: '发现', exact: true, selected: true }), page.getByText('暂无匹配口味的作品', { exact: true })] },
+  { path: '/jav?tab=wants', body: page => [heading(page, '#javLibraryHeader', 'JAV'), page.getByRole('tab', { name: '想要', exact: true, selected: true }), page.getByText('还没有想要的作品', { exact: true })] },
+  { path: '/ai', body: page => [page.getByRole('heading', { name: 'AI 助手', exact: true }),
+    page.getByRole('combobox', { name: '想查找或整理什么？' }),
+    ...['看看最近入库的作品，再找几部馆藏外的作品', '找出最近入库、我还没看过的作品', '列出我已标记的作品，最近入库的排前面',
+      '找出缺少中文译文的作品，按发行日期从新到旧排列'].map(name =>
+      page.getByRole('group', { name: '演示案例' }).getByRole('button', { name, exact: true })),
+    page.getByRole('button', { name: '展开对话记录', exact: true }).or(page.getByRole('complementary', { name: '对话记录', exact: true }))] },
   { path: '/', body: (page) => [page.locator('#grid [data-media-card]').first()] },
   { path: '/wall', body: (page) => [page.locator('[data-wall-tile]').first(), page.getByRole('button', { name: '退出播放墙' })] },
   { path: '/performers', body: (page) => [heading(page, '#index', '艺人'), indexEntries(page)] },
@@ -87,7 +93,7 @@ const ROUTES: readonly Route[] = [
     // 订阅管理链接进入统一关注列表。
     path: '/subscriptions?tab=feeds',
     body: (page) => [page.locator('#stats').getByRole('tab', { name: '关注列表', exact: true, selected: true }),
-      page.locator('#stats').getByRole('button', { name: '立即拉取', exact: true })],
+      heading(page, '#stats', '还没有关注来源')],
   },
   {
     path: '/subscriptions?tab=add',
@@ -153,6 +159,10 @@ const ROUTES: readonly Route[] = [
   // 名字对不上任何一家时要换成空态；骨架一直留着，读起来就是还在取。
   { path: '/agencies/不存在的事务所', body: (page) => [heading(page, '#index', '找不到这个事务所')] },
   { path: '/settings/library', body: configurationBody },
+  { path: '/settings/ai', body: page => [page.getByRole('tab', { name: 'AI 接入', selected: true }),
+    page.getByRole('navigation', { name: '本页目录', exact: true }).getByRole('link', { name: '任务与提示词', exact: true })
+      .or(page.getByRole('button', { name: '本页目录', exact: true })),
+    page.getByRole('form', { name: 'Claude', exact: true }), page.locator('#ai-usage').getByText('已计量请求', { exact: true })] },
   { path: '/diagnostics', body: page => [page.getByRole('tab', { name: '系统诊断', selected: true }), page.locator('#stats section[aria-label="库健康"]')] },
   { path: '/settings/diagnostics', body: page => [page.getByRole('tab', { name: '系统诊断', selected: true }), page.locator('#stats section[aria-label="库健康"]')] },
   { path: '/tasks', body: tasksBody },
@@ -205,6 +215,422 @@ describe('路由冒烟', () => {
 
   after(async () => {
     await browser.close();
+  });
+
+  it('AI 助手提交后自动查询馆藏，结果页仍可调整条件', { timeout: 30_000 }, async () => {
+    const keyword = 'catalog-example';
+    const efforts = ['default', 'low', 'high'];
+    const defaultEfforts = { search: 'low' };
+    let sent: unknown;
+    let plans = 0;
+    let queries = 0;
+    const opened = await visit(browser, '/ai', DESKTOP, async page => {
+      await page.route('**/api/libraries', route => route.fulfill({ json: { libraries: [{ id: 'fixture-library', name: 'Fixture library' }] } }));
+      await page.route('**/api/ai-library/connections', route => route.fulfill({ json: { providers: [
+        { id: 'openai', label: 'OpenAI', model: 'fixture-model', configured: true, efforts, default_efforts: defaultEfforts },
+        { id: 'deepseek', label: 'DeepSeek', model: 'deepseek-flash', configured: true, efforts, default_efforts: defaultEfforts },
+        { id: 'anthropic', label: 'Claude', model: 'claude-sonnet-5', configured: false, efforts, default_efforts: defaultEfforts },
+      ] } }));
+      await page.route('**/api/ai-library/search-models?provider=openai', route => route.fulfill({ json: { models: [
+        { id: 'gpt-6.2-sol', label: 'GPT-6.2 Sol', efforts, default_efforts: defaultEfforts },
+      ] } }));
+      await page.route('**/api/ai-library/search-models?provider=deepseek', route => route.fulfill({ json: { models: [
+        { id: 'deepseek-flash', label: 'DeepSeek Flash', efforts, default_efforts: defaultEfforts },
+      ] } }));
+      await page.route('**/api/ai-library/search-plan', route => {
+        const request = route.request().postDataJSON();
+        sent = request;
+        plans++;
+        if (request.query === 'Only show unwatched') {
+          return route.fulfill({ json: { filters: { q: keyword, state: 'fresh' } } });
+        }
+        if (request.query === 'Translate DEMO-001 to English') {
+          return route.fulfill({ json: { filters: {}, work: { kind: 'translate', target: 'DEMO-001', language: 'en' } } });
+        }
+        return route.fulfill({ json: { filters: { q: keyword, year: '2023' }, usage: { input_tokens: 31, output_tokens: 12 } } });
+      });
+      await page.route(url => url.pathname === '/api/items' && url.searchParams.get('q') === keyword
+        && url.searchParams.get('year') === '2024' && url.searchParams.get('library') === 'fixture-library',
+        route => ++queries === 1 ? route.fulfill({ status: 503, json: { detail: '馆藏索引正在更新' } })
+          : route.fulfill({ json: { items: [{ id: 41, title: new URL(route.request().url()).searchParams.has('state')
+            ? 'Unwatched fixture work' : 'Fixture work' }] } }));
+      await page.route(url => url.pathname === '/api/items' && url.searchParams.get('q') === 'DEMO-001',
+        route => route.fulfill({ json: { items: [{ id: 42, code: 'DEMO-001', title: 'Work to translate' }] } }));
+    });
+    try {
+      const page = opened.page;
+      await page.getByRole('main').getByRole('button', { name: /媒体库/ }).click();
+      await page.getByRole('option', { name: 'Fixture library', exact: true }).click();
+      await page.getByRole('button', { name: '模型', exact: true }).click();
+      const choices = page.getByRole('dialog', { name: '模型', exact: true });
+      const providers = choices.getByRole('radiogroup', { name: 'AI 服务', exact: true });
+      assert.equal(await providers.getByRole('radio', { name: /Claude/ }).count(), 0);
+      const setup = choices.locator('[data-ai-provider-setup]');
+      await setup.getByRole('img', { name: 'Claude', exact: true }).waitFor({ state: 'visible' });
+      await setup.getByRole('link', { name: '配置 AI 服务', exact: true }).waitFor({ state: 'visible' });
+      await providers.getByText('DeepSeek', { exact: true }).click();
+      await choices.getByText('DeepSeek Flash', { exact: true }).waitFor({ state: 'visible' });
+      await providers.getByText('OpenAI · API Key', { exact: true }).click();
+      await choices.getByText('GPT-6.2-Sol', { exact: true }).click();
+      const effort = choices.getByRole('slider', { name: '思考强度' });
+      await effort.press('End');
+      await choices.locator('[data-effort-flow]').waitFor();
+      await effort.press('ArrowLeft');
+      await choices.locator('[data-effort-flow]').waitFor({ state: 'hidden' });
+      await effort.press('End');
+      await effort.press('Escape');
+      assert.equal(await page.locator('[data-ai-composer-trigger="end"]').innerText(), 'GPT-6.2-Sol');
+      await page.getByRole('button', { name: '查询条件', exact: true }).click();
+      const conditions = page.getByRole('dialog', { name: '查询条件', exact: true });
+      const yearRow = conditions.getByRole('button', { name: '发行年份', exact: true });
+      assert.equal(await yearRow.evaluate(node => getComputedStyle(node).backgroundColor), 'rgba(0, 0, 0, 0)');
+      await yearRow.click();
+      await conditions.getByRole('button', { name: /不限.*发行年份/ }).click();
+      await page.getByRole('option', { name: '2024', exact: true }).click();
+      await conditions.getByRole('button', { name: /发行年份.*2024/ }).press('Escape');
+      const composer = page.getByRole('combobox', { name: '想查找或整理什么？' });
+      await composer.fill('Find the fixture work');
+      await composer.press('Enter');
+      const failed = page.locator('[data-ai-search-source="library"]').getByRole('alert').filter({ hasText: '馆藏索引正在更新' });
+      await failed.getByRole('button', { name: '重试', exact: true }).click();
+      await page.getByRole('link', { name: 'Fixture work' }).waitFor({ state: 'visible' });
+      assert.equal(plans, 1, '重试结果查询时不重新生成查询条件');
+      assert.equal(await composer.inputValue(), '');
+      assert.deepEqual(sent, { query: 'Find the fixture work', scope: 'library', prompt_language: 'zh-CN',
+        connection: { provider: 'openai', model: 'gpt-6.2-sol', effort: 'high' } });
+      const usageButton = page.getByRole('button', { name: 'AI 用量', exact: true });
+      await usageButton.click();
+      const usage = page.getByRole('dialog', { name: 'AI 用量', exact: true });
+      await usage.getByText('43', { exact: true }).waitFor({ state: 'visible' });
+      await page.keyboard.press('Escape');
+      const filter = page.getByRole('combobox', { name: '馆藏关键词或番号' });
+      assert.equal(await filter.isVisible(), false);
+      assert.equal(await page.locator('[data-ai-search-transcript] [data-search-step="library"]').count(), 1);
+      await page.getByRole('button', { name: '查询条件', exact: true }).click();
+      await conditions.getByRole('button', { name: /馆藏关键词或番号/ }).click();
+      await filter.waitFor({ state: 'visible' });
+      assert.equal(await filter.inputValue(), keyword);
+      await filter.press('Escape');
+      await composer.fill('Only show unwatched');
+      await composer.press('Enter');
+      await page.getByRole('link', { name: 'Unwatched fixture work' }).waitFor({ state: 'visible' });
+      assert.deepEqual((sent as { previous_filters: unknown }).previous_filters, { q: keyword, year: '2024' });
+      await composer.fill('Translate DEMO-001 to English');
+      await composer.press('Enter');
+      await page.getByRole('link', { name: 'Work to translate' }).waitFor({ state: 'visible' });
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('模型显隐随连接保存，助手仍可使用隐藏的默认模型', { timeout: 45_000 }, async () => {
+    const efforts = ['default', 'low'];
+    const default_efforts = { search: 'low' };
+    const models = [
+      { id: 'fixture-default', label: 'Default fixture', efforts, default_efforts },
+      { id: 'fixture-other', label: 'Other fixture', efforts, default_efforts },
+      { id: 'fixture-third', label: 'Third fixture', efforts, default_efforts },
+      { id: 'fixture-extra', label: 'Extra fixture', efforts, default_efforts },
+    ];
+    const opened = await visit(browser, '/settings/ai', DESKTOP, async page => {
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await page.route('**/api/ai-library/connections', route => route.fulfill({ json: { settings_editable: true, providers: [
+        { id: 'openai', label: 'OpenAI', model: 'fixture-default', configured: true, efforts, default_efforts },
+        { id: 'deepseek', label: 'DeepSeek', model: 'fixture-default', configured: true, efforts, default_efforts },
+      ] } }));
+      await page.route('**/api/ai-library/search-models?provider=*', route => route.fulfill({ json: { models } }));
+    });
+    try {
+      const { page } = opened;
+      const manage = page.getByRole('region', { name: 'OpenAI', exact: true })
+        .getByRole('button', { name: '管理可见模型', exact: true });
+      await manage.click();
+      const editor = page.getByRole('dialog', { name: '管理可见模型', exact: true });
+      await editor.getByRole('button', { name: '隐藏 Default fixture', exact: true }).click();
+      await editor.getByRole('button', { name: '隐藏 Extra fixture', exact: true }).click();
+      await editor.getByText('显示 2 / 4 个模型', { exact: true }).waitFor();
+      await editor.getByRole('button', { name: '选择要添加的模型' }).click();
+      await page.getByRole('option', { name: 'Extra fixture', exact: true }).click();
+      await page.locator('[data-trigger="Select"]').waitFor({ state: 'detached' });
+      await editor.getByRole('button', { name: '添加', exact: true }).click();
+      const source = editor.getByRole('group', { name: 'Extra fixture', exact: true });
+      const grip = source.locator('[data-sidebar-grip]');
+      await grip.hover();
+      const handle = (await grip.boundingBox())!;
+      await page.mouse.down();
+      await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2 - 10);
+      await source.and(page.locator('[data-dragging]')).waitFor();
+      const target = await editor.getByRole('group', { name: 'Other fixture', exact: true }).evaluate((element: HTMLElement) => {
+        const list = element.parentElement!.getBoundingClientRect();
+        return { x: list.left + 40, y: list.top + element.offsetTop + element.offsetHeight * .25 };
+      });
+      await page.mouse.move(target.x, target.y, { steps: 8 });
+      await editor.locator('[data-navigation-drag-preview]:popover-open').waitFor();
+      await editor.locator('[data-navigation-drop-line]').waitFor();
+      await page.mouse.up();
+      await editor.getByRole('button', { name: '保存配置', exact: true }).click();
+      await editor.waitFor({ state: 'hidden' });
+      await page.locator('#drawer [data-sidebar-nav] [data-nav="ai"]').click();
+      await page.locator('[data-ai-composer-trigger="end"]').click();
+      const menu = page.getByRole('dialog', { name: '模型', exact: true });
+      await menu.getByText('Other fixture', { exact: true }).waitFor();
+      await menu.getByText('当前模型已隐藏，仍用于此对话', { exact: true }).waitFor();
+      assert.equal(await menu.getByRole('radio', { name: 'Default fixture', exact: true }).count(), 0);
+      assert.deepEqual(await menu.getByRole('radiogroup', { name: '模型', exact: true })
+        .getByRole('radio').evaluateAll(rows => rows.map(row => (row as HTMLInputElement).value)),
+      ['fixture-extra', 'fixture-other', 'fixture-third']);
+      await menu.getByText('DeepSeek', { exact: true }).click();
+      await menu.getByRole('radio', { name: 'Default fixture', exact: true }).waitFor();
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('AI 接入受限时保留只读配置和用量区，并只显示一条访问提示', { timeout: 30_000 }, async () => {
+    const restrictedRequests: string[] = [];
+    const opened = await visit(browser, '/settings/ai', DESKTOP, async page => {
+      page.on('request', request => {
+        const pathname = new URL(request.url()).pathname;
+        if (['/api/ai-library/prompts', '/api/ai-library/usage'].includes(pathname)
+          || pathname === '/api/ai-library/custom-tasks' && new URL(request.url()).searchParams.has('edit')) {
+          restrictedRequests.push(request.url());
+        }
+      });
+      await page.route('**/api/ai-library/connections', route => route.fulfill({
+        status: 403, json: { message_code: 'api.aiLibrary.lanSignIn' },
+      }));
+    });
+    try {
+      const page = opened.page;
+      const notice = page.getByRole('note').filter({ hasText: /运行 Peach 的电脑.*网络与访问.*访问密码/ });
+      await notice.waitFor();
+      assert.equal(await notice.count(), 1);
+      const services = page.locator('#ai-services');
+      for (const provider of ['Claude', 'OpenAI', 'DeepSeek']) {
+        const form = services.getByRole('form', { name: provider, exact: true });
+        await form.waitFor();
+        assert.equal(await form.getByLabel('API Key', { exact: true }).isDisabled(), true);
+        assert.equal(await form.getByRole('button', { name: '保存配置', exact: true }).isDisabled(), true);
+      }
+      assert.equal(await services.getByText('未配置', { exact: true }).count(), 0);
+      assert.equal(await services.getByRole('button', { name: '添加服务商' }).isDisabled(), true);
+      const prompts = page.locator('#ai-prompts');
+      const preview = prompts.getByRole('region', { name: '标题和简介翻译', exact: true });
+      await preview.scrollIntoViewIfNeeded();
+      const bounds = await preview.boundingBox();
+      assert.ok(bounds);
+      await page.mouse.move(bounds.x + 24, bounds.y + 18);
+      await page.mouse.down();
+      await page.mouse.move(bounds.x + 160, bounds.y + 55, { steps: 6 });
+      await page.mouse.up();
+      assert.equal(await page.evaluate(() => window.getSelection()?.toString()), '');
+      assert.equal(await prompts.getByRole('button', { name: '保存配置', exact: true }).isDisabled(), true);
+      await page.locator('#ai-usage').getByText('当前入口无法查看用量。', { exact: true }).waitFor();
+      assert.equal(await page.getByText('登录已失效，请刷新页面重新登录。', { exact: true }).count(), 0);
+      assert.deepEqual(restrictedRequests, []);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('AI 助手区分未配置和当前入口受限', { timeout: 30_000 }, async () => {
+    for (const status of [200, 403]) {
+      const opened = await visit(browser, '/ai', DESKTOP, async page => {
+        await page.route('**/api/ai-library/connections', route => route.fulfill({ status, json: status === 200
+          ? { providers: [{ id: 'openai', label: 'OpenAI', configured: false }] }
+          : { message_code: 'api.aiLibrary.lanSignIn' } }));
+      });
+      try {
+        const page = opened.page;
+        const configure = page.getByRole('link', { name: '配置 AI 服务', exact: true });
+        if (status === 200) {
+          await configure.waitFor({ state: 'visible' });
+          assert.equal(await configure.getAttribute('href'), '/settings/ai');
+          assert.ok(await configure.evaluate(node => node.classList.contains('bg-button-primary')));
+        } else {
+          await page.getByRole('note').getByText(/请在运行 Peach 的电脑上修改 AI 配置/).waitFor();
+          assert.equal(await configure.count(), 0);
+          assert.equal(await page.locator('[data-ai-composer-trigger="end"]').isDisabled(), true);
+        }
+      } finally {
+        await opened.close();
+      }
+    }
+  });
+
+  it('AI 演示作品卡保留内边距，悬停只给标题加下划线', { timeout: 25_000 }, async () => {
+    const opened = await visit(browser, '/ai', DESKTOP);
+    try {
+      const page = opened.page;
+      await page.getByRole('button', { name: '看看最近入库的作品，再找几部馆藏外的作品', exact: true }).click();
+      await page.locator('[data-ai-search-composer-motion="active"]').waitFor();
+      assert.equal(await page.locator('[data-search-state="running"] [data-ai-search-thinking]').count(), 1);
+      await page.getByRole('button', { name: '停止等待', exact: true }).click();
+      await page.locator('[data-search-state="stopped"]').waitFor({ state: 'visible' });
+      await page.getByRole('button', { name: '重播演示', exact: true }).click();
+      assert.equal(await page.locator('[data-ai-search-results-loading]').count(), 0);
+      const card = page.locator('[data-ai-search-source="external"] [data-ai-search-work]');
+      const link = card.getByRole('link');
+      await link.hover();
+      const style = await link.evaluate(node => {
+        const image = node.querySelector('img')!;
+        const title = node.querySelector('[data-ai-search-work-title]')!;
+        return {
+          leftPadding: parseFloat(getComputedStyle(node).paddingInlineStart),
+          decoration: getComputedStyle(node).textDecorationLine,
+          titleDecoration: getComputedStyle(title).textDecorationLine,
+          portrait: image.clientHeight > image.clientWidth,
+        };
+      });
+      assert.ok(style.leftPadding > 0);
+      assert.equal(style.decoration, 'none');
+      assert.equal(style.titleDecoration, 'underline');
+      assert.equal(style.portrait, true);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('在 AI 助手直接显示译文候选或配置入口', { timeout: 30_000 }, async () => {
+    for (const configured of [false, true]) {
+      const requests: unknown[] = [];
+      const opened = await visit(browser, '/ai', DESKTOP, async page => {
+        await page.route('**/api/ai-library/connections', route => route.fulfill({ json: { providers: [
+          { id: 'openai', label: 'OpenAI', model: 'fixture-model', configured },
+        ] } }));
+        await page.route(url => url.pathname === '/api/items' && url.searchParams.get('limit') === '24',
+          route => route.fulfill({ json: { items: [
+            { id: 41, title: 'Fixture work', code: 'FIX-041', is_jav: true },
+            { id: 42, title: 'Fixture work', code: 'FIX-041', is_jav: true },
+          ] } }));
+        await page.route('**/api/ai-library/assets/41', route => {
+          if (route.request().method() === 'GET') return route.fulfill({ json: { translations: [], official_samples: 0 } });
+          requests.push(route.request().postDataJSON());
+          return route.fulfill({ json: { task: 'translate', title: 'Fixture translation', token: 'fixture' } });
+        });
+      });
+      try {
+        const page = opened.page;
+        await page.getByRole('button', { name: '帮我翻译一部作品', exact: true }).click();
+        const replay = page.getByRole('button', { name: '重播演示', exact: true });
+        await replay.waitFor({ state: 'visible' });
+        const demo = page.getByRole('region', { name: '演示案例', exact: true });
+        await demo.getByRole('link', { name: /FIRST IMPRESSION 184/ }).waitFor({ state: 'visible' });
+        await demo.getByText('天音ミシェル', { exact: true }).waitFor({ state: 'visible' });
+        assert.equal(await demo.getByRole('img').evaluate(image => (image as HTMLImageElement).naturalWidth > 0), true);
+        const sampleTranslation = await demo.getByRole('textbox', { name: '译文标题', exact: true }).inputValue();
+        assert.match(sampleTranslation, /FIRST IMPRESSION 184.*天音ミシェル/);
+        assert.deepEqual(requests, []);
+        assert.equal(await page.getByRole('button', { name: '开始任务', exact: true }).count(), 0);
+        await replay.click();
+        await demo.getByRole('heading', { name: 'AI 生成的结果', exact: true }).waitFor({ state: 'hidden' });
+        await replay.waitFor({ state: 'visible' });
+        await page.getByRole('button', { name: '返回 AI 助手', exact: true }).click();
+        await page.getByRole('button', { name: '馆藏工具', exact: true }).click();
+        await page.getByRole('menuitem', { name: '帮我翻译一部作品', exact: true }).click();
+        await page.getByRole('button', { name: '翻译标题和简介', exact: true }).click();
+        const result = page.getByRole('region', { name: '翻译标题和简介', exact: true });
+        if (configured) {
+          const translated = result.getByRole('textbox', { name: '译文标题', exact: true });
+          await translated.waitFor({ state: 'visible' });
+          assert.equal(await translated.inputValue(), 'Fixture translation');
+          assert.deepEqual(requests, [{ task: 'translate', language: 'zh-CN', prompt_language: 'zh-CN' }]);
+        } else {
+          await result.getByRole('link', { name: '配置 AI 服务', exact: true }).waitFor({ state: 'visible' });
+          assert.deepEqual(requests, []);
+        }
+        assert.equal(await page.getByRole('dialog', { name: 'AI 助手', exact: true }).count(), 0);
+      } finally {
+        await opened.close();
+      }
+    }
+  });
+
+  it('ChatGPT 授权失败后保留回执，手动返回时选中订阅设置', { timeout: 30_000 }, async () => {
+    const path = '/settings/ai/authorization';
+    const settings = /\/settings\/ai\?connection=chatgpt$/;
+    const opened = await visit(browser, path, DESKTOP, page => page.clock.install());
+    try {
+      const page = opened.page;
+      const heading = page.getByRole('heading', { name: 'ChatGPT 授权未完成', exact: true });
+      await heading.waitFor({ state: 'visible' });
+      await page.clock.runFor(5000);
+      await heading.waitFor({ state: 'visible' });
+      await page.getByText('未能完成 ChatGPT 授权，请重新连接。', { exact: true }).waitFor();
+      await page.getByRole('link', { name: '返回 Peach', exact: true }).click();
+      await page.waitForURL(settings);
+      const method = page.getByRole('tab', { name: 'ChatGPT 订阅', exact: true, selected: true });
+      await method.waitFor({ state: 'visible' });
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('登录的其他设备可打开 ChatGPT 订阅并看到主机授权提示', { timeout: 30_000 }, async () => {
+    const opened = await visit(browser, '/settings/ai', DESKTOP, async page => {
+      await page.route('**/api/ai-library/connections', route => route.fulfill({ json: { settings_editable: false, providers: [
+        { id: 'openai', label: 'OpenAI', model: '', configured: false },
+      ] } }));
+    });
+    try {
+      const page = opened.page;
+      await page.getByRole('tab', { name: 'ChatGPT 订阅', exact: true }).click();
+      const panel = page.getByRole('tabpanel', { name: 'ChatGPT 订阅', exact: true });
+      await panel.getByRole('note').filter({ hasText: /运行 Peach 的电脑/ }).waitFor();
+      assert.equal(await panel.getByRole('button', { name: '连接 ChatGPT 订阅', exact: true }).count(), 0);
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('AI 助手显示自定义任务读取错误，重试后显示任务', { timeout: 30_000 }, async () => {
+    let available = false;
+    const opened = await visit(browser, '/ai', DESKTOP, async page => {
+      await page.route('**/api/ai-library/custom-tasks', route => available
+        ? route.fulfill({ json: { tasks: [{ id: 'fixture-task', name: '样本任务' }] } })
+        : route.fulfill({ status: 503, json: { message_code: 'api.aiLibrary.upstream' } }));
+    });
+    try {
+      const page = opened.page;
+      const notice = page.getByRole('alert').filter({ hasText: '无法读取自定义任务' });
+      await notice.waitFor();
+      available = true;
+      await notice.getByRole('button', { name: '立即重试', exact: true }).click();
+      await notice.waitFor({ state: 'hidden' });
+      await page.getByRole('button', { name: '馆藏工具', exact: true }).click();
+      await page.getByRole('menuitem', { name: '样本任务', exact: true }).waitFor();
+    } finally {
+      await opened.close();
+    }
+  });
+
+  it('ChatGPT 待授权的外链沿用主按钮的文字颜色、内边距和圆角', { timeout: 30_000 }, async () => {
+    let status = 'disconnected';
+    const opened = await visit(browser, '/settings/ai', DESKTOP, async page => {
+      await page.route('**/api/ai-library/connections', route => route.fulfill({ json: { settings_editable: true, providers: [
+        { id: 'openai', label: 'OpenAI', model: 'fixture-model', configured: false },
+        { id: 'openai-oauth', label: 'ChatGPT', model: 'fixture-model', configured: false, status },
+      ] } }));
+      await page.route('**/api/ai-library/openai/oauth', route => {
+        status = 'pending';
+        return route.fulfill({ json: { status, authorization_url: 'https://example.test/authorize' } });
+      });
+    });
+    try {
+      const colorAndShape = (node: Element) => {
+        const { color, borderRadius, paddingInlineStart } = getComputedStyle(node);
+        return { color, borderRadius, paddingInlineStart };
+      };
+      await opened.page.getByRole('tab', { name: 'ChatGPT 订阅', exact: true }).click();
+      const start = opened.page.getByRole('button', { name: '连接 ChatGPT 订阅', exact: true });
+      const expected = await start.evaluate(colorAndShape);
+      await start.click();
+      const link = opened.page.getByRole('link', { name: '前往 ChatGPT 授权', exact: true });
+      assert.deepEqual(await link.evaluate(colorAndShape), expected);
+      assert.equal(await link.getAttribute('target'), '_blank');
+    } finally {
+      await opened.close();
+    }
   });
 
   it('入库 toast 打开真实详情，标题使用番号或文件名，返回与前进恢复对应页面', { timeout: 60_000 }, async () => {

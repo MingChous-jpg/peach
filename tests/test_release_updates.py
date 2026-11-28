@@ -128,7 +128,7 @@ class ReleaseUpdateTests(unittest.TestCase):
         self.assertNotIn("notes", self.check([release("0.9.0", body=self.BODY)]))
 
     def test_releases_without_highlights_are_left_out(self):
-        """只有修复的版本和 0.59.0 之前的旧正文没有重点分组，不进检查结果。"""
+        """只有完整变更的正文和旧版正文没有重点分组，不进检查结果。"""
         fixes_only = "### Fixed\n\n- **Interface**: One fix.\n\n<details>\n<summary>简体中文</summary>\n\n### 修复\n\n- x\n\n</details>\n"
         legacy = "### 修复\n\n- **界面**：修好一处。\n\n## 下载选择\n\n| 平台 |\n"
         for body in (None, "", fixes_only, legacy):
@@ -137,12 +137,12 @@ class ReleaseUpdateTests(unittest.TestCase):
         self.assertEqual([row["version"] for row in self.check(rows)["notes"]], ["0.11.0"])
 
     def test_notes_follow_the_format_the_release_script_writes(self):
-        """应用拆的就是 `changelog.py --notes` 生成的正文：重点就是那一版公告的 features，两边改格式要一起改。"""
+        """中英文公告条目和关联编号能从 `changelog.py --notes` 生成的正文取回。"""
         from scripts import changelog
         from scripts.package_windows_release import download_sections
         from peach import release_notices
         document = (Path(changelog.ROOT) / changelog.CHANGELOG).read_text(encoding="utf-8")
-        version = "0.58.0"
+        version = "0.63.0"
         body = changelog.notes(document, version, download_sections(version, lite_installer=True))
         notes = release_updates.changelog_notes(body)
         features = release_notices.NOTICES[version]["features"]
@@ -150,7 +150,7 @@ class ReleaseUpdateTests(unittest.TestCase):
         for language in ("en", "zh-CN"):
             self.assertEqual([item["title"] for item in notes[language]],
                              [interface_text.text(f"{base}.{row['id']}.title", language=language) for row in features])
-        for item, row in zip(notes["en"], features):
+        for item, row in zip(notes["en"], features, strict=True):
             self.assertTrue(all(ref in item["text"] for ref in row.get("refs", [])), item)
 
     def test_prefers_app_update_when_all_tool_assets_are_uploaded(self):
@@ -182,6 +182,22 @@ class ReleaseUpdateTests(unittest.TestCase):
             result = release_updates.check(transport=Mock(side_effect=cause))
             self.assertEqual(result["state"], "error")
             self.assertIsNone(result["latest_version"])
+
+    def test_only_a_smaller_delta_from_the_running_version_is_offered(self):
+        from peach.update_packages import TOOL_PATHS
+
+        row = release("1.0.0")
+        prefix = "Peach-1.0.0-windows-x64"
+        row["assets"] += [{"name": f"{prefix}-tools-{tool}.zip", "state": "uploaded"} for tool in TOOL_PATHS]
+        row["assets"] += [{"name": f"{prefix}-update.zip", "state": "uploaded", "size": 100},
+                          {"name": f"{prefix}-from-0.8.0.zip", "state": "uploaded", "size": 20}]
+        self.assertNotIn("delta", self.check([row]))
+        match = {"name": f"{prefix}-from-0.9.0.zip", "state": "uploaded", "size": 50}
+        row["assets"].append(match)
+        self.assertEqual(self.check([row])["delta"]["size"], 50)
+        self.assertTrue(self.check([row])["delta"]["url"].endswith(match["name"]))
+        match["size"] = 100
+        self.assertNotIn("delta", self.check([row]))
 
     def test_github_can_report_current_and_ahead_when_r2_is_unavailable(self):
         def transport(github_version):

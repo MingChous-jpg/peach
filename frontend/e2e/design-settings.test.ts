@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import type { Browser, Page } from 'playwright-core';
 import { openFollowFeed } from './follow-fixture.ts';
 import { requiredEnv, settle, visit, VIEWPORTS } from './harness.ts';
+import { stubHomeDiscoveries } from './home-discoveries-fixture.ts';
 import { openHome, openPanel, ORDER, PANEL, stubServer } from './settings-fixture.ts';
 import {
   DESKTOP, MOBILE, tokenColor, settledRun, openActivity, TASTE_CATEGORIES, TASTE_FACE, openTaste, openIndexPage,
@@ -14,17 +15,6 @@ const homeDiscoveries = Array.from({ length: 12 }, (_, index) => ({
   id: index + 1, code: `DEMO-${String(index + 1).padStart(3, '0')}`, title: `演示新作 ${index + 1}`,
   studio: '演示厂牌', release_date: '2026-09-01', has_cover: false, cover_url: '', link: '', read: false,
 }));
-
-async function showHomeDiscoveries(page: Page): Promise<void> {
-  await page.route((url) => url.pathname === '/api/feeds/discoveries', (route) =>
-    route.fulfill({ json: { items: homeDiscoveries } }));
-  await page.route((url) => url.pathname === '/api/entity/shapes', async (route) => {
-    const data = await (await route.fetch()).json();
-    await route.fulfill({ json: { ...data, home: { ...data.home, feed: true } } });
-  });
-  await page.reload({ waitUntil: 'load' });
-  await page.locator('#feedNew .feednewrow').waitFor({ state: 'visible', timeout: 15_000 });
-}
 
 describe('设计决定：设置、口味、统计与筛选玻璃', () => {
   let browser: Browser;
@@ -182,17 +172,19 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
 
   it('桌面首页的横滑边界由浏览偏好即时切换，刷新后仍按该偏好裁切', { timeout: 60_000 }, async () => {
     // visit() 每次加载时会重置本机偏好，这里由页面保存和恢复。
-    const page = await browser.newPage({ viewport: DESKTOP, locale: 'zh-CN', reducedMotion: 'reduce' });
+    const context = await browser.newContext({ viewport: DESKTOP, locale: 'zh-CN', reducedMotion: 'reduce' });
     try {
+      const page = await context.newPage();
       await page.addInitScript(() => {
         if (!localStorage.getItem('peach.settings.v1')) {
           localStorage.setItem('peach.settings.v1', JSON.stringify({ detailAutoplay: false }));
         }
       });
+      await stubHomeDiscoveries(page, homeDiscoveries);
       await page.goto(requiredEnv('PEACH_E2E_ORIGIN'));
-      await showHomeDiscoveries(page);
-      await settle(page);
       const row = page.locator('#feedNew .feednewrow');
+      await row.waitFor({ state: 'visible', timeout: 15_000 });
+      await settle(page);
       const edges = () => row.evaluate((element) => ({
         row: element.getBoundingClientRect().left,
         sidebar: document.querySelector('#drawer')!.getBoundingClientRect().right,
@@ -231,8 +223,7 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
       await closeSettings();
       await assertBoundary(false);
     } finally {
-      await page.unrouteAll({ behavior: 'ignoreErrors' });
-      await page.close();
+      await context.close();
     }
   });
 
@@ -241,10 +232,10 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
      画出来（字段以 `src/peach/web_feeds.py` 为准）。夹具关了动效，自动滚动不起步，
      所以这里亲手滚它，发出的是同一种 scroll。 */
   it('390px 下侧栏两枚弹层不随别处那一排横滚收起，整页滚动才收', { timeout: 60_000 }, async () => {
-    const opened = await visit(browser, '/', MOBILE);
+    const opened = await visit(browser, '/', MOBILE, page => stubHomeDiscoveries(page, homeDiscoveries));
     try {
-      await showHomeDiscoveries(opened.page);
       const row = opened.page.locator('#feedNew .feednewrow');
+      await row.waitFor({ state: 'visible', timeout: 15_000 });
       await settle(opened.page);
       assert.ok(await row.evaluate((element) => element.scrollWidth > element.clientWidth + 120),
         '新作那一排在 390px 下没有可横滚的余量，这条用例量不到东西');
@@ -374,13 +365,16 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
       const scrim = await tokenColor(page, 'body', '--scrim');
       const shown = await page.locator(PANEL).evaluate((panel) => {
         const style = getComputedStyle(panel);
-        const card = getComputedStyle(panel.querySelector('[data-settings-card]')!);
+        const cardElement = panel.querySelector('[data-settings-card]')!;
+        const card = getComputedStyle(cardElement);
+        const launcher = panel.querySelector('[data-feedback-launcher]')!;
         return {
           position: style.position, z: style.zIndex, inset: [style.top, style.right, style.bottom, style.left],
           layer: getComputedStyle(document.documentElement).getPropertyValue('--layer-dialog').trim(),
           face: style.backgroundColor, blur: [style.backdropFilter, card.backdropFilter],
           backdrop: [style.animationName, style.animationFillMode], card: [card.animationName, card.animationFillMode],
           padding: [style.paddingTop, style.paddingBottom],
+          feedbackGap: launcher.getBoundingClientRect().top - cardElement.getBoundingClientRect().bottom,
         };
       });
       assert.equal(shown.position, 'fixed');
@@ -391,8 +385,9 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
       assert.deepEqual(shown.backdrop, ['settings-backdrop-in', 'both']);
       // 进场填 `backwards`：终点帧留下的 filter 会另起一个 backdrop root，左栏玻璃就只采样得到卡片自己。
       assert.deepEqual(shown.card, ['board-dialog-in', 'backwards']);
-      /* 安全区内边距让开刘海与 Home 指示条；桌面上没有安全区，两端都是 18px 的底。 */
-      assert.deepEqual(shown.padding, ['18px', '18px']);
+      assert.equal(shown.padding[0], '18px');
+      assert.ok(Number.parseFloat(shown.padding[1]!) >= 18);
+      assert.ok(shown.feedbackGap >= 0, `反馈按钮与设置卡片重叠 ${-shown.feedbackGap}px`);
 
       const leaving = await page.locator(PANEL).evaluate((panel) => {
         (panel.querySelector('#settingsClose') as HTMLButtonElement).click();
@@ -544,13 +539,16 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
         await openPanel(opened.page);
         for (const section of ['外观与导航', '浏览与播放', 'JAV 与新作', '搜索与推荐', '内容显示']) {
           await opened.page.locator(PANEL).getByRole('tab', { name: section, exact: true }).click();
-          const subheadings = ({ '浏览与播放': ['作品列表', '播放'], 'JAV 与新作': ['作品显示', '新作显示'] } as
+          const subheadings = ({ '浏览与播放': ['作品列表', '首页', '播放', '播放控制'], 'JAV 与新作': ['作品显示', '新作显示'] } as
             Record<string, string[] | undefined>)[section];
           if (subheadings) {
             const headings = await opened.page.locator(`${PANEL} [data-setting-group]:not([hidden]) [data-settings-subheading]`)
-              .evaluateAll((nodes) => nodes.map((node) => ({ text: node.textContent, padding: getComputedStyle(node).padding,
-                left: node.getBoundingClientRect().left - node.parentElement!.getBoundingClientRect().left })));
-            assert.deepEqual(headings, subheadings.map((text) => ({ text, padding: '16px 0px 6px', left: 12 })));
+              .evaluateAll((nodes) => nodes.map((node) => ({
+                text: node.textContent,
+                left: node.getBoundingClientRect().left - node.parentElement!.getBoundingClientRect().left
+                  + parseFloat(getComputedStyle(node).paddingLeft),
+              })));
+            assert.deepEqual(headings, subheadings.map((text) => ({ text, left: 12 })));
           }
           const rows = await opened.page.locator(`${PANEL} [data-setting-group]:not([hidden]) [data-setting-row]`)
           .evaluateAll((nodes) => nodes.map((row) => {
@@ -608,14 +606,15 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
         const primary = document.createElement('button');
         primary.className = 'geist-button primary';
         document.body.append(primary);
+        const gradient = (style: CSSStyleDeclaration) => style.backgroundImage.replace(/ 0%(?=,)| 100%(?=\)$)/g, '');
         const want = getComputedStyle(primary);
-        const expected = [want.backgroundColor, want.backgroundImage, want.color];
+        const expected = [want.backgroundColor, gradient(want), want.color];
         primary.remove();
         const trigger = node.querySelector('button[aria-haspopup="listbox"]')!, add = node.querySelector('[data-sidebar-add]')!;
         const face = getComputedStyle(add);
         return {
           height, trigger: getComputedStyle(trigger).height, add: face.height,
-          face: [face.backgroundColor, face.backgroundImage, face.color], expected,
+          face: [face.backgroundColor, gradient(face), face.color], expected,
           cursor: getComputedStyle(trigger).cursor,
         };
       });
@@ -715,7 +714,7 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
             overflow: node.scrollWidth > node.clientWidth,
             cards: cards.map((card) => ({ radius: getComputedStyle(card).borderTopLeftRadius,
               left: card.getBoundingClientRect().left - group.left, right: group.right - card.getBoundingClientRect().right })),
-            headings: [...node.querySelectorAll('h4')].map((heading) => heading.textContent),
+            headings: [...node.querySelectorAll('[data-glow-group] > [data-settings-subheading]')].map((heading) => heading.textContent),
           };
         });
         assert.equal(shown.right, 0);

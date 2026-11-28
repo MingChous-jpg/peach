@@ -8,6 +8,83 @@ import { verifyColumnContentWidth } from './table-preferences-fixture.ts';
 describe('配置中的系统诊断', () => {
   let browser: Browser;
   installDesignBrowser(next => { browser = next; });
+  it('通知按正封比例取景，悬停后点卡片空白可打开作品', async () => {
+    const opened = await visit(browser, '/jav?tab=discover', VIEWPORTS[0]!, async page => {
+      await page.route('**/api/player/recent', route => route.fulfill({ json: { items: [{
+        id: 55001, key: 'item:55001', kind: 'item', code: 'EXM-001', name: '续播样本',
+        is_jav: true, has_cover: true, duration: 1000, position: { seconds: 120, updated_at: 1 },
+        poster_box: { x0: 776, y0: 0, x1: 1480, y1: 1000, px: [1480, 1000], method: 'fold' },
+      }] } }));
+      await page.route('**/cover?*', route => route.fulfill({ contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="1000"><rect width="1480" height="1000" fill="navy"/><rect x="776" width="704" height="1000" fill="teal"/></svg>' }));
+    });
+    try {
+      const { page } = opened;
+      await page.locator('#notificationCenter').click();
+      await page.locator('[data-notification-categories] button').filter({ hasText: '观看' }).click();
+      const card = page.locator('[data-notification-presentation="resume"]');
+      const cover = card.locator('img.panel');
+      await cover.waitFor();
+      const share = await cover.evaluate((img: HTMLImageElement) => {
+        const frame = img.closest('[data-media-pic]')!.getBoundingClientRect();
+        const picture = img.getBoundingClientRect();
+        const [, right, , left] = img.style.getPropertyValue('--panel-clip').trim().split(/\s+/).map(parseFloat);
+        const painted = Math.min(picture.right - picture.width * right! / 100, frame.right)
+          - Math.max(picture.left + picture.width * left! / 100, frame.left);
+        return painted / frame.width;
+      });
+      assert.ok(share > 0.9, `正封实际覆盖宽度为 ${share}`);
+      const background = await card.evaluate(node => getComputedStyle(node).backgroundColor);
+      const box = (await card.boundingBox())!;
+      const position = { x: box.width - 8, y: 8 };
+      await card.hover({ position });
+      await page.waitForFunction(before => getComputedStyle(document.querySelector('[data-notification-presentation="resume"]')!).backgroundColor !== before, background);
+      await card.click({ position });
+      await page.waitForURL('**/assets/55001');
+    } finally { await opened.close(); }
+  });
+
+  it('撤销全部已读只恢复本次操作的通知，且通知面板打开时可点撤销', async () => {
+    const titles = ['先标记的事项', '批量标记的事项'];
+    const opened = await visit(browser, '/settings/diagnostics', VIEWPORTS[1]!, async page => {
+      await page.route('**/api/background-issues', route => route.fulfill({ json: {
+        issues: titles.map((title, index) => ({
+          key: `notice-${index}`, title, href: '/settings/diagnostics', link_label: '查看诊断',
+          since: null, noticed_at: '2026-11-28T00:04:00Z', retry: null, retry_available: false,
+        })),
+      } }));
+    });
+    try {
+      const { page } = opened;
+      await page.locator('#notificationCenter').click();
+      const menu = page.locator('[data-notification-menu]');
+      const earlier = menu.locator('[data-notification-card]').filter({ hasText: titles[0] });
+      const later = menu.locator('[data-notification-card]').filter({ hasText: titles[1] });
+      await earlier.getByRole('button', { name: '将这条标为已读' }).click();
+      await earlier.waitFor({ state: 'hidden' });
+      await menu.getByRole('button', { name: '全部标为已读' }).click();
+      await later.waitFor({ state: 'hidden' });
+      const receipt = page.locator('#toasts [data-sonner-toast][data-front="true"]');
+      await receipt.getByRole('button', { name: '撤销' }).click();
+      await later.waitFor();
+      assert.equal(await earlier.count(), 0);
+      await receipt.getByText('已撤销', { exact: true }).waitFor();
+    } finally { await opened.close(); }
+  });
+
+  it('显示系统自动保留的启动诊断', async () => {
+    const opened = await visit(browser, '/settings/diagnostics', VIEWPORTS[0]!, async page => {
+      await page.route('**/api/diagnostics/startup', route => route.fulfill({ json: { available: true, pending: false,
+        capture: { status: 'failed', started_at: 1795824338000, stages: [{ role: 'web', stage: 'bind_listener',
+          status: 'failed', elapsed_ms: 42 }] } } }));
+    });
+    try {
+      const section = opened.page.locator('#diagnostics-startup');
+      await section.locator('details summary').click();
+      await section.getByText(/绑定服务端口.*42/).waitFor();
+      assert.equal(await section.getByRole('button', { name: '记录下次启动', exact: true }).count(), 0);
+    } finally { await opened.close(); }
+  });
   for (const viewport of VIEWPORTS) {
     it(`方形站标、状态标签与可识别的作品表格（${viewport.name}）`, { timeout: 60_000 }, async () => {
       const opened = await visit(browser, '/settings/diagnostics', viewport, async page => {
@@ -25,7 +102,7 @@ describe('配置中的系统诊断', () => {
       });
       try {
         const { page } = opened;
-        await page.locator('#diagnostics-sessions summary').click();
+        await page.locator('#diagnostics-sessions > details > summary').click();
         const icon = page.locator('[data-diagnostic-source="minnano-av"] img');
         await icon.waitFor();
         assert.equal(await icon.evaluate(node => getComputedStyle(node).borderRadius), '0px');
@@ -36,6 +113,10 @@ describe('配置中的系统诊断', () => {
         const table = page.getByRole('grid', { name: '缺封面', exact: true });
         await table.waitFor();
         assert.equal(await table.getByRole('row').count(), 21);
+        const actionsColumn = table.getByRole('columnheader', { name: /^操作(?: |$)/ });
+        const actionsIndex = await actionsColumn.evaluate(node => (node as HTMLTableCellElement).cellIndex);
+        await table.locator('tbody tr').first().locator('td, th').nth(actionsIndex)
+          .getByRole('button', { name: '忽略「演示条目 1」的问题', exact: true }).waitFor();
         assert.ok((await table.innerText()).includes('演示文件 1.mp4'));
         assert.ok((await table.innerText()).includes('R:\\Media\\演示文件 1.mp4'));
         await verifyColumnContentWidth(table, 'path', '[data-middle-truncate]');
@@ -139,13 +220,26 @@ describe('配置中的系统诊断', () => {
         await settle(page);
         assert.equal(new URL(page.url()).pathname, '/settings/diagnostics');
         const toc = page.getByRole('navigation', { name: '本页目录', exact: true });
+        const toggle = toc.getByRole('button', { name: '本页目录', exact: true });
+        if (viewport.mobile) {
+          assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+          await toggle.click();
+          assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+        }
         await toc.getByRole('link', { name: '来源会话', exact: true }).click();
+        if (viewport.mobile) assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
         assert.equal(new URL(page.url()).hash, '#diagnostics-sessions');
         await settle(page);
         const sessions = page.locator('#diagnostics-sessions');
         const source = sessions.locator(':scope > article').first();
         assert.equal(await sessions.locator(':scope > article').count(), 2);
         assert.equal(await source.getAttribute('data-diagnostic-source'), 'minnano-av');
+        await sessions.getByRole('link', { name: '打开来源和凭证' }).waitFor();
+        const sessionDetails = source.locator('summary').filter({ hasText: '会话详情' });
+        assert.equal(await sessionDetails.getAttribute('aria-expanded'), 'false');
+        await sessionDetails.focus();
+        await sessionDetails.press('Enter');
+        assert.equal(await sessionDetails.getAttribute('aria-expanded'), 'true');
         const other = sessions.locator('summary').filter({ hasText: /其他来源 ·/ });
         const folded = sessions.locator('details > div article').first();
         assert.equal(await other.getAttribute('aria-expanded'), 'false');
@@ -161,23 +255,22 @@ describe('配置中的系统诊断', () => {
         await other.click();
         await folded.waitFor();
         const row = page.locator('[data-diagnostic-check="media_mounts"]');
-        if (await row.count()) {
-          const shown = await row.evaluate(element => {
-            const title = element.querySelector('h3')!;
-            const reason = element.querySelector('[data-check-reason]')!;
-            const button = element.querySelector('a[href]')!;
-            const box = element.getBoundingClientRect();
-            const action = button.getBoundingClientRect();
-            return { titleWeight: getComputedStyle(title).fontWeight, reasonWeight: getComputedStyle(reason).fontWeight,
-              titleSize: getComputedStyle(title).fontSize, reasonSize: getComputedStyle(reason).fontSize,
-              middle: Math.abs((box.top + box.bottom - action.top - action.bottom) / 2),
-              right: box.right - action.right };
-          });
-          assert.ok(shown.titleWeight !== shown.reasonWeight || shown.titleSize !== shown.reasonSize);
-          if (!viewport.mobile) {
-            assert.ok(shown.middle <= 2, JSON.stringify(shown));
-            assert.ok(shown.right <= 24, JSON.stringify(shown));
-          }
+        await row.waitFor();
+        const shown = await row.evaluate(element => {
+          const title = element.querySelector('h3')!;
+          const reason = element.querySelector('[data-check-reason]')!;
+          const button = element.querySelector('a[href]')!;
+          const box = element.getBoundingClientRect();
+          const action = button.getBoundingClientRect();
+          return { titleWeight: getComputedStyle(title).fontWeight, reasonWeight: getComputedStyle(reason).fontWeight,
+            titleSize: getComputedStyle(title).fontSize, reasonSize: getComputedStyle(reason).fontSize,
+            middle: Math.abs((box.top + box.bottom - action.top - action.bottom) / 2),
+            right: box.right - action.right };
+        });
+        assert.ok(shown.titleWeight !== shown.reasonWeight || shown.titleSize !== shown.reasonSize);
+        if (!viewport.mobile) {
+          assert.ok(shown.middle <= 2, JSON.stringify(shown));
+          assert.ok(shown.right <= 24, JSON.stringify(shown));
         }
         assert.ok((await layout(page)).scrollWidth <= viewport.width);
         await page.locator('summary').filter({ hasText: /其他检查 ·/ }).click();

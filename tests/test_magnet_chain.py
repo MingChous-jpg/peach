@@ -2,7 +2,7 @@
 import unittest
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from peach.downloads import parse_magnet
 from peach.magnet_chain import (CHAIN, _normalise, decode_base91, rank_candidates,
@@ -121,6 +121,32 @@ class MagnetChainTests(unittest.TestCase):
             now[0] += 120
             self.assertEqual(lookup.query('ABC-123')['state'], 'error')
         self.assertEqual(len(calls), 2)
+    def test_want_resources_retries_a_failed_source_without_losing_other_results(self):
+        from peach.wants_magnets import MagnetSearch
+
+        def result(items, *, failure=False):
+            return {'state': 'ready', 'items': items, 'complete': not failure,
+                    'warnings': ['source timed out'] if failure else [], 'warning_sources': ['javbus'] if failure else [],
+                    'unfetched_sources': ['JavBus'] if failure else [], 'retry_sources': ['javbus'] if failure else [],
+                    **({'error_code': 'labels.magnetChain.incomplete'} if failure else {})}
+
+        def resource(key, protocol):
+            return {'id': key, 'protocol': protocol, 'uri': key, 'size': '', 'files': '', 'attributes': [], 'origins': []}
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            earlier = resource('ed2k:previous', 'ed2k')
+            found = resource('magnet:new', 'magnet')
+            getter = Mock(side_effect=[result([earlier], failure=True), result([found])])
+            store = MagnetSearch(root, fetcher=getter, sleeper=lambda _delay: None)
+            store.query('ABC-123')
+            recovered = store.query('ABC-123', retry_source='javbus')
+            self.assertEqual([item['id'] for item in recovered['items']], [earlier['id'], found['id']])
+            self.assertTrue(recovered['complete'])
+            self.assertEqual(recovered['warnings'], [])
+            self.assertNotIn('error_code', recovered)
+            self.assertEqual(getter.call_args.kwargs, {'retry_source': 'javbus'})
+
     def test_javdb_step_reads_the_anonymous_api_and_keeps_comment_links(self):
         from peach.magnet_chain import Fetcher
         rows = [{'hash': HASH_A, 'name': 'ABC-123-C.torrent', 'size': 4219, 'cnsub': True, 'hd': True,
@@ -240,6 +266,40 @@ class MagnetChainTests(unittest.TestCase):
             unlisted = search(root, 'ABC-123', transport=object())
         self.assertEqual((unlisted['unfetched_sources'], unlisted['retry_after']), ([], None))
         self.assertEqual((unlisted['state'], unlisted['warnings']), ('ready', []))
+
+    def test_sukebei_warning_preserves_connection_timeout_and_http_failures(self):
+        import httpx
+        from peach.http import HttpResponse
+        from peach.magnet_chain import Fetcher, search
+        from peach.scraping_access import SourceTransport
+
+        cases = [
+            (httpx.ConnectError('private connection details'), '无法访问'),
+            (httpx.ReadTimeout('private connection details'), '请求超时'),
+            (403, '拒绝访问（HTTP 403）'),
+            (429, '请求被限流（HTTP 429）'),
+            (404, '请求失败（HTTP 404）'),
+        ]
+        for failure, expected in cases:
+            def request(*_, failure=failure):
+                if isinstance(failure, Exception):
+                    raise failure
+                return HttpResponse(failure, {}, b'')
+
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                with patch.object(Fetcher, 'manko', return_value=[]), patch.object(Fetcher, 'javdb', return_value=[]), \
+                        patch.object(Fetcher, 'javbus', return_value=[]), \
+                        patch.object(SourceTransport, '_transport_for', return_value=request), \
+                        patch('peach.jav_cover_fetch._sleep_within'):
+                    transport = SourceTransport(root)
+                    result = search(root, 'ABC-123', transport=transport)
+                self.assertEqual(result['unfetched_sources'], ['sukebei'])
+                self.assertEqual(result['source_failures'], [f'sukebei：{expected}'])
+                self.assertEqual(result['warnings'], result['source_failures'])
+                self.assertEqual(result['connection_checks'],
+                                 ['sukebei'] if isinstance(failure, httpx.ConnectError) or failure == 403 else [])
+                self.assertNotIn('private connection details', str(result))
 
     def test_base91_decodes_the_api_envelope_payload(self):
         # basE91 官方示例：编码后的这一段解回 ASCII "test"。

@@ -3,13 +3,13 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from peach import folder_rules, interface_text, media_folders, scan, web_folders
 from peach.entities import upsert_asset_entity
 from peach.field_owners import write_owned_fields
 from peach.migrations import upgrade
+from peach.settings_file import PeachConfig
 from peach.web_catalog import q_items
 from peach.web_state import WebContract
 
@@ -25,10 +25,10 @@ class MediaFolderTests(unittest.TestCase):
         upgrade(self.path, ROOT / 'migrations')
         self.contract = WebContract(self.path, candidate_root=self.root / 'generated',
                                     follow_state_root=self.root / 'state', snapshot_root=self.root / 'snapshots')
-        self.config = SimpleNamespace(locations={'local': ('R:\\Media',), '115': ('A:\\收藏',)},
-                                      library_names={}, library_icons={})
-        self.addCleanup(patch.stopall)
-        patch('peach.web_folders.settings_file.active', return_value=self.config).start()
+        self.config = PeachConfig(self.root, self.root / 'config.toml', present=True,
+                                  directories={'database': '.'},
+                                  locations={'local': ('R:\\Media',), '115': ('A:\\收藏',)})
+        self.enterContext(patch('peach.web_folders.settings_file.active', return_value=self.config))
         self.rows = [('local', 'R:\\Media\\精选\\作者甲\\a.mp4'),
                      ('local', 'R:\\Media\\精选\\作者甲\\视频\\b.mp4'),
                      ('local', 'R:\\Media\\精选\\作者甲2\\c.mp4'),
@@ -82,7 +82,6 @@ class MediaFolderTests(unittest.TestCase):
             self.assertEqual([row[0] for row in connection.execute('SELECT id FROM asset a WHERE ' + clause, args)], [1, 2])
             clause, args = media_folders.path_predicate('local', 'R:\\Media\\精选\\作者甲', False)
             self.assertEqual([row[0] for row in connection.execute('SELECT id FROM asset a WHERE ' + clause, args)], [1])
-        patch('peach.web_catalog.settings_file.active', return_value=self.config).start()
         self.assertEqual(sorted(row['id'] for row in q_items(self.contract, {'folder': self.key()})['items']), [1, 2])
         self.assertEqual(q_items(self.contract, {'folder': 'missing'})['total'], 0)
 

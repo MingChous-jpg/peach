@@ -17,8 +17,8 @@ import { recordWantMagnets, recordFoundWants, invalidateWants } from './wants';
 import { Disclosure } from '../settings/section';
 import { cachedResources, rememberResources, resourcesFresh } from './resource-cache';
 import { providerIcon, ScrapeSourceLabel } from '../components/source-label';
-import { resourceNotice, resourceSize, resourceSourceKey } from './resource-display';
-import { SiteMark } from '../components/site-mark';
+import { resourceSize, resourceSourceKey } from './resource-display';
+import { ResourceWarningNotes, type ResourceWarnings } from './resource-warning-notes';
 import { codedText, serverLabel } from '../../core/server-text';
 import { editionText } from '../../core/jav-title';
 import { t } from '../../i18n';
@@ -31,12 +31,10 @@ export interface MagnetCandidate {
   /** 有译文的来源名带 code（评论区链接的 `source` 是 `javdb-comments`）；`source` 原值仍用来判断条目种类。 */
   source_code?: string;
 }
-export interface MagnetResult {
+export interface MagnetResult extends ResourceWarnings {
   state: 'ready' | 'error' | 'busy' | 'unavailable'; items: MagnetCandidate[];
-  error: string; checked_at: string | null; warnings?: string[];
+  error: string; checked_at: string | null;
   error_code?: string; error_params?: Record<string, unknown>;
-  warning_codes?: (string | null)[]; warning_params?: (Record<string, unknown> | null)[];
-  warning_sources?: string[];
   source_url?: string;
   source_pages?: { source: string; label: string; url: string }[];
   cache_stale?: boolean;
@@ -56,11 +54,12 @@ function ResourceFact({ icon: Icon, children, title }: { icon: ComponentType<{ c
   return <span title={title} className="inline-flex items-center gap-1"><Icon aria-hidden className="size-(--icon-inline) shrink-0" />{children}</span>;
 }
 
-export function WantMagnets({ want, readOnly, downloads, provider, toast, onSources, queryUrl, eager = false }: {
+export function WantMagnets({ want, readOnly, downloads, provider, toast, onSources, queryUrl, eager = false, compact = false }: {
   want: Pick<Want, 'id' | 'code' | 'title' | 'release_date'>; readOnly: boolean; downloads?: DownloadsSnapshot; provider: string; toast(message: string): void;
   onSources?(pages: ResourceSourcePage[]): void;
   queryUrl?: string;
   eager?: boolean;
+  compact?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(eager || typeof IntersectionObserver === 'undefined');
@@ -69,6 +68,8 @@ export function WantMagnets({ want, readOnly, downloads, provider, toast, onSour
   const reconciliation = useAction();
   const client = useQueryClient();
   const refresh = useRef(false);
+  const retrySource = useRef('');
+  const [retrying, setRetrying] = useState('');
   const cacheCode = queryUrl ? `comment-resources:${queryUrl}:${want.code}` : `all-sources:${want.code || ''}`;
   const cached = useMemo(() => cachedResources(cacheCode, want.release_date), [cacheCode, want.release_date]);
   useEffect(() => {
@@ -79,15 +80,25 @@ export function WantMagnets({ want, readOnly, downloads, provider, toast, onSour
     observer.observe(root.current);
     return () => observer.disconnect();
   }, [visible]);
+  const queryKey = queryUrl ? ['work-resources', queryUrl, want.code] : ['want-magnets', want.id, want.code];
   const query = useQuery({
-    queryKey: queryUrl ? ['work-resources', queryUrl, want.code] : ['want-magnets', want.id, want.code],
+    queryKey,
     queryFn: async ({ signal }) => {
       const forced = refresh.current;
       const url = queryUrl || `/api/wants/magnets?id=${want.id}`;
-      const result = await apiGet<MagnetResult>(`${url}${forced ? `${url.includes('?') ? '&' : '?'}refresh=1` : ''}`, signal);
-      refresh.current = forced && result.state === 'busy';
-      rememberResources(cacheCode, result);
-      return result;
+      const source = retrySource.current;
+      let keepRetry = false;
+      const join = url.includes('?') ? '&' : '?';
+      try {
+        const result = await apiGet<MagnetResult>(url + (source ? join + 'retry_source=' + encodeURIComponent(source) : forced ? join + 'refresh=1' : ''), signal);
+        keepRetry = source !== '' && result.state === 'busy';
+        if (keepRetry) return { ...result, ...client.getQueryData<MagnetResult>(queryKey), state: 'busy' as const };
+        refresh.current = forced && result.state === 'busy';
+        rememberResources(cacheCode, result);
+        return result;
+      } finally {
+        if (!signal.aborted && source && !keepRetry) { retrySource.current = ''; setRetrying('') }
+      }
     },
     initialData: cached?.result, initialDataUpdatedAt: cached?.saved,
     enabled: visible, retry: false,
@@ -150,16 +161,13 @@ export function WantMagnets({ want, readOnly, downloads, provider, toast, onSour
   const waiting = query.isFetching || query.data?.state === 'busy';
   const failure = query.error ? errorMessage(query.error) : codedText(query.data, 'error');
   const incomplete = !query.error && query.data?.error_code === 'labels.magnetChain.incomplete';
-  const warnings = query.data?.warnings?.map((warning, index) => {
-    const code = query.data?.warning_codes?.[index] ?? '';
-    const params = query.data?.warning_params?.[index];
-    const source = query.data?.warning_sources?.[index] || (code.startsWith('labels.javdbPublic.') || code === 'labels.magnetChain.staleReused'
-      ? 'javdb' : resourceSourceKey(String(params?.source || '')));
-    return { text: serverLabel(code, resourceNotice(warning), params), source,
-      informational: code === 'labels.javdbPublic.reviewPagesQueried' || resourceNotice(warning) !== warning };
-  }) || [];
+  const result = query.data;
+  const warningCount = result?.warnings?.length || 0;
+  const warningNotes = result && warningCount > 0 ? <ResourceWarningNotes result={result} busy={retrying}
+    onRetry={source => { if (!waiting) { retrySource.current = source; setRetrying(source); void query.refetch() } }} /> : null;
   return (
-    <div ref={root} data-want-magnets="" className="flex min-w-0 flex-col gap-3 border-t border-separator-border pt-4">
+    <div ref={root} data-want-magnets="" data-resource-compact={compact || undefined}
+      className={compact ? 'flex min-w-0 flex-col gap-3' : 'flex min-w-0 flex-col gap-3 border-t border-separator-border pt-4'}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-body-medium text-text-primary">{t('catalog:wantMagnets.title')}{query.data?.items.length ? ` · ${query.data.items.length}` : ''}</h4>
         <Button variant="secondary" size="small" leadingIcon={RiRefreshLine} {...busyProps(waiting)} onClick={() => {
@@ -168,9 +176,11 @@ export function WantMagnets({ want, readOnly, downloads, provider, toast, onSour
       </div>
       {/* 还没有结果时是整块面板在等，动画大一档摆在正中；已有结果时换一批，等待留在行内。 */}
       {waiting ? <ActivityStatus kind="radar" size={query.data?.items.length ? 'inline' : 'block'} label={t('catalog:wantMagnets.searching')} /> : null}
-      {failure && (!incomplete || !warnings.length) ? <Note tone="error" title={t('catalog:wantMagnets.notFound')}>{failure}</Note> : null}
-      {warnings.map((warning) => <Note key={warning.text} tone={warning.informational ? 'neutral' : 'error'}>
-        <span className="inline-flex items-center gap-1.5">{warning.source ? <SiteMark source={warning.source} /> : null}{warning.text}</span></Note>)}
+      {failure && (!incomplete || !query.data?.warnings?.length) ? <Note tone="error" title={t('catalog:wantMagnets.notFound')}>{failure}</Note> : null}
+      {warningNotes && (compact && result?.items.length ? <Disclosure
+        summary={t('catalog:javBatch.sourceWarnings', { count: warningCount })} contentClassName="flex flex-col gap-2">
+        {warningNotes}
+      </Disclosure> : warningNotes)}
       {!onSources && sourcePages.length ? <div className="flex flex-wrap gap-2">{sourcePages.map(page =>
         <ButtonLink key={page.source} data-button-link="" variant="secondary" size="small" trailingIcon={RiExternalLinkLine}
           href={page.url} target="_blank" rel="noopener noreferrer"><ScrapeSourceLabel source={page.source} label={page.label} /></ButtonLink>)}</div> : null}
@@ -200,7 +210,9 @@ export function WantMagnets({ want, readOnly, downloads, provider, toast, onSour
               </div>
             </div>
             <div data-resource-actions="" className="flex flex-wrap gap-2">
-              <ButtonLink data-button-link="" variant="secondary" size="small" trailingIcon={RiExternalLinkLine} href={candidate.source_url} target="_blank" rel="noopener noreferrer">{t('catalog:wantMagnets.linkSource')}</ButtonLink>
+              <ButtonLink data-button-link="" variant="secondary" size="small" trailingIcon={RiExternalLinkLine} href={candidate.source_url} target="_blank" rel="noopener noreferrer">
+                <span data-external-link-label="">{t('catalog:wantMagnets.linkSource')}</span>
+              </ButtonLink>
               <Button variant="secondary" size="small" leadingIcon={RiFileCopyLine} {...busyProps(action.busy === `copy:${candidate.id}`)}
                 onClick={() => copy(candidate)}>{t('catalog:wantMagnets.copyLink')}</Button>
               {candidate.protocol === 'magnet' ?

@@ -22,6 +22,7 @@ import { apiSend, errorMessage } from '../../api';
 import { momentText } from '../activity/tasks';
 import { useBackgroundJob } from '../background-job';
 import type { ScrapingProps } from '../bundle';
+import { ActionSpinner } from '../components/action-spinner';
 import { IssueRow } from '../components/issue-row';
 import { TaskProgress } from '../components/task-progress';
 import { activityKind } from '../../activity-kinds';
@@ -31,6 +32,9 @@ import { ConnectionStatus } from '../components/connection-status';
 import { Page } from '../components/page';
 import { SiteMark } from '../components/site-mark';
 import { SectionToc } from '../components/section-toc';
+import {
+  SourceBrowserLoginButton, SourceBrowserLoginStatus, sourceBrowserLoginUrl, useSourceBrowserLogin,
+} from '../components/source-browser-login';
 import { SEGMENT, SEGMENTED_TRACK, SegmentedRadioGroup as RadioGroup } from '../components/segmented';
 import { queryClient } from '../query';
 import {
@@ -41,6 +45,7 @@ import { CustomSources } from './custom-sources';
 import {
   AMANE_BRIDGE_CHECK_URL, AMANE_BRIDGE_KEY, AMANE_BRIDGE_REBUILD_URL, CHECK_ALL_KEY,
   checkText, COOKIE_TEXT_LIMIT, COVER_JOB_KEY, fetchAmaneBridge, fetchCheckAllJob, fetchCoverJob,
+  JAVDB_BROWSER_LOGIN_URL,
   fetchSources, SCRAPING_CHECK_ALL_URL, SCRAPING_CHECK_URL, SCRAPING_COVER_URL, SCRAPING_KEY,
   SCRAPING_SETTINGS_URL, type AmaneBridge, type Check, type CheckAllJob, type CheckOutcome,
   type CoverJob, type ReportedCheck, type ScrapingData, type Source, type SourceReport,
@@ -65,6 +70,7 @@ export function linkHost(url: string): string {
   }
 }
 const COOKIE_METHODS = [['paste', t('manage:sourceSettings.pasteCookie')], ['file', t('manage:sourceSettings.uploadFile')]] as const;
+const REFRESH_SOURCES = [SCRAPING_KEY] as const;
 
 function GitHubMark() {
   return <SiteMark source="github" />;
@@ -74,6 +80,8 @@ function GitHubMark() {
 function SourceCard({ source, toast, open, onOpenChange }: {
   source: Source; open: boolean; onOpenChange: (open: boolean) => void;
 } & ScrapingProps) {
+  const javdb = source.source === 'javdb';
+  const supportsBrowserLogin = javdb || source.browser_login === true;
   const [network, setNetwork] = useState(source.network);
   const [cookie, setCookie] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -112,20 +120,27 @@ function SourceCard({ source, toast, open, onOpenChange }: {
     },
   });
   const check = useMutation({
-    mutationFn: () => apiSend<{ results: Check[] }>(SCRAPING_CHECK_URL, { source: source.source }),
+    mutationFn: () => apiSend<{ results: Check[] }>(SCRAPING_CHECK_URL, { source: source.source, lookup: true }),
   });
-  // 一张卡上三个动作互斥：它们改的是同一份凭据，谁先落地都会让另一次的结果说不清楚。
-  const busy = save.isPending || check.isPending;
+  const verifySession = useMutation({
+    mutationFn: () => apiSend<{ results: Check[] }>(SCRAPING_CHECK_URL, { source: source.source, verify_session: true }),
+  });
+  const login = useSourceBrowserLogin(javdb ? JAVDB_BROWSER_LOGIN_URL : sourceBrowserLoginUrl(source.source),
+    supportsBrowserLogin && open, REFRESH_SOURCES);
+  // 只检查已经保存的配置，保存、撤销和检查互斥。
+  const busy = save.isPending || check.isPending || verifySession.isPending || login.busy;
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (busy) return;
     check.reset();
+    verifySession.reset();
     save.mutate(false);
   };
   const revoke = () => {
     if (busy) return;
     check.reset();
+    verifySession.reset();
     save.mutate(true);
   };
   const connect = () => {
@@ -161,15 +176,22 @@ function SourceCard({ source, toast, open, onOpenChange }: {
 
   const problem = fileProblem
     || (save.error ? errorMessage(save.error) : '')
-    || (check.error ? errorMessage(check.error) : '');
+    || (check.error ? errorMessage(check.error) : '')
+    || (verifySession.error ? errorMessage(verifySession.error) : '')
+    || login.error;
   const results = check.data?.results ?? [];
+  const sessionResult = verifySession.data?.results[0];
   // 这一块空着时连同它那道分隔线一起不画：直连、又不收 Cookie 的来源只有一行连接方式。
   const detailed = network === 'peach' || source.accepts_cookie || source.accepts_api_key || source.browser || !!problem || results.length > 0;
 
   const title = codedText(source, 'label');
   const settings = (
     <form aria-label={title} noValidate onSubmit={submit} className="min-w-0 wrap-anywhere">
-      {source.login ? <div className="flex pb-2 pr-3"><ExternalLink href={source.login}>{linkHost(source.login)}</ExternalLink></div> : null}
+      {source.login ? <div className="flex pb-2 pr-3">
+        <ExternalLink href={javdb ? new URL('/login', source.login).href : source.login}>
+          {javdb ? t('manage:sourceSettings.javdbSignIn') : linkHost(source.login)}
+        </ExternalLink>
+      </div> : null}
       <Rows>
         <SettingsRow label={t('manage:sourceSettings.connectionMode')}>
           {/* 定宽：数据库里的长取值按内容撑宽会把左边的「连接方式」挤成竖排，定宽后取值在框里截断。 */}
@@ -185,7 +207,7 @@ function SourceCard({ source, toast, open, onOpenChange }: {
       {detailed ? <Stack divided>
         {network === 'peach'
           ? <span className="self-start">
-              <LinkButton href="/settings/library#peachProxy" size="small" trailingIcon={RiArrowRightLine}>
+              <LinkButton href="/settings/network#peachProxy" size="small" trailingIcon={RiArrowRightLine}>
                 {t('manage:sourceSettings.setUpProxy')}
               </LinkButton>
             </span>
@@ -209,7 +231,22 @@ function SourceCard({ source, toast, open, onOpenChange }: {
         </> : null}
         {source.accepts_cookie && !source.browser ? <>
           <div className="flex flex-col gap-2"><span className="self-start"><StatusLabel tone={source.cookie_saved ? 'success' : 'neutral'}>{source.cookie_saved ? t('manage:sourceSettings.cookieSaved') : t('manage:sourceSettings.cookieNotSet')}</StatusLabel></span>
-            <p className="text-body-2-regular text-text-secondary">{source.cookie_saved ? t('manage:sourceSettings.signInUnverified') : t('manage:sourceSettings.provideCookieHint')}</p></div>
+            <p className="text-body-2-regular text-text-secondary">
+              {t(javdb ? 'manage:sourceSettings.javdbSessionHint' : source.cookie_saved ? 'manage:sourceSettings.signInUnverified' : 'manage:sourceSettings.provideCookieHint')}
+            </p>
+            {supportsBrowserLogin ? <div className="flex flex-wrap gap-2">
+              <SourceBrowserLoginButton login={login} disabled={busy} onStart={verifySession.reset} />
+              {javdb ? <Button variant="secondary" {...busyProps(busy)} onClick={() => {
+                if (busy) return;
+                save.reset();
+                verifySession.mutate();
+              }}>{t('manage:sourceSettings.testJavdbSession')}</Button> : null}
+            </div> : null}
+            <SourceBrowserLoginStatus login={login} saved={source.cookie_saved} />
+            {sessionResult ? <Note tone={sessionResult.ok ? 'success' : sessionResult.kind === 'unchecked' ? 'neutral' : 'warning'}>
+              {checkText(sessionResult, title)}
+            </Note> : null}
+          </div>
           {/* 两种方式互斥，交上去的只能是其中一种：切换时把另一种的输入清掉，
               不让看不见的那一份跟着提交。 */}
           <RadioGroup aria-label={t('manage:sourceSettings.cookieMethod')} value={method}
@@ -239,7 +276,8 @@ function SourceCard({ source, toast, open, onOpenChange }: {
         {problem ? <ErrorText>{problem}</ErrorText> : null}
         {results.map((result) => {
           const tone = result.kind === 'unchecked' ? 'neutral' : result.ok ? 'success' : 'error';
-          const status = result.kind === 'unchecked' ? t('manage:sourceSettings.unchecked')
+          const status = result.target === 'lookup' ? t(result.ok ? 'manage:sourceSettings.sampleMatched' : 'manage:sourceSettings.sampleFailed')
+            : result.kind === 'unchecked' ? t('manage:sourceSettings.unchecked')
             : result.ok ? t('manage:sourceSettings.reachable') : t('manage:sourceSettings.connectionFailed');
           return <Note key={result.label} tone={tone}>
             <span className="flex flex-col items-start gap-1"><ConnectionStatus tone={tone}>{status}</ConnectionStatus><span>{checkText(result, codedText(source, 'label'))}</span></span>
@@ -292,10 +330,10 @@ function targetName(report: SourceReport, check: ReportedCheck): string {
 /** 全部来源一次检查完，与 `peach check-sources` 同一检查、同一报告口径。这一趟在后台跑，
  *  离开页面再回来，读到的是服务端留着的那一份结果。 */
 function CheckAllCard({ toast }: ScrapingProps) {
-  const { job, running, start, query: taskQuery } = useBackgroundJob<CheckAllJob>({
+  const { job, running, start, query: taskQuery } = useBackgroundJob<CheckAllJob, boolean>({
     queryKey: CHECK_ALL_KEY,
     queryFn: ({ signal }) => fetchCheckAllJob(signal),
-    start: () => apiSend<CheckAllJob>(SCRAPING_CHECK_ALL_URL, {}),
+    start: retry => apiSend<CheckAllJob>(SCRAPING_CHECK_ALL_URL, { retry_failed: retry }),
     onFinish: (state) => {
       // 限流与拒绝访问会记下冷却，各来源卡上的「冷却中」跟着重读。
       void queryClient.invalidateQueries({ queryKey: SCRAPING_KEY, exact: true });
@@ -305,7 +343,7 @@ function CheckAllCard({ toast }: ScrapingProps) {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!taskQuery.data || running || start.isPending) return;
-    start.mutate();
+    start.mutate(false);
   };
 
   const checks = (job?.results ?? []).flatMap(
@@ -314,6 +352,8 @@ function CheckAllCard({ toast }: ScrapingProps) {
   const titled = (source: string, name: string) =>
     <span className="inline-flex min-w-0 items-center gap-1.5"><SiteMark source={source} />{name}</span>;
   const passed = checks.filter(({ check }) => check.outcome === 'ok');
+  const retryable = checks.some(({ check }) => check.outcome === 'network'
+    || check.outcome === 'http' && check.reason !== 'rate_limited');
   // 按口径成组，组内保持来源顺序：要人去登录的排前面，不在这里查的片商官网垫底。
   const problems = checks.filter(({ check }) => check.outcome !== 'ok').sort(
     (a, b) => OUTCOME_ORDER.indexOf(a.check.outcome) - OUTCOME_ORDER.indexOf(b.check.outcome));
@@ -352,6 +392,9 @@ function CheckAllCard({ toast }: ScrapingProps) {
                 <IssueRow key={name} title={titled(source, name)}>
                   <span className="flex flex-wrap items-center gap-2">
                     <StatusLabel tone={OUTCOME_TONES[check.outcome]}>{codedText(check, 'outcome_label')}</StatusLabel>
+                    {check.outcome === 'auth' ? <a href={`#source-${source}`} className="underline">
+                      {t('manage:connectionCheck.openSource')}
+                    </a> : null}
                     {check.message
                       ? <span className="text-body-2-regular text-text-secondary">{codedText(check, 'message')}</span>
                       : null}
@@ -374,6 +417,9 @@ function CheckAllCard({ toast }: ScrapingProps) {
           : null}
       </Stack>
       <Footer status={finished ? t('manage:connectionCheck.lastChecked', { time: finished }) : undefined}>
+        {retryable ? <Button variant="secondary" disabled={running || start.isPending} onClick={() => start.mutate(true)}>
+          {t('manage:connectionCheck.retryFailed')}
+        </Button> : null}
         <Button type="submit" disabled={!taskQuery.data} {...busyProps(running || start.isPending)}>{t('manage:connectionCheck.checkAll')}</Button>
       </Footer>
     </Section>
@@ -389,7 +435,7 @@ const coverFailure = (job: CoverJob): string => partsLabel(job.error_parts, jobT
 /** 按番号补一张高清封面。这一趟在后台跑，页面上留状态。 */
 function CoverCard({ toast }: ScrapingProps) {
   const [code, setCode] = useState('');
-  const { running, outcome, start, query: taskQuery } = useBackgroundJob<CoverJob>({
+  const { running, outcome: previousOutcome, start, query: taskQuery } = useBackgroundJob<CoverJob>({
     queryKey: COVER_JOB_KEY,
     queryFn: ({ signal }) => fetchCoverJob(signal),
     start: () => apiSend<CoverJob>(SCRAPING_COVER_URL, { code }),
@@ -404,6 +450,7 @@ function CoverCard({ toast }: ScrapingProps) {
     start.mutate();
   };
 
+  const outcome = start.isPending || start.isError ? null : previousOutcome;
   const problem = start.error ? errorMessage(start.error)
     : taskQuery.error ? errorMessage(taskQuery.error)
     : outcome?.status === 'failed' ? (coverFailure(outcome) || t('manage:hdCover.notFound')) : '';
@@ -416,7 +463,8 @@ function CoverCard({ toast }: ScrapingProps) {
             <Input aria-label={t('manage:hdCover.codeLabel')} isRequired isDisabled={running} value={code} onChange={setCode}
               placeholder={t('manage:hdCover.codePlaceholder')} />
           </div>
-            <Button type="submit" disabled={!taskQuery.data || !code.trim()} {...busyProps(running || start.isPending)}>
+          <Button type="submit" disabled={!taskQuery.data || !code.trim()} leadingIcon={start.isPending ? ActionSpinner : undefined}
+            {...busyProps(running || start.isPending)}>
             {t('manage:hdCover.fetchCover')}
           </Button>
         </div>
@@ -435,7 +483,7 @@ function CoverCard({ toast }: ScrapingProps) {
 /** amane 桥：钉在哪个 revision、venv 建没建、上游最新到哪。升级是人读 diff 之后改清单，
  *  这张卡只做两件事：问一下上游最新版，和按钉住的版本重建 venv。 */
 function AmaneBridgeCard({ toast }: ScrapingProps) {
-  const { query: bridge, running, outcome, start: rebuild } = useBackgroundJob<CoverJob, void, AmaneBridge>({
+  const { query: bridge, running, outcome: previousOutcome, start: rebuild } = useBackgroundJob<CoverJob, void, AmaneBridge>({
     queryKey: AMANE_BRIDGE_KEY,
     queryFn: ({ signal }) => fetchAmaneBridge(signal),
     start: () => apiSend<CoverJob>(AMANE_BRIDGE_REBUILD_URL, {}),
@@ -458,6 +506,7 @@ function AmaneBridgeCard({ toast }: ScrapingProps) {
       : null;
   }
   const busy = running || rebuild.isPending || check.isPending;
+  const outcome = rebuild.isPending || rebuild.isError ? null : previousOutcome;
   const problem = rebuild.error ? errorMessage(rebuild.error)
     : check.error ? errorMessage(check.error)
     : outcome?.status === 'failed' ? (jobText(outcome, 'error') || t('manage:amaneRuntime.rebuildNotFinished')) : '';
@@ -487,6 +536,7 @@ function AmaneBridgeCard({ toast }: ScrapingProps) {
           {t('manage:amaneRuntime.checkUpstream')}
         </Button>
         <Button disabled={Boolean(data.problem)} onClick={() => { if (!busy) rebuild.mutate() }}
+          leadingIcon={rebuild.isPending ? ActionSpinner : undefined}
           {...busyProps(running || rebuild.isPending)}>
           {data.installed ? t('manage:amaneRuntime.reinstall') : t('manage:amaneRuntime.install')}
         </Button>

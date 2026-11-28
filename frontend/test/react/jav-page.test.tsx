@@ -3,17 +3,18 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { QueryClientProvider, notifyManager } from '@tanstack/react-query';
 import { queryClient } from '../../src/react/query';
 import { JavPage } from '../../src/react/jav/jav-page';
-import { JavHeader } from '../../src/react/jav/jav-header';
+import { JavHeader, JavPageHeader } from '../../src/react/jav/jav-header';
+import { catalogView, setCatalogView } from '../../src/react/catalog-grid/catalog-view';
 import { discoveryKey, prefetchJav } from '../../src/react/jav/jav';
 import { WANTS_KEY } from '../../src/react/wants/wants';
-import { actionOrder, buttonNamed, choose, click, mount, settle, type } from './render';
+import { actionOrder, buttonNamed, choose, chooseFilter, click, mount, settle, type } from './render';
 
 notifyManager.setScheduler(notify => notify());
 afterEach(() => queryClient.clear());
 
-/** 页头筛选框是名册页那个 `IndexSearch`：停手 300 毫秒才交出文字。 */
+/** 发现分区的查找在筛选浮层里（`FilterSearch`）：停手 300 毫秒才交出文字。 */
 async function search(host: ParentNode, text: string) {
-  await type(host.querySelector('[data-index-search] input'), text);
+  await type(host.querySelector('[data-filter-search] input'), text);
   await act(() => new Promise(resolve => { setTimeout(resolve, 320) }));
 }
 
@@ -28,6 +29,22 @@ it('发现已有结果即时呈现，陈旧推荐在后台更新', async () => {
   expect(queryClient.getQueryData(discoveryKey('external'))).toEqual(cached);
   finish({ ok: true, status: 200, json: async () => cached } as Response);
   await loaded;
+});
+
+it('发现深链按实际范围、排序和方向预取首屏', async () => {
+  const address = location.href;
+  history.replaceState(null, '', '/jav?tab=discover&scope=library&sort=duration&dir=asc');
+  try {
+    const data = { items: [], candidate_total: 0, limited: false };
+    const fetcher = vi.fn(async () => ({ ok: true, status: 200, json: async () => data }));
+    vi.stubGlobal('fetch', fetcher);
+    await prefetchJav('discover', new AbortController().signal);
+    expect(fetcher).toHaveBeenCalledWith('/api/jav/discoveries?scope=library&limit=100&sort=duration&direction=asc', expect.anything());
+    expect(queryClient.getQueryData(discoveryKey('library', 'duration', 'asc'))).toEqual(data);
+    expect(queryClient.getQueryData(discoveryKey('external'))).toBeUndefined();
+  } finally {
+    history.replaceState(null, '', address);
+  }
 });
 
 it('想要已有清单立即返回，陈旧数据在后台更新', async () => {
@@ -46,11 +63,44 @@ it('想要已有清单立即返回，陈旧数据在后台更新', async () => {
   expect(fetcher).toHaveBeenCalledOnce();
 });
 
-it('JAV 分区导航依次显示馆藏、想要、新作、发现，馆藏使用目录搜索', async () => {
+it.each(['discover', 'releases'] as const)('%s 自动读资料失败后显示原因并允许重试', async tab => {
+  const before = location.pathname + location.search;
+  history.replaceState(null, '', `/jav?tab=${tab}`);
+  let starts = 0;
+  const job = { status: 'running', job_id: 'job-1', completed: 0, total: 1 };
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    const path = new URL(url, location.origin).pathname;
+    if ((path === '/api/jav/discoveries/metadata' || path === '/api/jav/releases/metadata') && init?.method === 'POST') {
+      if (++starts === 1) return Response.json({ detail: '资料任务入口暂不可用' }, { status: 503 });
+      return Response.json({ metadata_job: job, poll_after_ms: 3000 });
+    }
+    if (path === '/api/jav/releases' || path === '/api/jav/discoveries') {
+      return Response.json({ items: [{ id: 1, code: 'ABC-001', title: '测试作品', performers: '', metadata_state: 'pending' }],
+        metadata_job: starts >= 2 ? job : null, metadata_unread: 1, page: 1, size: 24, total: 1,
+        facets: { performers: [], studios: [], tags: [] }, candidate_total: 1 });
+    }
+    return Response.json({ metadata_job: starts >= 2 ? job : null, items: [] });
+  }));
+  try {
+    const host = await mount(<QueryClientProvider client={queryClient}>
+      <JavPage tab={tab} readOnly={false} navigate={vi.fn()} receipt={vi.fn()} />
+    </QueryClientProvider>);
+    await settle();
+    const alert = host.querySelector('[role="alert"]')!;
+    expect(alert.textContent).toContain('资料任务入口暂不可用');
+    await click(buttonNamed('立即重试', alert));
+    await settle();
+    expect(starts).toBe(2);
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.querySelector('[data-jav-metadata]')).not.toBeNull();
+  } finally { history.replaceState(null, '', before) }
+});
+
+it('JAV 分区导航依次显示馆藏、想要、新作、发现、在线目录，馆藏使用目录搜索', async () => {
   const navigate = vi.fn(), find = vi.fn();
   const host = await mount(<JavHeader tab="library" navigate={navigate} find={find} />);
   const tabs = [...host.querySelectorAll('[role="tab"]')];
-  expect(tabs.map(tab => tab.textContent?.trim())).toEqual(['馆藏', '想要', '新作', '发现']);
+  expect(tabs.map(tab => tab.textContent?.trim())).toEqual(['馆藏', '想要', '新作', '发现', '在线目录']);
   expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
   expect(host.querySelector('input')).toBeNull();
   await click(tabs[1]);
@@ -81,8 +131,16 @@ it('发现按范围读取，清除文字和标签恢复列表，卡片打开对�
         { ...common, id: 2, code: 'ABC-002', score: 2, tags: ['剧情'] }],
   }) }));
   vi.stubGlobal('fetch', fetcher);
-  const host = await mount(<QueryClientProvider client={queryClient}><JavPage tab="discover" readOnly navigate={navigate} receipt={vi.fn()} /></QueryClientProvider>);
+  // 查找在正文的筛选浮层里，词写进地址里的 `q`；常驻页头一起挂，地址停在发现分区。
+  const before = location.pathname + location.search;
+  history.replaceState(null, '', '/jav?tab=discover');
+  const host = await mount(<QueryClientProvider client={queryClient}>
+    <JavPageHeader navigate={navigate} receipt={vi.fn()} />
+    <JavPage tab="discover" readOnly navigate={navigate} receipt={vi.fn()} />
+  </QueryClientProvider>);
   await settle();
+  expect(host.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim()).toBe('发现');
+  expect(host.querySelectorAll('h2[data-page-title]')).toHaveLength(1);
   expect(host.querySelectorAll('[data-jav-card]')).toHaveLength(2);
   expect(actionOrder(host.querySelector('[data-jav-card] [data-jav-actions]'))).toEqual(['作品来源', '想要', '查找资源']);
   expect(host.querySelector('[data-jav-card] h3')?.textContent).toContain('ABC-001');
@@ -102,6 +160,7 @@ it('发现按范围读取，清除文字和标签恢复列表，卡片打开对�
   await click(host.querySelector('[data-jav-card] h3'));
   expect(navigate).toHaveBeenLastCalledWith('/assets/22');
   expect(buttonNamed('已入库', host)?.disabled).toBe(true);
+  history.replaceState(null, '', before);
 });
 
 it('新作分区的女优、厂牌、标签只列接口给的订阅新作筛选项，点了在本分区里筛并回到第 1 页', async () => {
@@ -121,7 +180,7 @@ it('新作分区的女优、厂牌、标签只列接口给的订阅新作筛选�
   expect(asked().get('page')).toBe('2');
   expect([...host.querySelectorAll('[data-tier-performer]')].map(node => node.textContent)).toEqual(['女女优甲']);
   expect([...host.querySelectorAll('[data-tier-studio]')].map(node => node.textContent)).toEqual(['厂牌厂牌甲1']);
-  expect([...host.querySelectorAll('[data-catalog-tag]')].map(node => node.textContent)).toEqual(['中出内射1']);
+  expect([...host.querySelectorAll('[data-filter-tag]')].map(node => node.textContent)).toEqual(['中出内射1']);
   expect(host.querySelector('nav[aria-label="新作分页"] [aria-current="page"]')?.textContent).toBe('2');
   await click(host.querySelector('[data-tier-performer]'));
   await settle();
@@ -187,7 +246,8 @@ it('空新作列表保留每页数量控件，越界页自动返回首页', asyn
 it('新作分区切到列表：作品、艺人、厂牌各占一列，表头点时长按时长排序', async () => {
   const before = location.pathname + location.search;
   history.replaceState(null, '', '/jav?tab=releases');
-  localStorage.setItem('peach.catalog-view.v1', 'list');
+  const view = catalogView();
+  setCatalogView('list');
   const fetcher = vi.fn(async (_url: string) => ({ ok: true, status: 200, json: async () => ({
     items: [{ id: 1, code: 'ABC-001', title: '示例作品', performers: '女优甲', studio: '厂牌甲', has_cover: false, release_date: '2026-11-10',
       wanted: false, tags: ['中出内射'], duration: 7200, source_score: 4.5, performer_refs: [{ id: 7, name: '女优甲', has_image: false }] }],
@@ -211,13 +271,13 @@ it('新作分区切到列表：作品、艺人、厂牌各占一列，表头点�
     await click(row.querySelector('[data-list-name]'));
     expect(navigate).toHaveBeenLastCalledWith('/works/ABC-001');
   } finally {
-    localStorage.removeItem('peach.catalog-view.v1');
+    setCatalogView(view);
     history.replaceState(null, '', before);
     vi.unstubAllGlobals();
   }
 });
 
-it('新作分区默认按发行时间倒序，排序键再点翻方向，换一批按新种子重排且不按下排序键', async () => {
+it('新作分区默认按发行时间倒序，可选排序方向，换一批按新种子重排且不按下排序键', async () => {
   const before = location.pathname + location.search;
   history.replaceState(null, '', '/jav?tab=releases');
   const fetcher = vi.fn(async (_url: string) => ({ ok: true, status: 200, json: async () => ({ items: [], total: 0, candidate_total: 0, page: 1, size: 24,
@@ -228,17 +288,17 @@ it('新作分区默认按发行时间倒序，排序键再点翻方向，换一�
   const asked = () => new URL(String(fetcher.mock.calls.at(-1)?.[0]), location.origin).searchParams;
   expect([...host.querySelectorAll('[data-entity-sort]')].map(node => node.textContent)).toEqual(['发行时间', '来源评分', '时长', '番号', '口味']);
   expect([asked().get('sort'), asked().get('direction')]).toEqual(['release_date', 'desc']);
-  await click(host.querySelector('[data-entity-sort="source_score"]'));
+  await chooseFilter(host.querySelector('[data-entity-sort="source_score"]'), 'desc');
   await settle();
   expect([asked().get('sort'), asked().get('direction')]).toEqual(['source_score', 'desc']);
-  await click(host.querySelector('[data-entity-sort="source_score"]'));
+  await chooseFilter(host.querySelector('[data-entity-sort="source_score"]'), 'asc');
   await settle();
   expect([asked().get('sort'), asked().get('direction')]).toEqual(['source_score', 'asc']);
   await click(host.querySelector('[data-entity-batch]'));
   await settle();
   expect(asked().get('sort')).toBe('random');
   expect(asked().get('seed')).toBeTruthy();
-  expect(host.querySelector('[data-entity-sort][aria-pressed="true"]')).toBeNull();
+  expect(host.querySelector('[data-entity-sort][data-sort-current="true"]')).toBeNull();
   history.replaceState(null, '', before);
 });
 
@@ -246,7 +306,7 @@ it('馆藏范围没有推荐时空态的查看口味在左，主入口在右', a
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ items: [] }) })));
   const host = await mount(<QueryClientProvider client={queryClient}><JavPage tab="discover" readOnly navigate={vi.fn()} receipt={vi.fn()} /></QueryClientProvider>);
   await settle();
-  await click(host.querySelector('[data-entity-tag="library"]'));
+  await click(host.querySelector('[data-catalog-view="library"]'));
   await settle();
   expect(actionOrder(host.querySelector('[data-empty-state]'))).toEqual(['查看口味', '浏览馆藏']);
   const main = [...host.querySelectorAll('[data-empty-state] a')].find((link) => link.textContent === '浏览馆藏');

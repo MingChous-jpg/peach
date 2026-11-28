@@ -162,7 +162,8 @@
     "doctor": "逐项诊断本机配置、数据库、工具与挂载，不执行修复",
     "doctorJson": "输出脱敏 JSON 报告",
     "doctorHost": "诊断指定的服务监听地址",
-    "doctorPort": "诊断指定的服务端口"
+    "doctorPort": "诊断指定的服务端口",
+    "doctorStartupDiagnostics": "查看启动诊断，或由脚本要求保留下次记录"
   },
   "server": {
     "description": "运行通过浏览器管理的 Peach 服务",

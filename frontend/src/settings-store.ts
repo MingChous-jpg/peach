@@ -1,4 +1,4 @@
-/* 界面偏好在这台浏览器上的那一份真相（`peach.settings.v1`）。
+/* 当前界面偏好及其浏览器缓存（`peach.settings.v1`）。
  *
  * 值是壳在启动时归一化好的那个对象本身（`application/preferences.js` 的 `appSettings`）：壳里六十来处读写都
  * 直接改它的字段，改完调 `save()` 落盘。落盘同时换一个版本号、通知订阅者——设置面板
@@ -13,8 +13,8 @@ export interface SettingsStore<T extends object> {
   /** 每次 `save()` 或 `notify()` 加一。 */
   version(): number;
   subscribe(listener: () => void): () => void;
-  /** 写进 localStorage，再通知订阅者。 */
-  save(): void;
+  /** 写进 localStorage，再通知订阅者；返回是否落盘。 */
+  save(): boolean;
   /** 值不在这份对象里、但面板要跟着重画时（高对比度、SFW 这两样各有自己的键）只通知不落盘。 */
   notify(): void;
 }
@@ -34,8 +34,10 @@ export function createSettingsStore<T extends object>(key: string, value: T): Se
       return () => { listeners.delete(listener) };
     },
     save() {
-      localStorage.setItem(key, JSON.stringify(value));
+      let persisted = true;
+      try { localStorage.setItem(key, JSON.stringify(value)) } catch { persisted = false }
       notify();
+      return persisted;
     },
     notify,
   };

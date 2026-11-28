@@ -20,10 +20,12 @@ import type { JunkQueueProps } from '../junk-queue/junk-queue';
 import type { SearchProps } from '../search/search';
 
 export interface ShellActions {
-  openSettings?(section: string): Promise<unknown>;
+  openSettings?(section: string, anchor?: string): Promise<unknown>;
   closeSettings?(): void;
   /** 打开作品详情（舞台）。 */
   openItem(id: number): void;
+  resumePlayback?(kind: 'item' | 'follow', id: number, seconds: number): void;
+  catalogFileAction?(operation: 'like' | 'seen' | 'later', ids: number[], button: HTMLElement): Promise<unknown>;
   /** 打开实体资料页。`kind` 是 `creator`／`performer` 等。 */
   openEntity(kind: string, name: string): void;
   /** 回目录并按这个标签筛选。 */
@@ -74,6 +76,7 @@ export interface ShellActions {
   openFollowTag(tag: string): void;
   /** 打开一份播放列表的播放队列（舞台），从 `resumeAssetId` 那一个接着播。 */
   openPlaylist(id: number, resumeAssetId: number): void;
+  playSavedFilter(id: string): void;
   /** 此刻能不能悬停翻页：壳的多选、遮挡、减少动效与滚动中都回 false。 */
   canFlip(): boolean;
   /** 页面组换了一页：路由树里的页面元素挂上、开始取数之前报一次。壳收起上一页留下的面（悬停预览、在途读请求、
@@ -163,12 +166,19 @@ export type SurfaceKind = 'management' | 'index' | 'entity' | 'catalog' | 'follo
 
 /** 管理区那几页每次打开时交给页面的值，由页面元素从地址、偏好与壳的状态算（`pages/managed.tsx`），按页面分。
  *  管理区那几页画进 `#stats`。 */
+export interface WriterAccess {
+  readOnly: boolean;
+  readOnlyMessage: string;
+  writerUrl: string;
+}
+
 export interface ManagedOpenProps extends Record<ConfigurationPath, { section?: string }>,
-  Record<import('../../cleanup-tools').CleanupToolPath, Record<string, never>> {
+  Record<import('../../cleanup-tools').CleanupToolPath, { writeAccess?: WriterAccess }> {
   '/jav': { tab: string; readOnly: boolean };
+  '/ai': Record<string, never>;
   '/stats': Record<string, never>;
   '/taste': { onboarding: boolean };
-  '/review': { category: string; queue?: string; readOnly: boolean; readOnlyMessage: string; writerUrl: string };
+  '/review': { category: string; queue?: string } & WriterAccess;
   '/data-cleanup': Record<string, never>;
   '/duplicates': Record<string, never>;
   '/quality-goals': Record<string, never>;
@@ -179,8 +189,7 @@ export interface ManagedOpenProps extends Record<ConfigurationPath, { section?: 
   '/tasks': Record<string, never>;
   '/subscriptions': {
     tab: string; page: number; sort: string; dir: string; pageSize: number; layout: string;
-    readOnly: boolean; readOnlyMessage: string; writerUrl: string;
-  };
+  } & WriterAccess;
 }
 
 export type ManagedPath = keyof ManagedOpenProps;

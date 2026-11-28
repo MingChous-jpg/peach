@@ -9,6 +9,7 @@ import { errorMessage } from '../../api';
 import { MANAGE_MENU_SECTIONS, MANAGE_SECTIONS } from '../../application/navigation-items';
 import { NAVIGATION_GROUPS, navigationDefaults, navigationFixedKeys, normalizeNavigationOrder, type NavigationGroup } from '../../navigation-order';
 import { useSaveSettings } from '../settings-panel/settings-data';
+import type { SettingsSaveFeedback } from '../settings-panel/settings-panel-api';
 import { useSidebarReorder } from '../sidebar/use-sidebar-reorder';
 import { useCommitNavigationOrder } from '../sidebar/sidebar-order';
 import { showToast } from '../toaster';
@@ -33,7 +34,7 @@ export interface NavigationOrder {
   commit(next: string[]): void;
 }
 
-export function useNavigationOrder(group: NavigationGroup): NavigationOrder {
+export function useNavigationOrder(group: NavigationGroup, feedback?: SettingsSaveFeedback): NavigationOrder {
   const store = appSettingsStore();
   useSyncExternalStore(store.subscribe, store.version);
   const save = useSaveSettings('navigation-order');
@@ -43,11 +44,16 @@ export function useNavigationOrder(group: NavigationGroup): NavigationOrder {
     commit(next) {
       const ordered = normalizeNavigationOrder(group, next);
       store.value.navigationOrders = { ...store.value.navigationOrders, [group]: ordered };
-      store.save();
+      const persisted = store.save();
+      const report = feedback?.();
       save.mutate({ navigationOrders: { [group]: ordered } }, {
-        onError: cause => showToast(`navigation-save-${group}`, {
-          html: esc(t('shell:navigationOrder.syncFailed', { error: errorMessage(cause) })), alert: true, timeout: 6000, action: null,
-        }),
+        onSuccess: () => report?.('saved'),
+        onError: cause => {
+          if (report) report(persisted ? 'local' : 'failed');
+          else showToast(`navigation-save-${group}`, {
+            html: esc(t('shell:navigationOrder.syncFailed', { error: errorMessage(cause) })), alert: true, timeout: 6000, action: null,
+          });
+        },
       });
     },
   };
@@ -83,13 +89,13 @@ export function NavigationOrderMenu({ order }: { order: NavigationOrder }) {
   </>;
 }
 
-export function NavigationOrderRows({ order, labels, render, fixed = [], reset = true }: {
-  order: NavigationOrder; labels: Readonly<Record<string, string>>; fixed?: readonly string[]; reset?: boolean;
+export function NavigationOrderRows({ order, labels, render, fixed = [], reset = true, dropOnRow = false }: {
+  order: NavigationOrder; labels: Readonly<Record<string, string>>; fixed?: readonly string[]; reset?: boolean; dropOnRow?: boolean;
   /** 行内显示的内容；缺省只写名字。读屏与按钮说明仍用 `labels`。 */
   render?: (key: string) => ReactNode;
 }) {
   const list = useRef<HTMLDivElement>(null);
-  const reorder = useSidebarReorder(list, order.keys, order.commit, () => {}, 'y', 'tab', fixed);
+  const reorder = useSidebarReorder(list, order.keys, order.commit, () => {}, 'y', 'tab', fixed, dropOnRow ? 'row' : undefined);
   const move = (index: number, delta: number) => {
     const next = [...order.keys];
     next.splice(index + delta, 0, next.splice(index, 1)[0]);
@@ -97,6 +103,7 @@ export function NavigationOrderRows({ order, labels, render, fixed = [], reset =
   };
   return <div className="flex flex-col gap-3">
     <div ref={list} data-navigation-order="settings" data-navigation-axis="y" data-navigation-rows=""
+      data-drop-on-row={dropOnRow ? '' : undefined}
       data-reordering={reorder.picked ? '' : undefined} onClickCapture={reorder.clickCapture}>
       {order.keys.map((key, index) => <div key={key} data-tab={key} role="group" tabIndex={0}
         aria-label={labels[key]} aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
@@ -123,20 +130,20 @@ export function NavigationOrderRows({ order, labels, render, fixed = [], reset =
   </div>;
 }
 
-function GroupOrderPreferences({ group }: { group: NavigationGroup }) {
-  const order = useNavigationOrder(group);
+function GroupOrderPreferences({ group, feedback }: { group: NavigationGroup; feedback?: SettingsSaveFeedback }) {
+  const order = useNavigationOrder(group, feedback);
   return <NavigationOrderRows order={order} labels={Object.fromEntries(NAVIGATION_GROUPS[group].items)} fixed={navigationFixedKeys(group)} />;
 }
 
-function ManageOrderPreferences() {
+function ManageOrderPreferences({ feedback }: { feedback?: SettingsSaveFeedback }) {
   const store = appSettingsStore();
   useSyncExternalStore(store.subscribe, store.version);
-  const commit = useCommitNavigationOrder(store, 'manageOrder');
+  const commit = useCommitNavigationOrder(store, 'manageOrder', feedback);
   return <NavigationOrderRows order={{ label: t('shell:navigationOrder.manageMenu'), keys: store.value.manageOrder, defaults: MANAGE_MENU_SECTIONS, commit }}
     labels={Object.fromEntries(MANAGE_SECTIONS.map(([key, label]) => [key, label]))} />;
 }
 
-export function NavigationOrderPreferences() {
+export function NavigationOrderPreferences({ feedback }: { feedback?: SettingsSaveFeedback } = {}) {
   const [group, setGroup] = useState<NavigationGroup | 'manage' | 'libraries'>('manage');
   return <div className="peach-react"><div className="flex flex-col gap-3">
     <Select aria-label={t('shell:navigationOrder.group')} selectedKey={group} onSelectionChange={key => setGroup(key as typeof group)}>
@@ -144,19 +151,24 @@ export function NavigationOrderPreferences() {
       <SelectItem id="libraries">{t('shell:shared.library')}</SelectItem>
       {(Object.keys(NAVIGATION_GROUPS) as NavigationGroup[]).map(key => <SelectItem key={key} id={key}>{NAVIGATION_GROUPS[key].label}</SelectItem>)}
     </Select>
-    {group === 'manage' ? <ManageOrderPreferences /> : group === 'libraries' ? <LibraryOrderPreferences /> : <GroupOrderPreferences key={group} group={group} />}
+    {group === 'manage' ? <ManageOrderPreferences feedback={feedback} /> : group === 'libraries'
+      ? <LibraryOrderPreferences feedback={feedback} /> : <GroupOrderPreferences key={group} group={group} feedback={feedback} />}
   </div></div>;
 }
 
-function LibraryOrderPreferences() {
+function LibraryOrderPreferences({ feedback }: { feedback?: SettingsSaveFeedback }) {
   const store = appSettingsStore();
   useSyncExternalStore(store.subscribe, store.version);
   const libraries = [...useLibraryTints({ names: true }).values()].filter(row => row.name);
   const save = useSaveSettings('library-order');
   const commit = (keys: string[]) => {
     store.value.libraryOrder = keys;
-    store.save();
-    save.mutate({ libraryOrder: keys });
+    const persisted = store.save();
+    const report = feedback?.();
+    save.mutate({ libraryOrder: keys }, {
+      onSuccess: () => report?.('saved'),
+      onError: () => report?.(persisted ? 'local' : 'failed'),
+    });
   };
   return <>
     <NavigationOrderRows order={{ label: t('shell:shared.library'), keys: orderLibraries(libraries, store.value.libraryOrder, row => row.id).map(row => row.id),

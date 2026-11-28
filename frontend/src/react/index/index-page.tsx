@@ -16,6 +16,7 @@ import { indexSkeletonHtml, spinnerHtml } from '@peach/legacy/ui';
 
 import { Button, ButtonLink } from '@/components/base/buttons/button';
 import { IndexSearch } from './index-search';
+import { librarySuggest, SUGGEST_KIND_OF } from '../search/library-suggest';
 import { DataTableFooter } from '../components/table-controls';
 import { tagSkeletonHtml, TAG_PAGE_SIZE, TAG_PAGE_SIZES } from '../../tag-skeleton';
 import { INDEX_NOUNS } from '../../index-skeleton';
@@ -23,9 +24,12 @@ import { useTagPagination, useTagPageBounds } from './tag-pagination';
 
 import { IDENTITY_ROW_CLASS } from '../../identity-filter';
 
-import { BoardTabs, type BoardTab } from '../components/board-tabs';
+import { BoardNavLinks, type BoardTab } from '../components/board-tabs';
+import { indexPath } from './index-controller';
 import { SortableBoardTabs } from '../components/navigation-order';
 import { EmptyState } from '../components/empty-state';
+import { Note } from '../components/note';
+import { busyProps } from '../settings/busy-props';
 import { LibraryShortcuts } from '../library-shortcuts/shortcut-controls';
 import { AsyncText } from '../components/async-text';
 import { SkeletonContent } from '../components/skeleton-content';
@@ -156,6 +160,7 @@ export function IndexPage(props: IndexProps) {
   const items = flatItems(result.data);
   const pending = result.isPending || result.isPlaceholderData;
   const more = !!result.hasNextPage && !result.isPlaceholderData;
+  const nextPageError = result.isFetchNextPageError;
   const total = result.data?.pages[0]?.total;
   useEffect(() => {
     void pageNavigationReady(() => window.location.pathname === `/${kind}` && !!root.current?.isConnected,
@@ -208,7 +213,8 @@ export function IndexPage(props: IndexProps) {
       go({ scope: next, category: 'all', view: next === 'online' ? 'alphabet' : view });
     }} />
     : isCompany(kind) || kind === 'series'
-        ? <BoardTabs tabs={MAKER_TABS} value={kind as 'studios' | 'agencies' | 'series'} label={t('catalog:peopleIndex.companyType')}
+        ? <BoardNavLinks tabs={MAKER_TABS} value={kind as 'studios' | 'agencies' | 'series'} label={t('catalog:peopleIndex.companyType')}
+          hrefFor={(next) => indexPath({ ...route, kind: next })}
           onChange={(next) => go({ kind: next })} />
         : null;
 
@@ -238,7 +244,7 @@ export function IndexPage(props: IndexProps) {
     if (pending) {
       return null;
     }
-    if (result.isError) {
+    if (result.isError && !nextPageError) {
       return (
         <EmptyState icon={spriteGlyph('alert')} title={t('catalog:peopleIndex.loadFailed', { title: noun })}
           actions={<Button variant="secondary" onClick={() => void result.refetch()}>{t('catalog:shared.retryNow')}</Button>}>
@@ -249,9 +255,10 @@ export function IndexPage(props: IndexProps) {
     if (!items.length) return <IndexEmpty kind={kind} filtered={!!q || category !== 'all'}
       online={onlineTags || onlineAuthors} onClear={() => go({ q: '', category: 'all' })} />;
     if (onlineAuthors) return <OnlineAuthors items={items as OnlineAuthor[]} layout={layout} props={props} />;
-    if (isPeople(kind)) return <PeopleGrid kind={kind} items={items as IndexPerson[]} layout={layout} props={props} picks={roster.picks} hiddenView={hiddenView} />;
-    const actions = { online: onlineTags, picked, press: pressTag, rectangle: props.selectMode
-      ? (keys: string[], add: boolean) => setPicked(current => new Set([...(add ? current : []), ...keys])) : undefined };
+    if (isPeople(kind)) return <PeopleGrid kind={kind} items={items as IndexPerson[]} layout={layout} props={props}
+      picks={roster.picks} onRectangle={roster.rectangle} hiddenView={hiddenView} />;
+    const actions = { online: onlineTags, picked, press: pressTag, selecting: props.selectMode,
+      rectangle: (keys: string[], add: boolean) => setPicked(current => new Set([...(add ? current : []), ...keys])) };
     return view === 'alphabet' ? <TagAlphabet groups={groups} actions={actions} /> : <TagCloud tags={tags} actions={actions} />;
   };
 
@@ -264,7 +271,7 @@ export function IndexPage(props: IndexProps) {
         {isPeople(kind) ? (
           <span data-index-count="" className="text-caption-1-regular leading-5 whitespace-nowrap text-text-secondary tabular-nums max-board-narrow:order-1 max-board-narrow:basis-full">
             {/* 没取到就没有读数：「0 项」读起来是「名册是空的」，和报错说的是两件事。 */}
-            <AsyncText text={pending ? undefined : result.isError ? '' : readout} busy={pending}
+            <AsyncText text={pending ? undefined : result.isError && !nextPageError ? '' : readout} busy={pending}
               placeholder={<span aria-hidden className="skeleton-sheen inline-block h-3.5 w-24 rounded-md" />} />
           </span>
         ) : null}
@@ -273,10 +280,14 @@ export function IndexPage(props: IndexProps) {
         {kind === 'tags' ? <Button variant={managing ? 'primary' : 'ghost'} iconOnly className="flex-none" data-tag-mode=""
           leadingIcon={spriteGlyph('pencil')} aria-label={managing ? t('catalog:peopleIndex.backToTags') : t('catalog:peopleIndex.manageTags')} title={managing ? t('catalog:peopleIndex.backToTags') : t('catalog:peopleIndex.manageTags')} aria-pressed={managing}
           onClick={() => { props.exitSelectMode(); setPicked(new Set()); setManagerState('active'); setManaging(!managing) }} /> : null}
-        <IndexSearch label={t('catalog:peopleIndex.filterTitle', { title: noun })} value={q} onQuery={(next) => { if (next !== q) go({ q: next }, !!next) }} />
+        {/* 标签页有筛选浮层，查找在浮层下排（`TagFilters`）；其余名册没有浮层，留在页头。 */}
+        {kind === 'tags' ? null : <IndexSearch label={t('catalog:peopleIndex.filterTitle', { title: noun })} value={q} onQuery={(next) => { if (next !== q) go({ q: next }, !!next) }}
+          suggest={{ key: kind, kind: SUGGEST_KIND_OF[kind], load: librarySuggest([SUGGEST_KIND_OF[kind]!]) }} />}
       </div>
       {kind === 'performers' || kind === 'creators' ? (
-        <BoardTabs tabs={PEOPLE_TABS} value={onlineAuthors ? 'online' : kind} label={t('catalog:peopleIndex.roster')}
+        <BoardNavLinks tabs={PEOPLE_TABS} value={onlineAuthors ? 'online' : kind} label={t('catalog:peopleIndex.roster')}
+          hrefFor={(next) => indexPath({ ...route, kind: next === 'online' ? 'performers' : next,
+            scope: next === 'online' ? 'online' : 'local', category: 'all' })}
           onChange={(next) => {
             if (next === 'online') props.exitSelectMode();
             go({ kind: next === 'online' ? 'performers' : next,
@@ -284,7 +295,8 @@ export function IndexPage(props: IndexProps) {
           }} />
       ) : null}
       {tabs}
-      {managing && kind === 'tags' ? <TagManager key={`${scope}:${managerState}`} scope={scope} state={managerState} search={q} category={category} view={view}
+      {managing && kind === 'tags' ? <TagManager key={`${scope}:${managerState}`} scope={scope} state={managerState} search={q}
+        onSearch={(next) => { if (next !== q) go({ q: next }, !!next) }} category={category} view={view}
         onCategory={next => go({ category: next })} onView={next => go({ view: next })}
         onJump={at => root.current?.querySelector(`[data-alpha-group="${at}"]`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })} /> : <>
       {kind === 'performers' && scope === 'local' ? (
@@ -306,6 +318,7 @@ export function IndexPage(props: IndexProps) {
         <TagFilters categories={categories} category={category} online={onlineTags}
           actions={onlineTags ? <FilterActionButton onPress={() => setAddingBlockedTag(true)}>{t('catalog:tagManager.blockByName')}</FilterActionButton> : undefined}
           readout={result.isPending ? undefined : readout}
+          search={{ value: q, onQuery: (next) => { if (next !== q) go({ q: next }, !!next) } }}
           status={{ hidden: false, blocked: false, ...tagCounts, onChange: (hidden) => { if (hidden) openManager('hidden') },
             ...(onlineTags ? { onBlocked: () => openManager('blocked') } : {}) }}
           letters={groups.map(([letter]) => letter)} view={view}
@@ -322,16 +335,17 @@ export function IndexPage(props: IndexProps) {
         <DataTableFooter label={t('catalog:shared.tags')} total={total ?? items.length} pagination={pagination} onChange={changePage} unit={t('catalog:peopleIndex.footerUnit')} pageUnit={t('catalog:peopleIndex.footerPageUnit')} pageSizes={TAG_PAGE_SIZES} />
       </div> : null}
       {more ? (
-        <div className="mt-5 flex justify-center">
+        <div className="mt-5 flex flex-col items-center gap-2">
           {/* 按下去到下一批画出来之间要有东西在动：这一段是一次网络往返加一屏头像，光把键按灰了
               说不出「还在走」和「点了没反应」的区别。用户按下的键走 Spinner（同播放墙的「载入更多」），
               键上的字不变，键宽留够放下转圈，下面的内容不跟着跳。 */}
           <Button variant="secondary" data-index-more="" className="min-w-31"
-            disabled={result.isFetchingNextPage} aria-busy={result.isFetchingNextPage || undefined}
-            onClick={() => void result.fetchNextPage()}>
+            {...busyProps(result.isFetchingNextPage)}
+            onClick={() => { if (!result.isFetchingNextPage) void result.fetchNextPage({ cancelRefetch: false }) }}>
             {result.isFetchingNextPage ? <span className="contents" dangerouslySetInnerHTML={{ __html: spinnerHtml(t('catalog:peopleIndex.loadingNext')) }} /> : null}
-            {t('catalog:shared.loadMore')}
+            {t(nextPageError ? 'catalog:shared.retryNow' : 'catalog:shared.loadMore')}
           </Button>
+          {nextPageError ? <Note tone="error">{requestErrorMessage(result.error)}</Note> : null}
         </div>
       ) : null}
       {rosterKind ? <RosterDock kind={rosterKind} hiddenView={hiddenView} selection={roster} total={items.length}

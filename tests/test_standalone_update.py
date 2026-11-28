@@ -504,8 +504,19 @@ class StandaloneUpdateTests(unittest.TestCase):
             self.assertEqual(prepare_install_tools(target, output, error, stage=stage), 0)
         download.assert_not_called()
         self.assertFalse(target.exists())
-        for bundle in manifest['tools'].values():
-            self.assertTrue(update_packages.matches(stage, bundle['files']))
+        for name, bundle in manifest['tools'].items():
+            self.assertEqual(update_packages.matches(stage, bundle['files']),
+                             name not in update_packages.SELF_PROVISIONED)
+        self.assertFalse((stage / "tools/face-models").exists())
+
+    def test_split_update_preserves_an_install_that_defers_face_models(self):
+        source, output, manifest, target, archive, release = self.release_fixture()
+        shutil.rmtree(target / "tools/face-models")
+        state, requests = self.prepare_fixture(target, output, release)
+        self.assertEqual(state["state"], "ready", state)
+        self.assertEqual(requests, [archive.name])
+        self.assertFalse((Path(state["stage"]) / "tools/face-models").exists())
+        self.assertEqual({p.name for p in Path(state["helper"]).iterdir()}, {"Peach.exe", "_internal"})
 
     def test_lite_installer_downloads_only_a_tool_that_fails_file_verification(self):
         from peach.desktop_installer import prepare_install_tools
@@ -556,26 +567,29 @@ class StandaloneUpdateTests(unittest.TestCase):
     def test_lite_installer_prepares_from_github_with_no_r2_or_adjacent_archives(self):
         result, requests, manifest, stage, error = self.prepare_online_lite()
         self.assertEqual(result, 0, error.read_text(encoding='utf-8') if error.exists() else '')
-        self.assertEqual(len(requests), len(update_packages.TOOL_PATHS))
+        required_tools = update_packages.TOOL_PATHS.keys() - update_packages.SELF_PROVISIONED
+        self.assertEqual(len(requests), len(required_tools))
         self.assertTrue(all(url.startswith('https://github.com/peach-mitao/peach/releases/download/v1.0.0/') for url in requests))
-        for bundle in manifest['tools'].values():
-            self.assertTrue(update_packages.matches(stage, bundle['files']))
+        for tool in required_tools:
+            self.assertTrue(update_packages.matches(stage, manifest['tools'][tool]['files']))
 
     def test_lite_installer_uses_same_version_r2_when_github_is_unavailable(self):
         result, requests, manifest, stage, _ = self.prepare_online_lite('unavailable')
         self.assertEqual(result, 0)
-        self.assertEqual(len(requests), 2 * len(update_packages.TOOL_PATHS))
+        required_tools = update_packages.TOOL_PATHS.keys() - update_packages.SELF_PROVISIONED
+        self.assertEqual(len(requests), 2 * len(required_tools))
         self.assertTrue(all(url.startswith('https://downloads.peach.video/v1.0.0/')
                             for url in requests[1::2]))
-        for bundle in manifest['tools'].values():
-            self.assertTrue(update_packages.matches(stage, bundle['files']))
+        for tool in required_tools:
+            self.assertTrue(update_packages.matches(stage, manifest['tools'][tool]['files']))
 
     def test_lite_installer_accepts_only_the_embedded_manifest_digest_across_sources(self):
         result, requests, manifest, stage, _ = self.prepare_online_lite('mismatch')
         self.assertEqual(result, 0)
-        self.assertEqual(len(requests), 2 * len(update_packages.TOOL_PATHS))
-        for bundle in manifest['tools'].values():
-            self.assertTrue(update_packages.matches(stage, bundle['files']))
+        required_tools = update_packages.TOOL_PATHS.keys() - update_packages.SELF_PROVISIONED
+        self.assertEqual(len(requests), 2 * len(required_tools))
+        for tool in required_tools:
+            self.assertTrue(update_packages.matches(stage, manifest['tools'][tool]['files']))
 
     def test_lite_installer_rejects_both_sources_when_their_bytes_do_not_match(self):
         result, requests, manifest, stage, error = self.prepare_online_lite('both-corrupt')
@@ -684,6 +698,50 @@ class StandaloneUpdateTests(unittest.TestCase):
             state, requests = self.prepare_fixture(target, output, release)
         self.assertEqual(state["state"], "ready", state)
         self.assertEqual(requests[:3], [release_signing.SUMS, release_signing.SIGNATURE, archive.name])
+
+    def delta_fixture(self):
+        from scripts.windows_update_delta import create
+
+        source, output, manifest, target, archive, release = self.release_fixture()
+        unchanged = hashlib.shake_256(b"unchanged runtime").digest(128 * 1024)
+        (source / "_internal/common.dll").write_bytes(unchanged)
+        (target / "_internal/common.dll").write_bytes(unchanged)
+        (target / "_internal/obsolete.dll").write_bytes(b"old file")
+        package_release(source, output, "1.0.0")
+        previous = self.root / "old.zip"
+        with zipfile.ZipFile(previous, "w", zipfile.ZIP_DEFLATED) as old:
+            for path in target.rglob("*"):
+                if path.is_file():
+                    old.write(path, "Peach/" + path.relative_to(target).as_posix())
+        delta = create(previous, archive, output, "0.9.0", "1.0.0")
+        release.update(asset_size=archive.stat().st_size,
+                       asset_digest="sha256:" + update_packages.digest(archive),
+                       delta={"url": release["asset_url"].rsplit("/", 1)[0] + "/" + delta.name,
+                              "size": delta.stat().st_size, "digest": "sha256:" + "0" * 64})
+        return output, target, archive, delta, release
+
+    def test_signed_delta_reuses_matching_files_and_omits_obsolete_files(self):
+        output, target, archive, delta, release = self.delta_fixture()
+        public = self.sign_output(output)
+        with patch.object(update.release_signing, "PUBLIC_KEYS", (public,)), patch.object(update, "__version__", "0.9.0"):
+            state, requests = self.prepare_fixture(target, output, release)
+        self.assertEqual(state["state"], "ready", state)
+        self.assertEqual(requests, [release_signing.SUMS, release_signing.SIGNATURE, delta.name])
+        self.assertEqual(state["downloaded"], delta.stat().st_size)
+        self.assertFalse((Path(state["stage"]) / "_internal/obsolete.dll").exists())
+        self.assertTrue((target / "_internal/obsolete.dll").is_file())
+
+    def test_delta_with_modified_local_file_retries_the_split_application_package(self):
+        output, target, archive, delta, release = self.delta_fixture()
+        (target / "_internal/common.dll").write_bytes(b"modified")
+        public = self.sign_output(output)
+        with patch.object(update.release_signing, "PUBLIC_KEYS", (public,)), patch.object(update, "__version__", "0.9.0"):
+            state, requests = self.prepare_fixture(target, output, release)
+        self.assertEqual(state["state"], "ready", state)
+        self.assertEqual(requests[-2:], [delta.name, archive.name])
+        self.assertEqual(state["total"], delta.stat().st_size + archive.stat().st_size)
+        self.assertEqual(state["downloaded"], state["total"])
+        self.assertEqual((target / "_internal/common.dll").read_bytes(), b"modified")
 
     def test_a_package_swapped_together_with_its_listed_digest_is_refused(self):
         source, output, manifest, target, archive, release = self.release_fixture()

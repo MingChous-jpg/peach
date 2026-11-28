@@ -56,13 +56,43 @@ def _require_readable_settings() -> None:
 
 
 def _serve(args: argparse.Namespace) -> int:
-    _require_readable_settings()
+    from . import startup_diagnostics
+
+    import time
+
+    state = settings_file.active().directory("state")
+    inherited = os.environ.get(startup_diagnostics.TICKET_ENV, "")
+    if args.redirect_origin and inherited:
+        started = time.monotonic_ns()
+        try:
+            return _serve_web(args)
+        except (OSError, RuntimeError, SystemExit):
+            startup_diagnostics.redirect_failed(state, inherited, (time.monotonic_ns() - started) // 1_000_000)
+            raise
+    with startup_diagnostics.recording(state, "web", inherited=inherited):
+        return _serve_web(args)
+
+
+def _validate_tls_args(certfile: Path | None, keyfile: Path | None) -> None:
+    if bool(certfile) != bool(keyfile):
+        raise SystemExit("--ssl-certfile and --ssl-keyfile must be provided together")
+    for path in (certfile, keyfile):
+        if path is not None and not path.is_file():
+            raise SystemExit(f"TLS file not found: {path}")
+
+
+def _serve_web(args: argparse.Namespace) -> int:
+    from . import startup_diagnostics
+
+    with startup_diagnostics.stage("configuration"):
+        _require_readable_settings()
     if args.redirect_origin:
         from .redirect import create_redirect_app
         if args.ssl_certfile or args.ssl_keyfile:
             raise SystemExit("redirect listener must use HTTP")
-        listening.serve(create_redirect_app(args.redirect_origin),
-                        listening.bind(args.host, args.port, ipv4_only=args.ipv4_only)[0])
+        with startup_diagnostics.stage("http_redirect"):
+            redirect_socket, _ = listening.bind(args.host, args.port, ipv4_only=args.ipv4_only)
+        listening.serve(create_redirect_app(args.redirect_origin), redirect_socket)
         return 0
     if distribution.docker():
         # Docker 没有托盘，日志的保留、按月切段与空进程日志清理在这里做；子进程还没起。
@@ -74,11 +104,8 @@ def _serve(args: argparse.Namespace) -> int:
                                 retention=retention_settings.log_retention(config.directory("state")))
         except Exception:
             logging.getLogger(__name__).warning("Log maintenance failed", exc_info=True)
-    if bool(args.ssl_certfile) != bool(args.ssl_keyfile):
-        raise SystemExit("--ssl-certfile and --ssl-keyfile must be provided together")
-    for path in (args.ssl_certfile, args.ssl_keyfile):
-        if path is not None and not path.is_file():
-            raise SystemExit(f"TLS file not found: {path}")
+    with startup_diagnostics.stage("tls"):
+        _validate_tls_args(args.ssl_certfile, args.ssl_keyfile)
     from .api import create_app
 
     tls_enabled = args.ssl_certfile is not None
@@ -93,12 +120,14 @@ def _serve(args: argparse.Namespace) -> int:
     # 有人重启这条引导服务，读到新口令的它会把还没看到口令的用户关在门外。
     # 安全边界由绑定地址给：这条服务只监听回环（`build_setup_service_specs`）。
     # 先绑端口再装配应用：mDNS 只在服务真能收 IPv6 连接时才发布 AAAA 记录。
-    sock, ipv6 = listening.bind(args.host, args.port, ipv4_only=args.ipv4_only)
+    with startup_diagnostics.stage("bind_listener"):
+        sock, ipv6 = listening.bind(args.host, args.port, ipv4_only=args.ipv4_only)
     tunnel_lan_address = None
     if not distribution.standalone() and not _is_loopback(args.host) and (publish_mdns or TUNNEL_ENABLED):
         from .mdns import lan_ipv4
         tunnel_lan_address = args.mdns_address or lan_ipv4()
-    token = "" if args.setup else _serve_token(args)
+    with startup_diagnostics.stage("access"):
+        token = "" if args.setup else _serve_token(args)
     secrets_dir = settings_file.active().directory("secrets")
     settings = PeachSettings(
         db_path=args.db,
@@ -126,9 +155,11 @@ def _serve(args: argparse.Namespace) -> int:
         tunnel_state_root=settings_file.active().directory("state"),
         tunnel_log_root=settings_file.active().directory("logs"),
     )
-    sync = _build_sync(args, settings)
+    with startup_diagnostics.stage("assemble_web"):
+        sync = _build_sync(args, settings)
+        app = create_app(settings, sync)
     listening.serve(
-        create_app(settings, sync), sock,
+        app, sock,
         ssl_certfile=str(args.ssl_certfile) if args.ssl_certfile else None,
         ssl_keyfile=str(args.ssl_keyfile) if args.ssl_keyfile else None,
     )
@@ -739,6 +770,22 @@ def _doctor(args: argparse.Namespace) -> int:
     from .mount_reachability import source_roots
 
     config = settings_file.active()
+    if operation := getattr(args, "startup_diagnostics", None):
+        from filelock import Timeout
+        from . import startup_diagnostics
+        from .docker_entrypoint import drop_root_for_cli
+
+        drop_root_for_cli()
+        state = config.directory("state")
+        try:
+            result = (startup_diagnostics.snapshot(state) if operation == "status"
+                      else startup_diagnostics.request(state, operation))
+        except (OSError, ValueError, Timeout):
+            print(interface_text.text("server:api.configuration.startupCaptureUnavailable", {},
+                                      interface_text.local_language()), file=sys.stderr)
+            return 1
+        print(json.dumps(result, ensure_ascii=False))
+        return 0 if result["available"] else 1
     host, port = diagnostics.doctor_endpoint(config)
     settings = PeachSettings(db_path=args.db, host=args.host or host, port=port if args.port is None else args.port,
                              token=auth.read_token(config.directory("secrets")),
@@ -896,6 +943,8 @@ def build_parser() -> argparse.ArgumentParser:
     doctor.add_argument("--db", type=Path, default=DEFAULT_DB)
     doctor.add_argument("--host", help=_t("help.doctorHost"))
     doctor.add_argument("--port", type=int, help=_t("help.doctorPort"))
+    doctor.add_argument("--startup-diagnostics", choices=("status", "restart_recovery", "update_verification", "workflow_probe"),
+                        help=_t("help.doctorStartupDiagnostics"))
     doctor.set_defaults(handler=_doctor)
 
     ledger_sync = commands.add_parser("ledger-sync", help="synchronize the local ledger now")

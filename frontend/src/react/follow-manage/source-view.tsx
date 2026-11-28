@@ -23,6 +23,11 @@ export function SourceIcon({ provider }: { provider: string }) {
   return <MarkImage src={sourceIconUrl(provider)} />;
 }
 
+export function FeedPageAlias({ name }: { name: string }) {
+  return <span className="text-body-2-regular wrap-anywhere text-text-secondary"
+    title={t('follow:feedSources.aliasTitle', { alias: name })}>{name}</span>;
+}
+
 /** 创作者圆标共用实体图、作品头像、来源缓存与首字母的取图顺序。
  *
  * 首字母取自创作者名而不是某条来源的标签——那会切出「初」「一」这类和创作者无关的字。 */
@@ -61,7 +66,7 @@ export function SourceLink({ source }: { source: FollowSource }) {
   return (
     <a href={source.url} target="_blank" rel="noopener noreferrer" title={t('follow:sourceView.openSource')}
       className="max-w-full min-w-0 self-start text-body-medium wrap-anywhere text-text-primary underline-offset-2 hover:underline">
-      {source.label}
+      <span data-external-link-label="">{source.label}</span>
       <RiExternalLinkLine aria-hidden className="size-(--icon-inline) shrink-0" />
     </a>
   );

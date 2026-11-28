@@ -12,7 +12,7 @@ import { SubtitleControls, languageName, subtitleIcon } from './subtitles';
 import { createSeekPreview } from './seek-preview';
 import { mountPlayerRotation } from './rotation';
 import { mountPlayerPipControl } from './pip';
-import { mountPlaybackRate, playerMemory } from './memory';
+import { mountPlaybackRate, playerMemory, qualityPixels as resolution, setAdaptiveQuality } from './memory';
 import { t } from '../i18n';
 
 type TooltipSync = (label?: string, aria?: string) => void;
@@ -137,7 +137,7 @@ export function mountPlayerQualityControl(
   root.className = 'vjs-peach-settings vjs-control'; root.dataset.playerQuality = '';
   root.innerHTML = `<button type="button" class="vjs-peach-settings-toggle" aria-label="${t('catalog:playerQuality.playerSettings')}" aria-expanded="false">
     ${icon('settings')}<span data-player-quality-badge hidden></span></button>
-    <div class="vjs-peach-settings-menu" role="menu" aria-label="${t('catalog:playerQuality.playerSettings')}" aria-hidden="true"></div>`;
+    <div class="vjs-peach-settings-menu" role="menu" aria-label="${t('catalog:playerQuality.playerSettings')}" aria-hidden="true" inert></div>`;
   const fullscreen = controlBar.querySelector('.vjs-fullscreen-control');
   controlBar.insertBefore(root, fullscreen || null);
   const toggle = root.querySelector('button')!, badge = root.querySelector<HTMLElement>('[data-player-quality-badge]')!;
@@ -150,10 +150,7 @@ export function mountPlayerQualityControl(
   const levels = typeof player.qualityLevels === 'function' ? player.qualityLevels() : null;
   let sourceQualities = initialSourceQualities;
   let selectedQuality = 'auto';
-  const resolution = (width: unknown, height: unknown) => {
-    const values = [Number(width), Number(height)].filter((value) => value > 0);
-    return values.length ? Math.min(...values) : 0;
-  };
+  let preferredPixels: number | undefined, qualityTouched = false;
   interface Row { key: string; label: string; pixels: number }
   const rows = (): Row[] => {
     const result: Row[] = [];
@@ -168,7 +165,8 @@ export function mountPlayerQualityControl(
       return result;
     }
     if (sourceQualities?.length) {
-      return sourceQualities.map((quality) => ({ key: `h${quality.height}`, label: quality.label || `${quality.height}p`, pixels: quality.height }));
+      const choices = sourceQualities.map((quality) => ({ key: `h${quality.height}`, label: quality.label || `${quality.height}p`, pixels: quality.height }));
+      return choices.length > 1 ? [{ key: 'auto', label: t('catalog:playerQuality.auto'), pixels: 0 }, ...choices] : choices;
     }
     const pixels = resolution(video.videoWidth, video.videoHeight) || resolution(fallbackSize.width, fallbackSize.height);
     return [{ key: 'original', label: pixels ? `${pixels}p` : t('catalog:playerQuality.original'), pixels }];
@@ -186,6 +184,7 @@ export function mountPlayerQualityControl(
   const isOpen = () => menu.getAttribute('aria-hidden') !== 'true';
   const setOpen = (open: boolean) => {
     menu.setAttribute('aria-hidden', String(!open)); toggle.setAttribute('aria-expanded', String(open));
+    menu.inert = !open;
     if (!open) subtitleControls?.hide();
     if (open) document.dispatchEvent(new CustomEvent(PLAYER_PANEL_EVENT, { detail: 'settings' }));
   };
@@ -209,6 +208,10 @@ export function mountPlayerQualityControl(
     menu.scrollTop = 0;
     const current = menu.querySelector<HTMLElement>('.vjs-peach-panel');
     const next = document.createElement('div'); next.className = 'vjs-peach-panel'; next.innerHTML = html;
+    if (current?.contains(document.activeElement)) queueMicrotask(() => {
+      if (run !== panelRun || !isOpen() || next.contains(document.activeElement)) return;
+      (next.querySelector<HTMLElement>('[aria-checked="true"]') ?? next.querySelector<HTMLElement>('button'))?.focus({ preventScroll: true });
+    });
     if (!current || !direction || !isOpen() || matchMedia('(prefers-reduced-motion:reduce)').matches) { menu.replaceChildren(next); menu.style.height = ''; return next }
     const from = menu.getBoundingClientRect().height;
     current.classList.add('vjs-peach-panel-leaving'); current.inert = true; current.setAttribute('aria-hidden', 'true');
@@ -231,6 +234,7 @@ export function mountPlayerQualityControl(
   /** 菜单此刻摆的是哪一面；轨道与尺寸变化只就地改这一面（`refreshPanel`）。 */
   let view: 'main' | 'speed' | 'quality' | 'subtitles' | 'rotation' = 'main';
   const showMain = (direction = 0) => {
+    const previous = view;
     view = 'main';
     const { active } = qualityRows(), speed = rememberRate.current();
     const panel = renderPanel(`<div class="vjs-peach-panel-menu"><button type="button" class="vjs-peach-menu-row" role="menuitemcheckbox" data-player-ambient aria-checked="${playerHost().settings().ambientMode}">
@@ -247,6 +251,10 @@ export function mountPlayerQualityControl(
     button(panel, '[data-player-rotation]').onclick = () => showRotation();
     button(panel, '[data-player-memory-retry]').onclick = () => { void memory.retry() };
     syncMemoryError();
+    if (direction < 0 && previous !== 'main') {
+      const selector = previous === 'quality' ? '[data-player-quality-view]' : `[data-player-${previous}]`;
+      button(panel, selector).focus({ preventScroll: true });
+    }
   };
   const syncMemoryError = () => {
     const message = menu.querySelector<HTMLElement>('[data-player-memory-error]');
@@ -309,33 +317,56 @@ export function mountPlayerQualityControl(
     return options.map((option) =>
       `<button type="button" class="vjs-peach-menu-option" role="menuitemradio" data-player-quality-option="${esc(option.key)}" aria-checked="${option.key === active.key}"><span class="vjs-peach-option-check">${option.key === active.key ? icon('player-option-check') : ''}</span><span class="vjs-peach-option-label">${esc(option.label)}</span></button>`).join('');
   };
+  const applyQuality = (key: string) => {
+    selectedQuality = key;
+    if (levels?.length) {
+      setAdaptiveQuality(levels, key === 'auto' ? -1 : Number(key));
+      return;
+    }
+    if (!sourceQualities?.length || (key !== 'auto' && !key.startsWith('h'))) return;
+    const src = player.currentSrc() || video.getAttribute('src');
+    if (!src) return;
+    const next = new URL(src, location.origin);
+    const height = key === 'auto' ? null : key.slice(1);
+    if (next.searchParams.get('quality') === height) return;
+    if (height) next.searchParams.set('quality', height); else next.searchParams.delete('quality');
+    // 独立 MP4 档位换源时，载入后接回同一时间点和播放状态。
+    const at = player.currentTime() || 0, wasPlaying = !player.paused();
+    player.one('loadedmetadata', () => {
+      if (at > 0) player.currentTime(at);
+      if (wasPlaying) player.play()?.catch(() => {});
+    });
+    player.src({ src: next.pathname + next.search, type: 'video/mp4' });
+  };
+  const restoreQuality = () => {
+    if (preferredPixels === undefined || (!levels?.length && !sourceQualities?.length)) return;
+    const choices = rows().filter(row => row.pixels === preferredPixels);
+    const choice = choices.find(row => row.key === selectedQuality) ?? choices[0];
+    if (choice) applyQuality(choice.key);
+  };
   /** 轨道增减或自动档换轨时原地重画这一列，焦点留在同一档上。 */
   const fillQualityOptions = (list: HTMLElement) => {
     const focused = list.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.playerQualityOption : undefined;
     list.innerHTML = qualityOptionsHtml();
     bindQualityOptions(list);
-    [...list.querySelectorAll<HTMLElement>('[data-player-quality-option]')]
-      .find((option) => focused !== undefined && option.dataset.playerQualityOption === focused)?.focus();
+    if (focused !== undefined) {
+      const options = [...list.querySelectorAll<HTMLElement>('[data-player-quality-option]')];
+      (options.find(option => option.dataset.playerQualityOption === focused) ??
+        options.find(option => option.getAttribute('aria-checked') === 'true') ?? options[0])?.focus({ preventScroll: true });
+    }
   };
   const bindQualityOptions = (list: HTMLElement) => {
     list.querySelectorAll<HTMLElement>('[data-player-quality-option]').forEach((option) => {
       option.onclick = () => {
-        selectedQuality = option.dataset.playerQualityOption || 'auto';
-        if (levels?.length) {
-          for (let index = 0; index < levels.length; index++) levels[index]!.enabled = selectedQuality === 'auto' || selectedQuality === String(index);
-        }
-        /* 来源档位是四个各自独立的 mp4，不是同一条流的多个轨道，所以只能换 src。
-           记住当前进度和播放状态再换：换源会重新加载，不接回去就等于从头开始。 */
-        if (sourceQualities?.length && selectedQuality.startsWith('h')) {
-          const height = selectedQuality.slice(1);
-          const at = player.currentTime() || 0, wasPlaying = !player.paused();
-          const next = new URL(player.currentSrc() || video.src, location.origin);
-          next.searchParams.set('quality', height);
-          player.src({ src: next.pathname + next.search, type: 'video/mp4' });
-          player.one('loadedmetadata', () => {
-            if (at > 0) player.currentTime(at);
-            if (wasPlaying) player.play()?.catch(() => {});
-          });
+        const choice = rows().find(row => row.key === option.dataset.playerQualityOption);
+        if (!choice) return;
+        qualityTouched = true;
+        applyQuality(choice.key);
+        if (choice.key === 'auto' || choice.pixels > 0) {
+          preferredPixels = choice.pixels;
+          void memory.save({ quality_pixels: choice.pixels }).catch(() => {});
+        } else {
+          preferredPixels = undefined;
         }
         showMain(-1);
       };
@@ -350,6 +381,7 @@ export function mountPlayerQualityControl(
   /* HLS 自动码率起播时轨道陆续登记、码率随网速换档，视频尺寸也跟着变：这些事件只更新角标和
      正在看的那一面。退回主菜单的话，正在清晰度面板里挑档的人会被一次换轨踢出去。 */
   const refreshPanel = () => {
+    restoreQuality();
     if (!isOpen()) { qualityRows(); return }
     const panel = menu.lastElementChild as HTMLElement | null;
     if (view === 'quality' && panel) { fillQualityOptions(button(panel, '.vjs-peach-panel-menu')); return }
@@ -361,16 +393,34 @@ export function mountPlayerQualityControl(
     if (angle) angle.textContent = `${rotation.angle()}°`;
     if (speed) speed.textContent = rememberRate.current() === 1 ? t('catalog:playerQuality.normalSpeed') : `${rememberRate.current()}×`;
   };
-  toggle.onclick = (event) => { event.stopPropagation(); const open = !isOpen(); if (open) showMain(); setOpen(open) };
-  const outside = (event: Event) => { if (!root.contains(event.target as Node)) close() };
+  toggle.onclick = (event) => {
+    event.stopPropagation();
+    const open = !isOpen();
+    if (open) showMain();
+    setOpen(open);
+    if (open && event.detail === 0) menu.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+  };
+  const keepsMenuOpen = (target: Node): boolean =>
+    root.contains(target) || (target instanceof Element && Boolean(
+      root.closest('[data-player-guide]') && target.closest('.peach-guide-popover'),
+    ));
+  const outside = (event: Event) => {
+    const target = event.target;
+    if (target instanceof Element && !target.closest('[data-peach-feedback]') && !keepsMenuOpen(target)) close();
+  };
   document.addEventListener('pointerdown', outside);
+  root.addEventListener('focusout', (event) => {
+    if (isOpen() && event.relatedTarget instanceof Node && !keepsMenuOpen(event.relatedTarget)) close();
+  });
   root.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && isOpen()) { event.preventDefault(); event.stopPropagation(); close(); toggle.focus() }
     if (['ArrowDown', 'ArrowUp'].includes(event.key) && isOpen() && !(event.target instanceof HTMLInputElement)) {
       event.preventDefault();
       const buttons = [...menu.querySelectorAll<HTMLElement>('button:not([disabled]),input,a[href]')].filter(node => node.offsetParent !== null && !node.closest('[inert]'));
       const current = buttons.indexOf(document.activeElement as HTMLElement);
-      buttons[(current + (event.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length]?.focus();
+      const step = event.key === 'ArrowDown' ? 1 : -1;
+      const start = current < 0 ? (step > 0 ? -1 : 0) : current;
+      buttons[(start + step + buttons.length) % buttons.length]?.focus();
     }
   });
   video.addEventListener('loadedmetadata', refreshPanel);
@@ -378,6 +428,11 @@ export function mountPlayerQualityControl(
   video.addEventListener('ratechange', refreshPanel);
   levels?.on?.(['addqualitylevel', 'removequalitylevel', 'change'], refreshPanel);
   const unsubscribeMemory = memory.subscribe(() => { syncMemoryError(); refreshPanel() });
+  memory.restore(saved => {
+    if (qualityTouched || saved.quality_pixels === undefined) return;
+    preferredPixels = saved.quality_pixels;
+    refreshPanel();
+  });
   player.on('dispose', () => {
     unsubscribeMemory();
     video.removeEventListener('loadedmetadata', refreshPanel);
