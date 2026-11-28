@@ -54,6 +54,11 @@ compositionState.shellActions = {
   openSettings:section=>openSettings(section,true),
   closeSettings:()=>settingsPanelApi()?.close(false),
   openItem:id=>void openItem(id),
+  resumePlayback:(kind,id,time)=>{
+    const resume={time,autoplay:true};
+    if(kind==='follow')void openFollowDetail(id,true,null,false,resume);
+    else void openItem(id,true,null,null,false,null,null,resume);
+  },
   catalogFileAction:(operation,ids,button)=>runCatalogBatchFor(operation,ids,button),
   openEntity:(kind,name)=>void openEntity(kind,name),
   /* 点一个内容标签是「回目录并按它筛选」：整页换成目录仍归壳，页面只说点了哪个键。 */

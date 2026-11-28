@@ -418,6 +418,7 @@ def _search_status(root, linked, *, warnings, warning_sources, unfetched, retry_
     incomplete = failed and not available
     return {"warnings": warnings, 'warning_sources': warning_sources, 'complete': not failed,
             'source_failures': source_failures,
+            'retry_sources': [source.key for source in CHAIN[:4] if source.label in unfetched],
             'connection_checks': [source.key for source in CHAIN if source.key in connection_checks],
             'retry_after': max(retry_delays) if retry_delays else None, "unfetched_sources": unfetched,
             'state': 'error' if incomplete else 'ready',
@@ -436,7 +437,8 @@ def _source_pages(fetcher, found):
 
 def search(root: Path, code: str, *, transport=None, min_size: int = 0,
            max_size: int = 1024 ** 4, goal: str = "quality", stop_on_preferred: bool = True,
-           skip_javdb_after_preferred: bool = False, edition_preferences: tuple[str, ...] = ()) -> dict:
+           skip_javdb_after_preferred: bool = False, edition_preferences: tuple[str, ...] = (),
+           retry_source: str = "") -> dict:
     """有界查询四个可直连来源（manko.fun、JavDB、sukebei、JavBus），结果按 infohash 去重合并。
 
     直接添加允许在 manko 高清命中时结束；`skip_javdb_after_preferred`（想要定时查找）在 manko 已有高清时
@@ -449,6 +451,8 @@ def search(root: Path, code: str, *, transport=None, min_size: int = 0,
     try:
         for source, collect in ((CHAIN[0], fetcher.manko), (CHAIN[1], fetcher.javdb),
                                 (CHAIN[2], fetcher.sukebei), (CHAIN[3], fetcher.javbus)):
+            if retry_source and source.key != retry_source:
+                continue
             if (skip_javdb_after_preferred and not edition_preferences and source.key == "javdb"
                     and any(item["resolution"] >= HIGH_QUALITY for item in found)):
                 trace.append(f"{source.label}: skipped, manko.fun already had 1080p/2160p")

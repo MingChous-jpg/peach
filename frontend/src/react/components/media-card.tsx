@@ -43,6 +43,7 @@ import { busyProps } from '../settings/busy-props';
 import { joinList, t } from '../../i18n';
 import { codedText, partsLabel, serverLabelList } from '../../core/server-text';
 import { useMediaContextMenu } from './media-actions';
+import { MediaAvatarStack } from './media-avatar-stack';
 
 /** 竖屏一律同一个比例，不按每条视频的实际宽高：竖屏条与竖屏网格才高低一致。 */
 const PORTRAIT_RATIO = 9 / 16;
@@ -134,14 +135,11 @@ export function identityParts(item: MediaItem, openEntity?: (kind: string, name:
   const { kind, name, coStarred, performers, refs, total } = cardIdentity(item);
   const avatar = coStarred
     ? (
-      <div data-media-avatars="" style={{ '--media-avatar-count': Math.min(5, performers.length) } as CSSProperties}>
-        {performers.slice(0, 5).map((nm, index) => (
+      <MediaAvatarStack faces={performers.slice(0, 5).map((nm, index) => (
           <button key={`${nm}:${index}`} type="button" data-media-avatar="" data-entity-kind="performer"
             data-entity-name={nm} title={t(item.is_jav ? 'shell:mediaCard.openActressNamed' : 'shell:mediaCard.openPerformerNamed', { name: entityDisplayName('performer', nm, refs[index]?.id) })}
-            style={{ '--media-avatar-index': index } as CSSProperties}
             dangerouslySetInnerHTML={{ __html: entityAvatar(nm, refs[index] ?? null, 'performer') }} />
-        ))}
-      </div>
+        ))} />
     )
     : kind
       ? (

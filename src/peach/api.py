@@ -24,6 +24,7 @@
 import asyncio
 import logging
 import sqlite3
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -462,6 +463,47 @@ async def _stop_warmup(warmup: asyncio.Task) -> None:
                        WARMUP_STOP_SECONDS)
 
 
+async def _activate_startup_ledger(activation, configured: bool) -> bool:
+    from . import startup_diagnostics
+
+    with startup_diagnostics.stage("activate_ledger") as outcome:
+        ready = await activation.start()
+        if configured and not ready:
+            outcome("unavailable")
+    return ready
+
+
+async def _record_startup_mounts(monitor: MountReachability) -> None:
+    from . import startup_diagnostics
+
+    # 后台探测有结果后再留记录，网页启动无需等待挂载。
+    deadline = time.monotonic() + monitor.timeout + monitor.retry_delay + 1
+    while True:
+        counts = monitor.status_counts()
+        if not counts.get("checking") or time.monotonic() >= deadline:
+            await asyncio.to_thread(startup_diagnostics.mount_results, counts)
+            return
+        await asyncio.sleep(0.25)
+
+
+def _start_mount_monitor(monitor: MountReachability) -> asyncio.Task | None:
+    from . import startup_diagnostics
+
+    with startup_diagnostics.stage("mount_monitor"):
+        monitor.start()
+    return asyncio.create_task(_record_startup_mounts(monitor)) if startup_diagnostics.active() else None
+
+
+async def _stop_startup_mount_report(report: asyncio.Task | None) -> None:
+    if report is None:
+        return
+    report.cancel()
+    try:
+        await report
+    except asyncio.CancelledError:
+        pass
+
+
 def _server_error_headers(request: Request, error: Exception, status_code=500):
     """服务错误按路由模板关联；请求参数、正文与鉴权头留在请求中。"""
     if status_code < 500:
@@ -856,6 +898,8 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
+        from . import startup_diagnostics
+
         # asyncio 异常处理器由 `listening.serve` 装在 uvicorn 的事件循环上：它要拿着 uvicorn
         # 的 Server，才能在监听被标准库关掉后重新监听。
         # 握手要等 cloudflared 连上边缘，断网时会等满 `wait_timeout`；放在后台，本机访问
@@ -865,9 +909,10 @@ def create_app(
                     follow_backfill, _app.state.cover_repair)
         activation = _LedgerActivation(_app, settings, contract, services, automatic_updates, sharing)
         _app.state.ledger_activation = activation
-        ledger_ready = await activation.start()
+        ledger_ready = await _activate_startup_ledger(activation, settings.configured)
+        mount_report = None
         if settings.configured:
-            mount_reachability.start()
+            mount_report = _start_mount_monitor(mount_reachability)
             # javdb 的节拍和独立采集脚本共用数据根里的同一个文件，两边同时跑也不超过它的速率上限。
             from .library_processing import share_source_limits
             share_source_limits(settings.follow_state_root)
@@ -876,7 +921,8 @@ def create_app(
         aggregate_warmup = asyncio.create_task(_warm_ledger_aggregates(ledger_ready, contract, aggregate_stop))
         if mdns is not None:
             try:
-                await asyncio.to_thread(mdns.start)
+                with startup_diagnostics.stage("mdns"):
+                    await asyncio.to_thread(mdns.start)
             except Exception:
                 mdns.status = "unavailable"
                 logging.getLogger(__name__).exception("mDNS publication failed")
@@ -885,6 +931,7 @@ def create_app(
             yield
         finally:
             resource_sampling.cancel()
+            await _stop_startup_mount_report(mount_report)
             # 外部播放器的最后一段观看要赶在账本收尾前落下。
             await asyncio.to_thread(_app.state.playback_trackers.stop)
             await activation.stop()

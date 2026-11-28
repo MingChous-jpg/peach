@@ -388,7 +388,8 @@ def q_want_magnets(contract, args) -> dict:
     with public_cache_scope(contract.cover_root.parent / 'jav-public'):
         return search_for(contract.follow_secrets_root).query(
             row["code"], refresh=str(args.get('refresh') or '') == '1', released=row['release_date'],
-            edition_preferences=_edition_preferences(contract))
+            edition_preferences=_edition_preferences(contract),
+            retry_source=str(args.get("retry_source") or ""))
 
 
 def _add(connection, body) -> dict:

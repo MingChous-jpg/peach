@@ -24,6 +24,8 @@ Entries are written for users to scan: one sentence each, saying where something
 - **Settings**: Export recent server and child-process resource samples and media first-response timings in local diagnostics. / **配置**：本机诊断可导出近期服务进程与子进程的资源记录，以及媒体首段响应耗时。
 
 - **Settings**: Record slow page loads, playback planning, startup and buffering in local diagnostics. / **配置**：本机诊断记录页面加载、播放计划、起播和缓冲耗时。
+- **Interface**: Open updates, playback progress, recommendations, and issues that need attention from the notification center (#905). / **界面**：在顶栏通知中心打开近期更新、继续观看、推荐和待处理事项（#905）。
+- **Settings**: Record startup diagnostics automatically and show the result in Diagnostics (#905). / **配置**：自动记录启动诊断，在诊断页查看最近一次启动结果（#905）。
 
 - **Interface**: Learn AI Assistant, folder mode, and JAV views in the tutorial, or finish the tutorial directly (#563). / **界面**：新手教程加入 AI 助手、文件夹模式和 JAV 视图导览，并支持直接结束整套教程（#563）。
 
@@ -48,6 +50,7 @@ Entries are written for users to scan: one sentence each, saying where something
 - **Library**: Remove recovered scan problems from current notices and retry lists while keeping the original task history. / **馆藏**：已恢复的扫描问题自动从现行提醒和重试清单撤下，保留原任务记录。
 - **Settings**: Clear an automatic download error after the same update is ready. / **配置**：同一版本更新下载就绪后，撤下此前的自动下载错误。
 - **Playback**: Reuse file status when preparing the playback plan. / **播放**：制定播放计划时复用片源文件状态，减少重复读盘。
+- **Sourcing**: Retry the source that failed while keeping results from other sources (#905). / **采集**：单独重试失败的来源，保留其他来源已返回的结果（#905）。
 
 - **Sourcing**: Use consistent JAV tags across languages and separate bridal roles, wedding dresses, and studio affiliations (#902). / **采集**：统一 JAV 日英来源的同类标签，区分新娘角色、婚纱服装和厂牌归属（#902）。
 - **Interface**: Show reviewed names in the JAV online catalog and make filter searches easier to see in light mode (#902). / **界面**：JAV 在线目录显示已复核的艺名，亮色下的筛选查找框更清晰（#902）。

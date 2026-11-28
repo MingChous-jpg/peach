@@ -34,6 +34,32 @@ interface Result extends ResourceWarnings {
   source_failures?: string[];
 }
 
+function mergeSourceRetry(previous: Result, next: Result, source: string): Result {
+  const items = new Map(previous.items.map(item => [item.id, item]));
+  for (const item of next.items) {
+    const prior = items.get(item.id);
+    items.set(item.id, prior ? { ...prior, seeders: Math.max(prior.seeders, item.seeders),
+      origins: [...new Set([...prior.origins, ...item.origins])] } : item);
+  }
+  const warnings = [
+    ...(previous.warnings ?? []).flatMap((text, index) => previous.warning_sources?.[index] === source
+      ? [] : [{ result: previous, text, index }]),
+    ...(next.warnings ?? []).map((text, index) => ({ result: next, text, index })),
+  ];
+  const ready = previous.state === 'ready' || next.state === 'ready';
+  const retrySources = [...(previous.retry_sources ?? []).filter(key => key !== source), ...(next.retry_sources ?? [])];
+  return {
+    ...next, state: ready ? 'ready' : next.state, error: ready ? '' : next.error,
+    items: [...items.values()],
+    warnings: warnings.map(({ text }) => text),
+    warning_sources: warnings.map(({ result, index }) => result.warning_sources?.[index] ?? ''),
+    warning_codes: warnings.map(({ result, index }) => result.warning_codes?.[index] ?? null),
+    warning_params: warnings.map(({ result, index }) => result.warning_params?.[index] ?? null),
+    connection_checks: [...(previous.connection_checks ?? []).filter(key => key !== source), ...(next.connection_checks ?? [])],
+    retry_sources: retrySources,
+  };
+}
+
 function SearchSpinner({ className }: { className?: string }) {
   return <span className={className} aria-hidden dangerouslySetInnerHTML={{ __html: spinnerHtml('') }} />;
 }
@@ -61,12 +87,14 @@ export function ResourceSearch({ initialCode, reason, choose, onSearch, onWork }
   const [selected, setSelected] = useState('');
   const action = useAction();
   const metadataRequest = useRef<AbortController | null>(null);
+  const lastQuery = useRef('');
   useEffect(() => () => metadataRequest.current?.abort(), []);
   const search = () => {
     if (!code.trim() || action.busy) return;
     const query = new URLSearchParams({ code: code.trim(), goal });
     if (min) query.set('min_size', String(Math.round(Number(min) * 1024 ** 3)));
     if (max) query.set('max_size', String(Math.round(Number(max) * 1024 ** 3)));
+    lastQuery.current = query.toString();
     setResult(null);
     setSelected('');
     const requested = code.trim();
@@ -87,6 +115,17 @@ export function ResourceSearch({ initialCode, reason, choose, onSearch, onWork }
           cover: item.has_cover ? coverUrl(item, true) : '', origin: `asset:${item.id}` } : null);
       }, error => { if (!controller.signal.aborted) onWork(null, errorMessage(error)) });
     }
+  };
+  const retrySource = (source: string) => {
+    const query = new URLSearchParams(lastQuery.current);
+    query.set('retry_source', source);
+    void action.run(source, (signal) => apiGet<Result>(`/api/resources/search?${query}`, signal), next => {
+      if (next.state === 'busy') {
+        action.setError(codedText(next, 'error'));
+        return;
+      }
+      setResult(previous => previous ? mergeSourceRetry(previous, next, source) : next);
+    });
   };
   return (
     <form aria-label={t('manage:resourceSearch.searchTorrents')} aria-busy={Boolean(action.busy)}
@@ -115,7 +154,7 @@ export function ResourceSearch({ initialCode, reason, choose, onSearch, onWork }
         <Input label={t('manage:resourceSearch.minSize')} inputMode="decimal" value={min} onChange={setMin} />
         <Input label={t('manage:resourceSearch.maxSize')} inputMode="decimal" value={max} onChange={setMax} />
       </div>
-      {action.busy ? <Help role="status">{t('manage:resourceSearch.searching')}</Help> : null}
+      {action.busy === 'search' ? <Help role="status">{t('manage:resourceSearch.searching')}</Help> : null}
       {action.error ? <ErrorText>{action.error}</ErrorText> : null}
       {result?.error ? <Note tone="error" action={result.error_code === 'labels.resourceSearch.noIndexer' ?
         <ButtonLink variant="secondary" size="small" href="/settings/subscriptions#sources-indexers">
@@ -123,9 +162,10 @@ export function ResourceSearch({ initialCode, reason, choose, onSearch, onWork }
         {codedText(result, 'error')}
       </Note> : null}
       {result?.state === 'ready' && !result.items.length ? <Help role="status">
-        {result.source_failures?.length ? t('manage:resourceSearch.noResultsFromAvailable') : t('manage:resourceSearch.noResults')}
+        {result.source_failures?.length || result.retry_sources?.length
+          ? t('manage:resourceSearch.noResultsFromAvailable') : t('manage:resourceSearch.noResults')}
       </Help> : null}
-      {result ? <ResourceWarningNotes result={result} /> : null}
+      {result ? <ResourceWarningNotes result={result} onRetry={retrySource} busy={action.busy} /> : null}
       {result?.items.length ? <ul className="flex min-w-0 flex-col gap-4">
         {result.items.map((item) => <li key={item.id} className="flex min-w-0 flex-col gap-2 border-t border-separator-border pt-4">
           <p className="break-words text-body-2-medium text-text-primary">{item.name}</p>

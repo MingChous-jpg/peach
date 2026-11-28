@@ -290,7 +290,7 @@ class Search:
         self.cache: OrderedDict[tuple, tuple[float, dict]] = OrderedDict()
 
     def run(self, indexers: list[dict], code: str, filters: Filters, blocked=(), *,
-            priority: Callable[[dict], int] | None = None) -> dict:
+            priority: Callable[[dict], int] | None = None, retry: bool = False) -> dict:
         code = normalise_code_key(code)
         if not code or len(code) > 80 or not same_release_code(release_code_from_product(code), code):
             raise UserValueError("errors.resourceSearch.invalidCode")
@@ -306,7 +306,7 @@ class Search:
         try:
             key = (json.dumps(active, sort_keys=True), code, filters)
             cached = self.cache.get(key)
-            if cached and self.clock() - cached[0] < 60:
+            if not retry and cached and self.clock() - cached[0] < 60:
                 result = cached[1]
             else:
                 result = self._search(active, code, filters)
@@ -327,6 +327,7 @@ class Search:
         retry_delays = []
         warnings = []
         failures = []
+        retry_sources = []
         rejected: Counter = Counter()
         successful = 0
         deadline = time.monotonic() + 45
@@ -365,12 +366,14 @@ class Search:
                         else 'labels.resourceSearch.invalidResponse' if isinstance(error, (UnicodeError, ParseError))
                         else 'labels.resourceSearch.requestFailed')
                     failures.append(Said('labels.resourceSearch.indexerError', indexer=indexer['name'], error=reason))
+                    retry_sources.append(f"indexer:{indexer['key']}")
                     if (delay := transient_delay(error)) is not None:
                         retry_delays.append(delay)
                 except ValueError as error:
                     failures.append(Said("labels.resourceSearch.indexerError", indexer=indexer['name'],
                                          error=nested_message(error) if isinstance(error, UserValueError)
                                          else Said('labels.resourceSearch.invalidResponse')))
+                    retry_sources.append(f"indexer:{indexer['key']}")
         warnings.extend(failures)
 
         def rank(row):
@@ -384,5 +387,7 @@ class Search:
         return {"ok": successful > 0, "state": "ready" if successful else "error",
                 "retry_after": max(retry_delays) if retry_delays else None,
                 "items": sorted(found.values(), key=rank), "warnings": warnings, **parallel("warning", warnings),
+                "warning_sources": retry_sources + [""] * (len(warnings) - len(retry_sources)),
+                "retry_sources": retry_sources,
                 "rejected": dict(rejected), "failures": failures,
                 **coded("error", "" if successful else Said("labels.resourceSearch.allFailed"))}

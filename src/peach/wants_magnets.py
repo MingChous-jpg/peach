@@ -16,6 +16,7 @@ from .sources import FailureReason, SourceFailure
 from .catalog_rules import normalise_code_key
 from .catalog_vocabulary import resource_item
 from .fsutil import atomic_write_text
+from .user_messages import UserValueError
 from .jav_cache import cache_fresh, cache_lifetime as cache_lifetime
 
 MAX_CACHE_BYTES = 16 * 1024 * 1024
@@ -31,12 +32,13 @@ def reusable_result(result) -> bool:
             and bool(result['items'] or result.get('complete') is True or not result.get('warnings')))
 
 
-def fetch(root: Path, code: str, *, quick: bool = False, edition_preferences: tuple[str, ...] = ()) -> dict:
+def fetch(root: Path, code: str, *, quick: bool = False, edition_preferences: tuple[str, ...] = (),
+          retry_source: str = "") -> dict:
     """查一部的磁链与资源链接。无版次偏好时，定时查找可以跳过已有高清候选的 JavDB 查询。"""
     from .magnet_chain import edition_rank, search
     from .sources.javdb import merge_resources
     result = search(root, code, stop_on_preferred=False, skip_javdb_after_preferred=quick,
-                    edition_preferences=edition_preferences)
+                    edition_preferences=edition_preferences, retry_source=retry_source)
     linked = result.pop('linked_resources', [])
     ranked = [{**row, 'id': 'magnet:' + row['info_hash'], 'size': row['size_text']} for row in result['items']]
     items = merge_resources([*ranked, *linked])
@@ -44,6 +46,46 @@ def fetch(root: Path, code: str, *, quick: bool = False, edition_preferences: tu
         items.sort(key=lambda item: edition_rank(item, code, edition_preferences)
                    if item['protocol'] == 'magnet' else len(edition_preferences))
     return {**result, 'items': items[:128]}
+
+
+def _retry_warnings(previous: dict, refreshed: dict, source: str) -> dict:
+    retained = [index for index, owner in enumerate(previous.get('warning_sources') or []) if owner != source]
+    rows = {}
+    for key in ('warnings', 'warning_codes', 'warning_params', 'warning_sources'):
+        before = previous.get(key) or []
+        after = refreshed.get(key) or []
+        rows[key] = [*(before[index] if index < len(before) else None for index in retained), *after]
+    return rows
+
+
+def _merge_retry(previous: dict, refreshed: dict, source: str) -> dict:
+    from .magnet_chain import CHAIN
+    from .sources.javdb import merge_resources
+
+    rows = _retry_warnings(previous, refreshed, source)
+    for key in ('retry_sources', 'connection_checks'):
+        rows[key] = list(dict.fromkeys([*(value for value in previous.get(key, []) if value != source),
+                                      *refreshed.get(key, [])]))
+    label = next(entry.label for entry in CHAIN if entry.key == source)
+    rows['unfetched_sources'] = list(dict.fromkeys([
+        *(value for value in previous.get('unfetched_sources', []) if value != label),
+        *refreshed.get('unfetched_sources', []),
+    ]))
+    pages = {page['url']: page for result in (previous, refreshed) for page in result.get('source_pages', [])}
+    items = merge_resources([*previous['items'], *refreshed['items']])[:128]
+    complete = refreshed.get('complete') is True and not (rows['unfetched_sources'] or rows['connection_checks'])
+    state = 'ready' if (items or complete or previous['state'] == 'ready') else 'error'
+    message = '' if state == 'ready' else Said('labels.magnetChain.incomplete')
+    baseline = {key: value for key, value in previous.items() if key not in ('error_code', 'error_params')}
+    failures = {key: warning for key, warning in zip(rows['warning_sources'], rows['warnings'])
+                if key in rows['retry_sources']}
+    delays = [value for value in (previous.get('retry_after'), refreshed.get('retry_after')) if value is not None]
+    return {**baseline, **rows, **coded('error', message), 'state': state, 'items': items,
+            'complete': complete, 'cache_stale': not complete and bool(previous.get('cache_stale')),
+            'source_pages': list(pages.values()), 'source_failures': list(failures.values()),
+            'source_url': refreshed.get('source_url') or previous.get('source_url', ''),
+            'retry_after': max(delays, default=None) if rows['retry_sources'] else None,
+            'checked_at': refreshed['checked_at'] if complete else previous.get('checked_at')}
 
 
 class MagnetSearch:
@@ -157,10 +199,10 @@ class MagnetSearch:
                 self._save()
 
     def query(self, code: str, *, refresh: bool = False, released: str | None = None, quick: bool = False,
-              edition_preferences: tuple[str, ...] | None = None) -> dict:
+              edition_preferences: tuple[str, ...] | None = None, retry_source: str = "") -> dict:
         code = normalise_code_key(code)
         cached = self._cached(code, released, edition_preferences)
-        if cached and not refresh:
+        if cached and not (refresh or retry_source):
             return cached
         # 等锁的请求不积压为无限队列；前端把忙态留在卡片上，稍后再取。
         if not self.lock.acquire(timeout=0.05):
@@ -168,8 +210,15 @@ class MagnetSearch:
                     "checked_at": cached.get('checked_at') if cached else None}
         try:
             cached = self._cached(code, released, edition_preferences)
-            if not refresh and cached:
+            if not (refresh or retry_source) and cached:
                 return cached
+            if retry_source:
+                with self.cache_lock:
+                    failed = self.failures.get(code)
+                    existing = self.cache.get(code)
+                    cached = (failed or existing or (0, None))[1]
+                if not cached or retry_source not in cached.get('retry_sources', []):
+                    raise UserValueError("errors.resourceSearch.invalidRetrySource")
             delay = self.next_request - self.clock()
             if delay > 0:
                 self.sleeper(delay)
@@ -177,6 +226,8 @@ class MagnetSearch:
                       "checked_at": datetime.fromtimestamp(self.wallclock(), timezone.utc).isoformat()}
             try:
                 options = {"quick": True} if quick else {}
+                if retry_source:
+                    options["retry_source"] = retry_source
                 if edition_preferences:
                     options["edition_preferences"] = edition_preferences
                     result["edition_preferences"] = list(edition_preferences)
@@ -189,6 +240,10 @@ class MagnetSearch:
             except Exception:  # 来源异常只报告查询失败，不泄露请求或凭据
                 result.update(state="error", **coded("error", Said("labels.wantsMagnets.chainUnfetched")))
             self.next_request = self.clock() + 3
+            if retry_source:
+                if "complete" not in result:
+                    return cached
+                result = _merge_retry(cached, result, retry_source)
             self._remember(code, result)
             return result
         finally:

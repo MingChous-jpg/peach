@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import threading
 import time
+from collections import Counter
 from concurrent.futures import Future
 from dataclasses import dataclass
 from pathlib import Path
@@ -213,3 +214,9 @@ class MountReachability:
             row["online"] is None for row in rows) else "ok", "sources": rows,
             "warnings": [row["message"] for row in failed],
             "warning_codes": [{"code": row["message_code"], "params": row["message_params"]} for row in failed]}
+
+    def status_counts(self) -> dict[str, int]:
+        """Snapshot root outcomes without serializing paths or user-defined source names."""
+        with self._lock:
+            return dict(Counter(self._states[root.path].state if root.path in self._states else "unmapped"
+                                for root in self.roots))

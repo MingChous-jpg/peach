@@ -158,6 +158,7 @@ class ReferenceUpdateTests(unittest.TestCase):
              "boardui-modal",
              "boardui-theme",
              "boardui-auth-card",
+             "boardui-notification-center",
              "fluid-springs", "fluid-tabs",
              "amane-content-routes",
              "readme-yingku",

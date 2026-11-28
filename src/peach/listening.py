@@ -218,6 +218,7 @@ def serve(app, sock: socket.socket, **options) -> None:
     import uvicorn
     from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+    from . import startup_diagnostics
     from .error_reporting import asyncio_handler
     try:
         extra = configured_ipv6_networks(os.environ.get("PEACH_LAN_IPV6_PREFIXES", ""))
@@ -230,7 +231,18 @@ def serve(app, sock: socket.socket, **options) -> None:
         host=str(sock.getsockname()[0]), port=int(sock.getsockname()[1]),
         workers=1, proxy_headers=False, **options,
     )
-    server = uvicorn.Server(config)
+    if startup_diagnostics.active():
+        class RecordedServer(uvicorn.Server):
+            async def startup(self, sockets=None):
+                with startup_diagnostics.stage("web_startup") as outcome:
+                    await super().startup(sockets=sockets)
+                    if not self.started:
+                        outcome("failed")
+                startup_diagnostics.finish("completed" if self.started else "failed")
+
+        server = RecordedServer(config)
+    else:
+        server = uvicorn.Server(config)
 
     async def run():
         asyncio.get_running_loop().set_exception_handler(

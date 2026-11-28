@@ -8,7 +8,7 @@ import subprocess
 import sys
 import threading
 
-from . import access, distribution, interface_text, onboarding, settings_file
+from . import access, distribution, interface_text, onboarding, settings_file, startup_diagnostics
 from .user_messages import UserFacingError, UserRuntimeError
 
 #: 容器首次启动时直接设好的访问密码（ADR-0149）；读过就从环境里删掉，不传给子进程。
@@ -27,6 +27,7 @@ def _said(error: BaseException) -> str:
 
 def launch(*arguments: str) -> subprocess.Popen:
     environment = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1", PEACH_HEADLESS_MANAGED="1")
+    environment.update(startup_diagnostics.environment())
     return subprocess.Popen(
         [sys.executable, "-m", "peach", *arguments],
         stdin=subprocess.DEVNULL, env=environment,
@@ -46,7 +47,8 @@ def stop_process(process: subprocess.Popen | None) -> None:
 
 
 def initialize() -> None:
-    config = settings_file.load_config()
+    with startup_diagnostics.stage("configuration"):
+        config = settings_file.load_config()
     if config.present:
         if not (config.directory('database') / 'ledger.db').is_file():
             raise UserRuntimeError('errors.server.databaseMissing')
@@ -54,14 +56,15 @@ def initialize() -> None:
         writer, _reason = configured_ledger_writer(config)
         if not writer:
             return
-        migrate = launch("migrate", "upgrade", "--yes", "--db",
-                         str(config.directory("database") / "ledger.db"))
-        try:
-            code = migrate.wait(timeout=180)
-            if code:
-                raise UserRuntimeError("errors.server.migrateFailed", {"code": code})
-        finally:
-            stop_process(migrate)
+        with startup_diagnostics.stage("ledger_migration"):
+            migrate = launch("migrate", "upgrade", "--yes", "--db",
+                             str(config.directory("database") / "ledger.db"))
+            try:
+                code = migrate.wait(timeout=180)
+                if code:
+                    raise UserRuntimeError("errors.server.migrateFailed", {"code": code})
+            finally:
+                stop_process(migrate)
         return
     if config.directory("database").joinpath("ledger.db").exists():
         raise UserRuntimeError("errors.server.settingsMissing")
@@ -134,7 +137,8 @@ def supervise(host: str, port: int, stopping: threading.Event) -> int:
             reload_path = config.directory("state") / onboarding.RELOAD_NAME
             if service is None or reload_path.exists() or config.present != serving_configured:
                 stop_process(service)
-                service = serve()
+                with startup_diagnostics.stage("launch_services"):
+                    service = serve()
                 reload_path.unlink(missing_ok=True)
             code = service.poll()
             if code is not None:
@@ -163,6 +167,15 @@ def main(argv: list[str] | None = None) -> int:
     stopping = threading.Event()
     for signum in (signal.SIGTERM, signal.SIGINT):
         signal.signal(signum, lambda *_: stopping.set())
+    state = settings_file.load_config(strict=False).directory("state")
+    with startup_diagnostics.recording(state, "supervisor"):
+        return _start(args, stopping)
+
+
+def _start(args: argparse.Namespace, stopping: threading.Event) -> int:
+    container_ms = os.environ.pop(startup_diagnostics.CONTAINER_MS_ENV, "")
+    if container_ms.isascii() and container_ms.isdecimal() and len(container_ms) <= 10:
+        startup_diagnostics.stage_result("container_preparation", "completed", int(container_ms))
     initialize()
     if os.environ.get('PEACH_DISTRIBUTION') == 'docker':
         # 起服务前写好：watchtower profile 等 Peach 就绪才启动，启动时读这份令牌（ADR-0140）。
@@ -171,8 +184,9 @@ def main(argv: list[str] | None = None) -> int:
             ensure_token()
         except OSError as error:
             print(interface_text.cli("server.updateTokenFailed", error=error), file=sys.stderr, flush=True)
-    config = settings_file.load_config()
-    seeded = seed_access_password(config)
+    with startup_diagnostics.stage("access"):
+        config = settings_file.load_config()
+        seeded = seed_access_password(config)
     if seeded:
         print(seeded, flush=True)
     print(interface_text.cli("server.listening", host=args.host, port=args.port), flush=True)
@@ -182,7 +196,9 @@ def main(argv: list[str] | None = None) -> int:
         print(interface_text.cli("server.firstOpen" if distribution.docker() else "server.firstSignIn"), flush=True)
     if os.environ.get('PEACH_DISTRIBUTION') == 'docker':
         print(interface_text.cli("server.lanAccess"), flush=True)
-    return supervise(args.host, args.port, stopping)
+    result = supervise(args.host, args.port, stopping)
+    startup_diagnostics.finish("failed" if result else "interrupted")
+    return result
 
 
 if __name__ == "__main__":

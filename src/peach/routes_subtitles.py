@@ -62,6 +62,57 @@ def _memory_payload(request: Request, video: str, value: dict, auto: str = "") -
         for row in value["tracks"]]}
 
 
+@router.get("/api/player/recent")
+def recent_playback(request: Request):
+    """Return a bounded set of recently played video candidates and exact saved positions."""
+    from .follow_store import FollowStore
+    from .online_tag_management import OnlineTagPolicy
+    from .web_catalog import (EFFECTIVE_REGION_SQL, attach_catalog_card_identity, attach_cover_fields,
+                              attach_jav_display_fields, attach_studio_refs)
+    from .web_follow import _item_payload
+
+    state = request.app.state
+    contract = state.web_contract
+    root = contract.follow_state_root / "player-subtitles"
+    with state.database.read_connection() as connection:
+        library = [dict(row) for row in connection.execute(
+            "SELECT a.id,a.name,a.catalog_title,a.original_title,a.creator,a.studio,a.code,a.region,a.snapshot_path,"
+            f"a.release_date,a.duration,a.leave_ratio,{EFFECTIVE_REGION_SQL} AS effective_region "
+            "FROM asset a WHERE medium='video' "
+            "AND disposal IS NULL AND COALESCE(location,'')<>'online' AND last_played IS NOT NULL "
+            "ORDER BY CAST(last_played AS REAL) DESC LIMIT 16")]
+        posts = connection.execute(
+            FollowStore._SELECT + " JOIN follow_playback fp ON fp.follow_item_id=i.id"
+            " ORDER BY fp.last_played DESC LIMIT 12").fetchall()
+        tag_policy = OnlineTagPolicy(connection)
+        online = []
+        for row in posts:
+            item = tag_policy.with_custom_tags(FollowStore._row(row))
+            post = _item_payload(item, tag_policy=tag_policy)
+            online.append({"id": item.id, "name": post["title"], "duration": item.duration,
+                           "leave_ratio": None, "post": {key: post[key] for key in (
+                               "id", "title", "provider", "provider_label", "source_id", "source_label",
+                               "author", "credit", "status", "thumb_url", "tags",
+                           )}})
+    attach_catalog_card_identity(contract, library)
+    attach_studio_refs(contract, library)
+    for row in library:
+        row["has_thumb"] = contract.has_snapshot(row.pop("snapshot_path"))
+        row["has_local_poster"] = (contract.poster_root / f"{row['id']}_4.jpg").is_file()
+        attach_cover_fields(contract, row)
+        attach_jav_display_fields(row, row["tags"], row.pop("_entity_kinds"))
+    rows = []
+    for kind, candidates in (("item", library), ("follow", online)):
+        for candidate in candidates:
+            key = f"{kind}:{candidate['id']}" + (":main" if kind == "follow" else "")
+            try:
+                position = subtitle_memory.SubtitleMemory(root, key).read().get("position")
+            except (OSError, ValueError, TypeError, KeyError):
+                position = None
+            rows.append({**candidate, "kind": kind, "key": key, "position": position})
+    return JSONResponse({"items": rows}, headers={"Cache-Control": "no-store"})
+
+
 @router.get("/api/subtitles/memory")
 @router.get("/api/player/memory")
 def remembered_subtitles(request: Request, video: str, auto: str = ""):

@@ -24,6 +24,7 @@ export interface ShellActions {
   closeSettings?(): void;
   /** 打开作品详情（舞台）。 */
   openItem(id: number): void;
+  resumePlayback?(kind: 'item' | 'follow', id: number, seconds: number): void;
   catalogFileAction?(operation: 'like' | 'seen' | 'later', ids: number[], button: HTMLElement): Promise<unknown>;
   /** 打开实体资料页。`kind` 是 `creator`／`performer` 等。 */
   openEntity(kind: string, name: string): void;

@@ -1024,6 +1024,7 @@
       "noLocalCertificate": "这台电脑没有提供 HTTPS 的本机证书",
       "noUpgradeReview": "暂无升级复核记录",
       "openDiagnosticsOnHost": "请在运行 Peach 的电脑上打开系统诊断",
+      "startupCaptureUnavailable": "无法更新本机启动诊断",
       "openOnHost": "请在运行 Peach 的电脑上打开配置",
       "passwordNotText": "密码需要是文字",
       "passwordRequired": "请输入访问密码",
@@ -1868,6 +1869,7 @@
       "tooManyIndexers": "最多配置 {{max}} 个索引器",
       "indexerNotObject": "索引器配置必须是对象",
       "invalidIndexerKey": "索引器编号为空或重复",
+      "invalidRetrySource": "此搜索来源已不可用",
       "invalidIndexerName": "索引器名称须为 1 到 80 个字符",
       "invalidApiKey": "API key 格式不正确",
       "invalidSizeRange": "体积区间须在 0 到 1 TiB 之间，下限不能大于上限",
@@ -3538,6 +3540,18 @@
       "accepted": "正在卸载，Peach 将退出。完成后可关闭此页。"
     },
     "backgroundIssues": {
+      "mediaCapacity": {
+        "title": "存储容量不足，媒体修复已暂停",
+        "link": "打开修复设置"
+      },
+      "mediaMounts": {
+        "title": "媒体挂载需要处理",
+        "link": "打开系统诊断"
+      },
+      "sourceAuth": {
+        "title": "来源需要重新验证 · {{source}}",
+        "link": "打开来源设置"
+      },
       "pushDiscovery": {
         "title": "自动发现新文件入库失败",
         "link": "打开推送设置"

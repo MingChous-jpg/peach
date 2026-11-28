@@ -102,6 +102,11 @@ def _source_cache(handler):
 @_source_cache
 def q_jav_detail(contract, args) -> dict:
     code = detail_code(args)
+    part = args.get("part", "")
+    if part == "preview":
+        stored, _ = discovery_metadata(contract).peek(code)
+        source = PUBLIC_API.peek_movie(code) or stored or {}
+        return _preview_fields(contract, code, source, refresh=True)
     with contract.database.read_connection() as connection:
         row = connection.execute("SELECT * FROM feed_discovery WHERE code=? COLLATE NOCASE LIMIT 1", (code,)).fetchone()
         item = dict(row) if row else {}
@@ -136,7 +141,7 @@ def q_jav_detail(contract, args) -> dict:
     # 官方目录退路没有 JavDB 作品 id：样张、预告与来源链接只按 JavDB 那份算，退路只补标题、厂牌、类别与演员。
     javdb = source if source and source.get("id") else {}
     payload.update(_artwork_fields(contract, code, item, javdb, refresh=args.get('refresh') == '1',
-                                   ambiguous=ambiguous))
+                                   ambiguous=ambiguous, include_preview=part != 'metadata'))
     payload.update(_identity_fields(contract, code, item, source or {}))
     return payload
 
@@ -217,7 +222,7 @@ def source_performer_refs(contract, connection, actors):
     return refs
 
 
-def _artwork_fields(contract, code, item, source, *, refresh=False, ambiguous=False):
+def _artwork_fields(contract, code, item, source, *, refresh=False, ambiguous=False, include_preview=True):
     from .jav_cover_fetch import OFFICIAL_PLACEHOLDER_ONLY_CODE, PLACEHOLDER_CODE, is_javdb_image
     source_cover = (source or {}).get('cover_url') or (source or {}).get('thumb_url')
     missing = {} if contract.has_cover(code) else _cover_reason(contract, code)
@@ -227,8 +232,9 @@ def _artwork_fields(contract, code, item, source, *, refresh=False, ambiguous=Fa
             "cover_url": '' if ambiguous or placeholder else discovery_cover_url(item, source or {}),
             "source_image": bool(source_cover and not is_javdb_image(source_cover)),
             "preview_count": min(len(source.get("preview_images") or []), 30),
-            **({'preview_video_url': '', 'preview_state': 'unavailable'} if ambiguous else
-               _preview_fields(contract, code, source, refresh=refresh)),
+            **(({'preview_video_url': '', 'preview_state': 'unavailable'} if ambiguous else
+               _preview_fields(contract, code, source, refresh=refresh)) if include_preview else {}),
+            "identity_ambiguous": ambiguous,
             "source_url": '' if ambiguous else "https://javdb.com/v/" + str(source["id"]) if source else item.get("link") or "",
             **missing}
 
@@ -437,6 +443,7 @@ def q_jav_resources(contract, args) -> dict:
     code = detail_code(args)
     with public_cache_scope(contract.cover_root.parent / 'jav-public'), _jav_pages(contract) as pages, \
             PUBLIC_API.page_reader(pages):
-        found = search_for(contract.follow_secrets_root).query(code, refresh=args.get('refresh') == '1')
+        found = search_for(contract.follow_secrets_root).query(code, refresh=args.get('refresh') == '1',
+                                                             retry_source=str(args.get('retry_source') or ''))
     # 查询结果是共享缓存里的那一份，交出去的是副本。
     return {**found, "items": list(found.get("items") or []), "warnings": list(found.get("warnings") or [])}

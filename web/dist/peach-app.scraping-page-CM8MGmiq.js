@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "3cdda349-f35a-45f2-89b9-8522fbd2af4e", e._sentryDebugIdIdentifier = "sentry-dbid-3cdda349-f35a-45f2-89b9-8522fbd2af4e");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "5d032a2e-df13-4d5d-9cab-3b766f2feb38", e._sentryDebugIdIdentifier = "sentry-dbid-5d032a2e-df13-4d5d-9cab-3b766f2feb38");
 	} catch {}
 })();
 import { $fe21c36db05242bb$export$d7b12c4107be0d61 as e, AMANE_BRIDGE_CHECK_URL as t, AMANE_BRIDGE_KEY as n, AMANE_BRIDGE_REBUILD_URL as r, ActionSpinner as i, Button as a, CHECK_ALL_KEY as o, COVER_JOB_KEY as s, CUSTOM_SOURCES_KEY as c, CUSTOM_SOURCES_URL as l, Checkbox as u, Disclosure as d, ErrorText as f, ExternalLink as p, Fact as m, FactList as h, FieldLabel as g, Footer as _, Help as v, Input as y, IssueRow as b, JAVDB_BROWSER_LOGIN_URL as ee, LinkButton as te, Note as x, QueryErrorNote as S, Rows as ne, SCRAPING_CHECK_ALL_URL as re, SCRAPING_CHECK_URL as ie, SCRAPING_COVER_URL as ae, SCRAPING_KEY as C, SCRAPING_SETTINGS_URL as oe, SEGMENT as se, SEGMENTED_TRACK as ce, Section as w, SectionToc as T, SegmentedRadioGroup as le, Select$1 as ue, SelectField as E, SelectItem as de, SettingsCard as fe, SettingsRow as pe, SiteMark as D, Stack as O, StatusLabel as k, TaskProgress as A, __toESM as j, activityKind as M, apiSend as N, busyProps as P, checkText as me, codedText as F, composingKey as I, confirmModal as L, errorMessage as R, esc as z, fetchAmaneBridge as B, fetchCheckAllJob as V, fetchCoverJob as he, fetchCustomSources as H, fetchSources as ge, i2 as _e, interfaceLanguage as ve, jobText as U, joinList as W, momentText as G, partsLabel as K, queryClient as q, require_jsx_runtime as ye, require_react as J, serverLabel as be, spinnerHtml as xe, t as Y, useAction as Se, useBackgroundJob as X, useMutation as Z, useQuery as Ce } from "./peach-app.js";
@@ -557,7 +557,7 @@ function Ke({ toast: e }) {
 	let { job: t, running: n, start: r, query: i } = X({
 		queryKey: o,
 		queryFn: ({ signal: e }) => V(e),
-		start: () => N(re, {}),
+		start: (e) => N(re, { retry_failed: e }),
 		onFinish: (t) => {
 			q.invalidateQueries({
 				queryKey: C,
@@ -565,7 +565,7 @@ function Ke({ toast: e }) {
 			}), t.status === "complete" && e(t.failed ? Y("manage:connectionCheck.doneWithFailures", { count: t.failed }) : Y("manage:connectionCheck.doneAllReachable"));
 		}
 	}), s = (e) => {
-		e.preventDefault(), !i.data || n || r.isPending || r.mutate();
+		e.preventDefault(), !i.data || n || r.isPending || r.mutate(!1);
 	}, c = (t?.results ?? []).flatMap((e) => e.results.map((t) => ({
 		source: e.source,
 		name: Ge(e, t),
@@ -573,7 +573,7 @@ function Ke({ toast: e }) {
 	}))), l = (e, t) => /* @__PURE__ */ (0, $.jsxs)("span", {
 		className: "inline-flex min-w-0 items-center gap-1.5",
 		children: [/* @__PURE__ */ (0, $.jsx)(D, { source: e }), t]
-	}), u = c.filter(({ check: e }) => e.outcome === "ok"), f = c.filter(({ check: e }) => e.outcome !== "ok").sort((e, t) => We.indexOf(e.check.outcome) - We.indexOf(t.check.outcome)), p = r.error ? R(r.error) : i.error ? R(i.error) : t?.status === "failed" ? U(t, "error") || Y("manage:connectionCheck.notFinished") : "", g = t?.status === "complete" && t.completed_at ? [G((/* @__PURE__ */ new Date(t.completed_at * 1e3)).toISOString()), t.elapsed_s === void 0 ? "" : Y("manage:connectionCheck.elapsed", { seconds: t.elapsed_s.toFixed(1) })].filter(Boolean).join(" · ") : "";
+	}), u = c.filter(({ check: e }) => e.outcome === "ok"), f = c.some(({ check: e }) => e.outcome === "network" || e.outcome === "http" && e.reason !== "rate_limited"), p = c.filter(({ check: e }) => e.outcome !== "ok").sort((e, t) => We.indexOf(e.check.outcome) - We.indexOf(t.check.outcome)), g = r.error ? R(r.error) : i.error ? R(i.error) : t?.status === "failed" ? U(t, "error") || Y("manage:connectionCheck.notFinished") : "", y = t?.status === "complete" && t.completed_at ? [G((/* @__PURE__ */ new Date(t.completed_at * 1e3)).toISOString()), t.elapsed_s === void 0 ? "" : Y("manage:connectionCheck.elapsed", { seconds: t.elapsed_s.toFixed(1) })].filter(Boolean).join(" · ") : "";
 	return /* @__PURE__ */ (0, $.jsxs)(w, {
 		id: "check-all",
 		title: Y("manage:connectionCheck.title"),
@@ -596,9 +596,9 @@ function Ke({ toast: e }) {
 					count: t?.total ?? 0
 				})
 			}) : null,
-			p ? /* @__PURE__ */ (0, $.jsx)(x, {
+			g ? /* @__PURE__ */ (0, $.jsx)(x, {
 				tone: "error",
-				children: p
+				children: g
 			}) : null,
 			c.length ? /* @__PURE__ */ (0, $.jsx)("div", {
 				className: "flex flex-wrap gap-2",
@@ -614,19 +614,27 @@ function Ke({ toast: e }) {
 					}, e) : null;
 				})
 			}) : null,
-			f.length ? /* @__PURE__ */ (0, $.jsx)("ul", {
+			p.length ? /* @__PURE__ */ (0, $.jsx)("ul", {
 				className: "flex min-w-0 flex-col",
-				children: f.map(({ source: e, name: t, check: n }) => /* @__PURE__ */ (0, $.jsx)(b, {
+				children: p.map(({ source: e, name: t, check: n }) => /* @__PURE__ */ (0, $.jsx)(b, {
 					title: l(e, t),
 					children: /* @__PURE__ */ (0, $.jsxs)("span", {
 						className: "flex flex-wrap items-center gap-2",
-						children: [/* @__PURE__ */ (0, $.jsx)(k, {
-							tone: Ue[n.outcome],
-							children: F(n, "outcome_label")
-						}), n.message ? /* @__PURE__ */ (0, $.jsx)("span", {
-							className: "text-body-2-regular text-text-secondary",
-							children: F(n, "message")
-						}) : null]
+						children: [
+							/* @__PURE__ */ (0, $.jsx)(k, {
+								tone: Ue[n.outcome],
+								children: F(n, "outcome_label")
+							}),
+							n.outcome === "auth" ? /* @__PURE__ */ (0, $.jsx)("a", {
+								href: `#source-${e}`,
+								className: "underline",
+								children: Y("manage:connectionCheck.openSource")
+							}) : null,
+							n.message ? /* @__PURE__ */ (0, $.jsx)("span", {
+								className: "text-body-2-regular text-text-secondary",
+								children: F(n, "message")
+							}) : null
+						]
 					})
 				}, t))
 			}) : null,
@@ -637,14 +645,19 @@ function Ke({ toast: e }) {
 					children: [n.width ? `${n.width} × ${n.height}` : "", n.elapsed_s === void 0 ? "" : Y("manage:connectionCheck.seconds", { seconds: n.elapsed_s.toFixed(2) })].filter(Boolean).join(" · ")
 				}, t)) })
 			}) : null
-		] }), /* @__PURE__ */ (0, $.jsx)(_, {
-			status: g ? Y("manage:connectionCheck.lastChecked", { time: g }) : void 0,
-			children: /* @__PURE__ */ (0, $.jsx)(a, {
+		] }), /* @__PURE__ */ (0, $.jsxs)(_, {
+			status: y ? Y("manage:connectionCheck.lastChecked", { time: y }) : void 0,
+			children: [f ? /* @__PURE__ */ (0, $.jsx)(a, {
+				variant: "secondary",
+				disabled: n || r.isPending,
+				onClick: () => r.mutate(!0),
+				children: Y("manage:connectionCheck.retryFailed")
+			}) : null, /* @__PURE__ */ (0, $.jsx)(a, {
 				type: "submit",
 				disabled: !i.data,
 				...P(n || r.isPending),
 				children: Y("manage:connectionCheck.checkAll")
-			})
+			})]
 		})]
 	});
 }
@@ -950,4 +963,4 @@ function $e({ toast: e }) {
 }
 export { $e as ScrapingPage, Re as linkHost, Le as networkOptions };
 
-//# debugId=3cdda349-f35a-45f2-89b9-8522fbd2af4e
+//# debugId=5d032a2e-df13-4d5d-9cab-3b766f2feb38

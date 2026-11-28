@@ -653,6 +653,33 @@ def background_issues(request: Request, _args: dict[str, str] = Depends(require_
     return {"issues": state.background_issues.collect(state, state.web_contract, config)}
 
 
+@router.get("/api/notification-context")
+def notification_context(request: Request, _args: dict[str, str] = Depends(require_auth)):
+    from . import access
+    from .web_local_access import local_client
+    from .startup_diagnostics import snapshot
+    from .settings_file import active
+
+    state = request.app.state
+    local = local_client(request)
+    settings = state.settings
+    result = {
+        "lan_without_password": local and settings.configured and settings.host in {"0.0.0.0", "::"}
+        and access.load(settings.access_path)["mode"] == "open",
+        "startup": None,
+    }
+    if local:
+        run = snapshot(active().directory("state")).get("capture")
+        if run and run["status"] != "capturing":
+            stages = run.get("stages", ())
+            stage = next((row["stage"] for row in reversed(stages) if row["status"] == "failed"), None)
+            if stage is None:
+                stage = next((row["stage"] for row in reversed(stages) if row["status"] == "unavailable"), None)
+            result["startup"] = {"status": run["status"], "started_at": run.get("started_at"),
+                                 "finished_at": run.get("finished_at"), "issue_stage": stage}
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
 def _conflict(error: TaskRunConflict) -> JSONResponse:
     """手动触发撞上在跑的那一轮：409，并带上挡路那一轮的 id。
 

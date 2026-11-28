@@ -1024,6 +1024,7 @@
       "noLocalCertificate": "This device doesn't provide a local HTTPS certificate.",
       "noUpgradeReview": "No upgrade review record yet.",
       "openDiagnosticsOnHost": "Open system diagnostics on the device running Peach.",
+      "startupCaptureUnavailable": "The local startup diagnostics could not be updated.",
       "openOnHost": "Open Settings on the device running Peach.",
       "passwordNotText": "The password must be text.",
       "passwordRequired": "Enter an access password.",
@@ -1868,6 +1869,7 @@
       "tooManyIndexers": "You can configure at most {{max}} indexers",
       "indexerNotObject": "Each indexer setting must be an object",
       "invalidIndexerKey": "Indexer ID is empty or duplicated",
+      "invalidRetrySource": "This search source is no longer available",
       "invalidIndexerName": "Indexer name must be 1 to 80 characters",
       "invalidApiKey": "API key is not valid",
       "invalidSizeRange": "Size range must be between 0 and 1 TiB, and the minimum can't exceed the maximum",
@@ -3538,6 +3540,18 @@
       "accepted": "Uninstalling. Peach will quit. You can close this page when it's done."
     },
     "backgroundIssues": {
+      "mediaCapacity": {
+        "title": "Media repairs paused for storage capacity",
+        "link": "Open repair settings"
+      },
+      "mediaMounts": {
+        "title": "Media mounts need attention",
+        "link": "Open system diagnostics"
+      },
+      "sourceAuth": {
+        "title": "Sign-in expired or required · {{source}}",
+        "link": "Open source settings"
+      },
       "pushDiscovery": {
         "title": "Couldn't add newly found files automatically",
         "link": "Open push settings"

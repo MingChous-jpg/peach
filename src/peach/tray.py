@@ -16,6 +16,7 @@ import sys
 import threading
 import time
 import webbrowser
+from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -25,7 +26,7 @@ import pystray
 from PIL import Image
 
 from . import (desktop_startup, error_reporting, interface_text, ledger_backups, log_retention, onboarding,
-               retention_settings, runtime_prepare, settings_file, sparkle_update)
+               retention_settings, runtime_prepare, settings_file, sparkle_update, startup_diagnostics)
 from .appid import MACOS_LAUNCH_AGENT_LABEL
 from .certs import ensure_certificate
 from .distribution import standalone
@@ -470,6 +471,7 @@ class ServiceManager:
             # A frozen tray must not pass its one-file bootloader state to Peach.exe.
             environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
         environment.update(self._extra_env)
+        environment.update(startup_diagnostics.environment())
         environment["PEACH_TRAY_MANAGED"] = "1"
         return environment
 
@@ -515,7 +517,8 @@ class ServiceManager:
                         stderr=stderr,
                         shell=False,
                         creationflags=creationflags,
-                        env=environment,
+                        env=({**environment, startup_diagnostics.REASON_ENV: "restart_recovery"}
+                             if exit_code is not None else environment),
                     )
                 assign_to_job(self._job, process)
                 self._owned[spec.name] = process
@@ -1358,13 +1361,20 @@ class PeachTray:
             return None, []
         migrated: list = []
         def prepare():
-            step = self._migrate()
-            migrated.append(step)
-            if step is not None and step.failed:
-                raise RuntimeError(step.message)
+            with startup_diagnostics.stage("ledger_migration"):
+                step = self._migrate()
+                migrated.append(step)
+                if step is not None and step.failed:
+                    raise RuntimeError(step.message)
         self._pending_startup = None
         try:
-            ready = self.manager.restart(prepare=prepare if self.preparation else None, reason=reason)
+            with startup_diagnostics.recording(STATE_DIR, "desktop",
+                                               reason="update_verification" if source_commit else ""):
+                if dependencies is not None:
+                    startup_diagnostics.stage_result("desktop_dependencies", "failed" if dependencies.failed else "completed")
+                ready = self.manager.restart(prepare=prepare if self.preparation else None, reason=reason)
+                if startup_diagnostics.active() and not ready and not self.manager.waiting_for_startup():
+                    startup_diagnostics.finish("failed")
         except RuntimeError:
             return False, self._record([dependencies, *migrated])
         return ready, self._complete_startup(ready, [dependencies, *migrated], source_commit=source_commit)
@@ -1640,9 +1650,20 @@ class PeachTray:
     def run(self) -> None:
         # 迁移排在第一次拉起子服务之前：服务查到还没建的表就是 500。依赖只读核对，
         # 托盘自己已经加载着这个 venv，换不了包。
-        startup = [self._check_dependencies(), self._migrate()]
+        with startup_diagnostics.stage("desktop_dependencies") as outcome:
+            dependencies = self._check_dependencies()
+            if dependencies is not None and dependencies.failed:
+                outcome("failed")
+        with startup_diagnostics.stage("ledger_migration") as outcome:
+            migration = self._migrate()
+            if migration is not None and migration.failed:
+                outcome("failed")
+        startup = [dependencies, migration]
         if not any(step is not None and step.failed for step in startup):
-            self.manager.start_missing(reason="tray startup")
+            with startup_diagnostics.stage("launch_services"):
+                self.manager.start_missing(reason="tray startup")
+        else:
+            startup_diagnostics.finish("failed")
         # 上一次更新留下的备份与暂存构建在这里清退：替换助手结束时托盘已经不在，
         # 只有下一次启动能确认「新托盘已经活下来、旧备份可以少留一份」。
         self.windows_updates.sweep_artifacts()
@@ -2070,12 +2091,24 @@ def main(argv: list[str] | None = None) -> int:
         return failure_exit_code()
 
 
+def _load_startup_config() -> tuple[settings_file.PeachConfig, int]:
+    started = time.monotonic_ns()
+    try:
+        config = settings_file.load_config()
+    except settings_file.SettingsFileError:
+        fallback = settings_file.load_config(strict=False)
+        with startup_diagnostics.recording(fallback.directory("state"), "desktop"):
+            startup_diagnostics.stage_result("configuration", "failed", (time.monotonic_ns() - started) // 1_000_000)
+            raise
+    return config, (time.monotonic_ns() - started) // 1_000_000
+
+
 def _main(argv: list[str] | None = None) -> int:
     # 参数解析必须排在任何进程级副作用之前：`--help` 和拼错的参数都要在 HiDPI 设置、
     # 单实例锁和目录创建之前退出，否则一条试探命令就会在磁盘上凭空造出一个 Peach 数据目录，
     # 让之后的安装探测把这台机器误判成已配置。
     args = build_parser().parse_args(argv)
-    config = settings_file.load_config()
+    config, config_elapsed = _load_startup_config()
     error_reporting.install(config.directory("logs"))
     waiting = needs_setup(config)
     instance = SingleInstance(config.directory("state") / "peach-tray.lock")
@@ -2103,7 +2136,11 @@ def _main(argv: list[str] | None = None) -> int:
         if not args.silent:
             open_application(config, waiting=waiting)
         return 0
+    capture = ExitStack()
     try:
+        reason = "restart_recovery" if os.environ.get("PEACH_TRAY_RECOVERIES") else ""
+        capture.enter_context(startup_diagnostics.recording(config.directory("state"), "desktop", reason=reason))
+        startup_diagnostics.stage_result("configuration", "completed", config_elapsed)
         # 日志按设置的天数保留、按月切段，必须排在任何子进程打开日志之前：Windows 上被占着的
         # 文件改不了名也删不掉。整理不了只记日志，不能因此不起托盘。
         try:
@@ -2133,15 +2170,18 @@ def _main(argv: list[str] | None = None) -> int:
                 LOGGER.exception("Failed to enable automatic recovery after abnormal tray exits")
                 lifecycle.stop("watchdog-start-failed", os.getpid())
                 lifecycle = None
-        specs = build_setup_service_specs(config) if waiting else configured_service_specs(config)
+        with startup_diagnostics.stage("desktop_services"):
+            specs = build_setup_service_specs(config) if waiting else configured_service_specs(config)
         manager = ServiceManager(specs, log_dir=config.directory("logs"))
         gate = SetupGate(manager, config, waiting=waiting, instance=instance)
         if sys.platform == "darwin":
             if not waiting:
-                migration = tray_preparation(config, manager).migrations.apply()
-                if migration.failed:
-                    raise RuntimeError(migration.message)
-            manager.start_missing(reason="tray startup")
+                with startup_diagnostics.stage("ledger_migration"):
+                    migration = tray_preparation(config, manager).migrations.apply()
+                    if migration.failed:
+                        raise RuntimeError(migration.message)
+            with startup_diagnostics.stage("launch_services"):
+                manager.start_missing(reason="tray startup")
             run_macos_menu_bar(manager, gate, silent=args.silent, show_browser=args.show)
         else:
             tray = PeachTray(manager, gate=gate, silent=args.silent, show_browser=args.show,
@@ -2152,12 +2192,15 @@ def _main(argv: list[str] | None = None) -> int:
             tray.run()
         exit_code = 0
     except Exception as exc:
+        startup_diagnostics.finish("failed")
         LOGGER.exception("Tray run failed")
         if not os.environ.get("PEACH_TRAY_RECOVERIES"):
             show_message(tray_text("tray.title.startFailed"), error_reporting.failure_details("tray-runtime", exc),
                          error=True)
         return failure_exit_code()
     finally:
+        startup_diagnostics.finish("interrupted")
+        capture.close()
         if lifecycle is not None:
             lifecycle.exited(exit_code)
         if manager is not None:

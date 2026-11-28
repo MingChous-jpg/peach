@@ -251,7 +251,7 @@ def _source_response(result, response, url, target):
         result.update(coded("message", _connection_message(detail, reason)))
 
 
-def check_source(secrets_root, source, *, preflight=False, lookup=False):
+def check_source(secrets_root, source, *, preflight=False, lookup=False, targets=None):
     """复用来源连接与图片 CDN 判据；安装检查只使用有界 HTTP 请求。"""
     if source not in SOURCES:
         raise ValueError("unknown scraping source")
@@ -267,6 +267,8 @@ def check_source(secrets_root, source, *, preflight=False, lookup=False):
                  if preflight else SourceTransport(secrets_root))
     try:
         for target, url in _check_targets(source):
+            if targets is not None and target not in targets:
+                continue
             result = {**_target(target), "ok": False}
             started = time.monotonic()
             try:
@@ -283,7 +285,7 @@ def check_source(secrets_root, source, *, preflight=False, lookup=False):
             results.append(result)
     finally:
         transport.close()
-    if source not in IMAGE_PROBES:
+    if targets is None and source not in IMAGE_PROBES:
         results.append(_image_unchecked())
     if lookup and source in LOOKUP_PROBES:
         results.append(_check_lookup(secrets_root, source))

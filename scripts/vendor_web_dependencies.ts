@@ -112,7 +112,7 @@ const lucideIcons = new Map([
   ["columns-2", "columns-2"],
   ["refresh-cw", "refresh-cw"], ["user-round", "user-round"], ["tags", "tags"],
   ["list-filter", "list-filter"], ["chart", "chart-no-axes-column"],
-  ["settings", "settings"], ["gauge", "gauge"],
+  ["settings", "settings"], ["gauge", "gauge"], ["bell", "bell"],
   ["history", "history"], ["sparkles", "sparkles"], ["star", "star"],
   ["x", "x"], ["folder-open", "folder-open"], ["info", "info"],
   ["hard-drive", "hard-drive"], ["globe", "globe"], ["rss", "rss"],

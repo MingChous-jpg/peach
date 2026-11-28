@@ -54,7 +54,7 @@ def run_failure(arguments: list[str]) -> tuple[int, str]:
 
 
 def request(name: str, path: str, *, authenticated: bool = True, body: dict | None = None,
-            headers: dict | None = None):
+            headers: dict | None = None, method: str | None = None):
     script = (
         "import json,urllib.request,urllib.error; from pathlib import Path; "
         "body=json.loads(__import__('sys').argv[1]); "
@@ -62,7 +62,8 @@ def request(name: str, path: str, *, authenticated: bool = True, body: dict | No
         "headers=headers | (body['headers'] or {}); "
         "headers['Content-Type']='application/json'; "
         "req=urllib.request.Request('http://127.0.0.1:8900'+body['path'],"
-        "data=json.dumps(body['body']).encode() if body['body'] is not None else None,headers=headers); "
+        "data=json.dumps(body['body']).encode() if body['body'] is not None else None,"
+        "headers=headers,method=body['method']); "
         "\ntry:\n"
         " response=urllib.request.urlopen(req,timeout=15)\n"
         " data=response.read()\n"
@@ -72,7 +73,7 @@ def request(name: str, path: str, *, authenticated: bool = True, body: dict | No
         " print(json.dumps({'status':error.code}))\n"
     )
     return docker("exec", name, "python", "-c", script,
-                  json.dumps({"auth": authenticated, "path": path, "body": body, "headers": headers}))
+                  json.dumps({"auth": authenticated, "path": path, "body": body, "headers": headers, "method": method}))
 
 
 def ready(name: str, *, setup: bool = False) -> None:
@@ -146,6 +147,17 @@ def published_upgrade_checks(name: str, previous: str, image: str) -> None:
         time.sleep(2)
         ready(old)
         asset = scan_fixture(old)
+        receipt = json.loads(request(old, "/api/activity",
+                                     body={"id": asset, "position": 0.75, "duration": 2, "delta": 0.75}))
+        assert receipt["leave_ratio"] == 3 / 8, receipt
+        version = json.loads(request(old, "/healthz?ready=1", authenticated=False))["version"]
+        # Exact seconds were added in 0.63.0. Earlier images used the leave ratio.
+        exact = tuple(map(int, version.split("-")[0].split("."))) >= (0, 63, 0)
+        memory_path = f"/api/player/memory?video=item:{asset}"
+        position = {"seconds": 0.75, "updated_at": 1}
+        if exact:
+            receipt = json.loads(request(old, memory_path, body={"position": position}, method="PUT"))
+            assert receipt["position"] == position, receipt
         previous_migrations = int(exec_as(old, "1000:1000", "python", "-c",
                                           "import sqlite3; from peach.config import DATABASE_PATH; "
                                           "print(sqlite3.connect(DATABASE_PATH).execute("
@@ -155,6 +167,11 @@ def published_upgrade_checks(name: str, previous: str, image: str) -> None:
         ready(candidate)
         assert json.loads(request(candidate, "/api/items", authenticated=False)) == {"status": 401}
         assert json.loads(request(candidate, "/api/items")) is not None
+        assert json.loads(request(candidate, f"/api/item?id={asset}"))["leave_ratio"] == 3 / 8
+        if exact:
+            assert json.loads(request(candidate, memory_path))["position"] == position
+        media = json.loads(request(candidate, f"/stream?id={asset}", headers={"Range": "bytes=0-63"}))
+        assert media == {"status": 206, "size": 64}, media
         exec_as(candidate, "1000:1000", "python", "-c", """
 from contextlib import closing
 import sqlite3
@@ -354,8 +371,13 @@ def main() -> None:
             time.sleep(0.5)
         assert marker == "False", t("smoke_docker.reloadNotConsumed")
         ready(name)
+        exec_as(name, "1000:1000", "python", "-m", "peach", "doctor", "--startup-diagnostics", "workflow_probe")
         docker("restart", "--time", "75", name)
         ready(name)
+        startup = json.loads(exec_as(name, "1000:1000", "python", "-m", "peach", "doctor",
+                                     "--startup-diagnostics", "status"))
+        assert not startup["pending"] and startup["capture"]["reason"] == "workflow_probe", startup
+        assert startup["capture"]["status"] == "completed", startup
         assert docker("exec", name, "cat", config_path) == original
         assert process_identity(name) == "1000:1000"
         assert docker("exec", name, "stat", "-c", "%u:%g", "/data") == "1000:1000"

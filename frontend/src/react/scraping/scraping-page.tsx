@@ -330,10 +330,10 @@ function targetName(report: SourceReport, check: ReportedCheck): string {
 /** 全部来源一次检查完，与 `peach check-sources` 同一检查、同一报告口径。这一趟在后台跑，
  *  离开页面再回来，读到的是服务端留着的那一份结果。 */
 function CheckAllCard({ toast }: ScrapingProps) {
-  const { job, running, start, query: taskQuery } = useBackgroundJob<CheckAllJob>({
+  const { job, running, start, query: taskQuery } = useBackgroundJob<CheckAllJob, boolean>({
     queryKey: CHECK_ALL_KEY,
     queryFn: ({ signal }) => fetchCheckAllJob(signal),
-    start: () => apiSend<CheckAllJob>(SCRAPING_CHECK_ALL_URL, {}),
+    start: retry => apiSend<CheckAllJob>(SCRAPING_CHECK_ALL_URL, { retry_failed: retry }),
     onFinish: (state) => {
       // 限流与拒绝访问会记下冷却，各来源卡上的「冷却中」跟着重读。
       void queryClient.invalidateQueries({ queryKey: SCRAPING_KEY, exact: true });
@@ -343,7 +343,7 @@ function CheckAllCard({ toast }: ScrapingProps) {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!taskQuery.data || running || start.isPending) return;
-    start.mutate();
+    start.mutate(false);
   };
 
   const checks = (job?.results ?? []).flatMap(
@@ -352,6 +352,8 @@ function CheckAllCard({ toast }: ScrapingProps) {
   const titled = (source: string, name: string) =>
     <span className="inline-flex min-w-0 items-center gap-1.5"><SiteMark source={source} />{name}</span>;
   const passed = checks.filter(({ check }) => check.outcome === 'ok');
+  const retryable = checks.some(({ check }) => check.outcome === 'network'
+    || check.outcome === 'http' && check.reason !== 'rate_limited');
   // 按口径成组，组内保持来源顺序：要人去登录的排前面，不在这里查的片商官网垫底。
   const problems = checks.filter(({ check }) => check.outcome !== 'ok').sort(
     (a, b) => OUTCOME_ORDER.indexOf(a.check.outcome) - OUTCOME_ORDER.indexOf(b.check.outcome));
@@ -390,6 +392,9 @@ function CheckAllCard({ toast }: ScrapingProps) {
                 <IssueRow key={name} title={titled(source, name)}>
                   <span className="flex flex-wrap items-center gap-2">
                     <StatusLabel tone={OUTCOME_TONES[check.outcome]}>{codedText(check, 'outcome_label')}</StatusLabel>
+                    {check.outcome === 'auth' ? <a href={`#source-${source}`} className="underline">
+                      {t('manage:connectionCheck.openSource')}
+                    </a> : null}
                     {check.message
                       ? <span className="text-body-2-regular text-text-secondary">{codedText(check, 'message')}</span>
                       : null}
@@ -412,6 +417,9 @@ function CheckAllCard({ toast }: ScrapingProps) {
           : null}
       </Stack>
       <Footer status={finished ? t('manage:connectionCheck.lastChecked', { time: finished }) : undefined}>
+        {retryable ? <Button variant="secondary" disabled={running || start.isPending} onClick={() => start.mutate(true)}>
+          {t('manage:connectionCheck.retryFailed')}
+        </Button> : null}
         <Button type="submit" disabled={!taskQuery.data} {...busyProps(running || start.isPending)}>{t('manage:connectionCheck.checkAll')}</Button>
       </Footer>
     </Section>

@@ -97,6 +97,15 @@ def library_diagnostic_rows(request: Request, args: dict[str, str] = Depends(req
     return data["groups"][key]
 
 
+@router.get("/api/diagnostics/startup")
+def startup_diagnostic_status(request: Request, _args=Depends(require_auth)):
+    from . import startup_diagnostics
+
+    local_only(request)
+    result = startup_diagnostics.snapshot(settings_file.active().directory("state"))
+    return JSONResponse(result, headers={"Cache-Control": "no-store"})
+
+
 @router.post("/api/diagnostics/library/ignored")
 def library_diagnostic_ignored(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
     from . import library_diagnostics

@@ -19,6 +19,7 @@ import { codedText } from '../../core/server-text';
 import { checkText, DIAGNOSTICS_KEY, fetchDiagnostics, type DiagnosticCheck, type DiagnosticReport } from './diagnostics';
 import { HealthList } from './health-list';
 import { DiagnosticExportAction, ScrapingExport } from './scraping-export';
+import { StartupCapture } from './startup-capture';
 import { interfaceLanguage, t } from '../../i18n';
 
 const STATUS: Record<string, string> = { ok: t('manage:diagnostics.statusOk'), warning: t('manage:diagnostics.statusWarning'), failed: t('manage:diagnostics.statusFailed'), unknown: t('manage:shared.notFound'), disabled: t('manage:diagnostics.statusDisabled'),
@@ -126,12 +127,14 @@ export function DiagnosticsPage(props: DiagnosticsProps) {
     </DiagnosticExportAction>
   </div>;
   const reportEntry = { id: 'diagnostics-report', label: t('manage:diagnosticsExport.reportTitle') };
+  const startupEntry = { id: 'diagnostics-startup', label: t('manage:startupCapture.title') };
   const scrapingEntry = { id: 'diagnostics-scraping', label: t('manage:diagnosticsExport.fetchLogTitle') };
   const scraping = <div id={scrapingEntry.id}><ScrapingExport /></div>;
   const data = query.data;
   if (!data && query.isPending) return <div role="status" aria-label={t('manage:diagnostics.loading')} dangerouslySetInnerHTML={{ __html: diagnosticsSkeleton() }} />;
-  if (!data) return <SectionToc inline label={t('settings:configurationPage.contents')} entries={[reportEntry, scrapingEntry]}>
+  if (!data) return <SectionToc inline label={t('settings:configurationPage.contents')} entries={[reportEntry, startupEntry, scrapingEntry]}>
     {report}
+    <StartupCapture />
     <Note tone="error" title={t('manage:diagnostics.loadFailed')}>
       {refreshError || (query.error ? errorMessage(query.error) : t('manage:diagnostics.reportNotFound'))}
     </Note>
@@ -142,6 +145,7 @@ export function DiagnosticsPage(props: DiagnosticsProps) {
   const entries = [
     reportEntry,
     ...(attention.length ? [{ id: 'diagnostics-attention', label: t('manage:diagnostics.attention') }] : []),
+    startupEntry,
     { id: 'diagnostics-health', label: t('manage:diagnostics.collectionHealth') },
     ...(other.length ? [{ id: 'diagnostics-checks', label: t('manage:diagnostics.systemChecks') }] : []),
     scrapingEntry,
@@ -153,6 +157,7 @@ export function DiagnosticsPage(props: DiagnosticsProps) {
       {attention.length ? <Section id="diagnostics-attention" guide="attention" title={t('manage:diagnostics.attentionTitle', { count: attention.length })}>
         {attention.map(([key, check]) => <Check key={key} name={key} check={check} />)}
       </Section> : null}
+      <StartupCapture />
       <Section id="diagnostics-health" guide="health" title={t('manage:diagnostics.collectionHealth')}><Stack>
         {data.library.issue_at ? <p className="text-body-2-regular text-text-secondary">{t('manage:diagnostics.healthRecordedAtTime', { time: moment(data.library.issue_at) })}</p> : null}
         {Object.entries(data.library.groups).map(([key, group]) => <HealthList key={key} groupKey={key} group={group} {...props} />)}

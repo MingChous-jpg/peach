@@ -1065,6 +1065,9 @@ class UpgradeRepairs:
     def receipt(self) -> Path:
         return self.root / 'receipt.json'
 
+    def media_paused(self) -> bool:
+        return self.available and bool(_read(self.receipt).get('media_paused'))
+
     def snapshot(self) -> dict:
         if not self.available:
             return {'state': 'unavailable', 'items': [], 'available': False}
