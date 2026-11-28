@@ -441,9 +441,10 @@ def q_jav_resources(contract, args) -> dict:
     from .wants_magnets import search_for
 
     code = detail_code(args)
+    retry_source = str(args.get("retry_source") or "")
+    options = {"retry_source": retry_source} if retry_source else {}
     with public_cache_scope(contract.cover_root.parent / 'jav-public'), _jav_pages(contract) as pages, \
             PUBLIC_API.page_reader(pages):
-        found = search_for(contract.follow_secrets_root).query(code, refresh=args.get('refresh') == '1',
-                                                             retry_source=str(args.get('retry_source') or ''))
+        found = search_for(contract.follow_secrets_root).query(code, refresh=args.get('refresh') == '1', **options)
     # 查询结果是共享缓存里的那一份，交出去的是副本。
     return {**found, "items": list(found.get("items") or []), "warnings": list(found.get("warnings") or [])}
