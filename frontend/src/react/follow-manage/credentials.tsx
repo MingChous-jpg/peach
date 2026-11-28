@@ -104,7 +104,7 @@ function CredentialForm({ row, readOnly, open, toast }:
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {done ? (
-          <Button variant="danger" disabled={readOnly} {...busyProps(write.isPending || login.busy)}
+          <Button variant="secondary" disabled={readOnly} {...busyProps(write.isPending || login.busy)}
             onClick={() => void confirmModal({
               title: t('follow:sourceCredentials.clearTitle'), body: CLEAR_BODY, confirmLabel: t('follow:sourceCredentials.clearTitle'), danger: true,
               holdToConfirm: true,

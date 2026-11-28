@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "5d032a2e-df13-4d5d-9cab-3b766f2feb38", e._sentryDebugIdIdentifier = "sentry-dbid-5d032a2e-df13-4d5d-9cab-3b766f2feb38");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "132841fe-d5fb-4bde-88b3-29b43e253f5a", e._sentryDebugIdIdentifier = "sentry-dbid-132841fe-d5fb-4bde-88b3-29b43e253f5a");
 	} catch {}
 })();
 import { $fe21c36db05242bb$export$d7b12c4107be0d61 as e, AMANE_BRIDGE_CHECK_URL as t, AMANE_BRIDGE_KEY as n, AMANE_BRIDGE_REBUILD_URL as r, ActionSpinner as i, Button as a, CHECK_ALL_KEY as o, COVER_JOB_KEY as s, CUSTOM_SOURCES_KEY as c, CUSTOM_SOURCES_URL as l, Checkbox as u, Disclosure as d, ErrorText as f, ExternalLink as p, Fact as m, FactList as h, FieldLabel as g, Footer as _, Help as v, Input as y, IssueRow as b, JAVDB_BROWSER_LOGIN_URL as ee, LinkButton as te, Note as x, QueryErrorNote as S, Rows as ne, SCRAPING_CHECK_ALL_URL as re, SCRAPING_CHECK_URL as ie, SCRAPING_COVER_URL as ae, SCRAPING_KEY as C, SCRAPING_SETTINGS_URL as oe, SEGMENT as se, SEGMENTED_TRACK as ce, Section as w, SectionToc as T, SegmentedRadioGroup as le, Select$1 as ue, SelectField as E, SelectItem as de, SettingsCard as fe, SettingsRow as pe, SiteMark as D, Stack as O, StatusLabel as k, TaskProgress as A, __toESM as j, activityKind as M, apiSend as N, busyProps as P, checkText as me, codedText as F, composingKey as I, confirmModal as L, errorMessage as R, esc as z, fetchAmaneBridge as B, fetchCheckAllJob as V, fetchCoverJob as he, fetchCustomSources as H, fetchSources as ge, i2 as _e, interfaceLanguage as ve, jobText as U, joinList as W, momentText as G, partsLabel as K, queryClient as q, require_jsx_runtime as ye, require_react as J, serverLabel as be, spinnerHtml as xe, t as Y, useAction as Se, useBackgroundJob as X, useMutation as Z, useQuery as Ce } from "./peach-app.js";
@@ -97,7 +97,7 @@ function Pe({ receipt: e }) {
 							children: t.enabled ? Y("manage:customSources.disable") : Y("manage:customSources.enable")
 						}),
 						/* @__PURE__ */ (0, $.jsx)(a, {
-							variant: "danger",
+							variant: "secondary",
 							onClick: () => L({
 								title: Y("manage:customSources.deleteTitle"),
 								body: Y("manage:customSources.deleteBody", { name: z(t.name) }),
@@ -963,4 +963,4 @@ function $e({ toast: e }) {
 }
 export { $e as ScrapingPage, Re as linkHost, Le as networkOptions };
 
-//# debugId=5d032a2e-df13-4d5d-9cab-3b766f2feb38
+//# debugId=132841fe-d5fb-4bde-88b3-29b43e253f5a

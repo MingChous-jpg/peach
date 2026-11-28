@@ -24,7 +24,8 @@ Entries are written for users to scan: one sentence each, saying where something
 - **Settings**: Export recent server and child-process resource samples and media first-response timings in local diagnostics. / **配置**：本机诊断可导出近期服务进程与子进程的资源记录，以及媒体首段响应耗时。
 
 - **Settings**: Record slow page loads, playback planning, startup and buffering in local diagnostics. / **配置**：本机诊断记录页面加载、播放计划、起播和缓冲耗时。
-- **Interface**: Open updates, playback progress, recommendations, and issues that need attention from the notification center (#905). / **界面**：在顶栏通知中心打开近期更新、继续观看、推荐和待处理事项（#905）。
+- **Interface**: Open updates, playback, recommendations, and issues from the notification center, with undo for marking as read and settings for browser and desktop alerts (#905). / **界面**：顶栏通知中心可打开近期更新、继续观看、推荐和待处理事项，支持撤销已读并设置浏览器和桌面提醒（#905）。
+- **Settings**: Group related preferences, show save receipts, and flag invalid fields before submitting configuration (#905). / **配置**：设置按用途分组，保存后显示回执，配置提交前在对应字段提示错误（#905）。
 - **Settings**: Record startup diagnostics automatically and show the result in Diagnostics (#905). / **配置**：自动记录启动诊断，在诊断页查看最近一次启动结果（#905）。
 
 - **Interface**: Learn AI Assistant, folder mode, and JAV views in the tutorial, or finish the tutorial directly (#563). / **界面**：新手教程加入 AI 助手、文件夹模式和 JAV 视图导览，并支持直接结束整套教程（#563）。

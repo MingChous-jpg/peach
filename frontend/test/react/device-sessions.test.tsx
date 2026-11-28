@@ -5,8 +5,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 import * as legacyUi from '@peach/legacy/ui';
 
 import { queryClient } from '../../src/react/query';
-import { AccessSettings } from '../../src/react/settings/access-settings';
 import { DeviceSessions, lastSeen, type DeviceSession, type DeviceSessionList } from '../../src/react/settings/device-sessions';
+import { NetworkSettings } from '../../src/react/settings/network-settings';
 import { buttonNamed, click, mount, section, settle } from './render';
 
 notifyManager.setScheduler(notify => notify());
@@ -139,14 +139,24 @@ it('不在运行 Peach 的电脑上时只列出，不给撤销键', async () => 
   expect(card.textContent).toContain('在运行 Peach 的电脑上打开这一页才能撤销。');
 });
 
-it('访问密码分区只在需要登录时带出设备列表', async () => {
-  const devices = vi.fn(() => <p>设备列表</p>);
+it('访问密码和口令各有目录入口，只在需要登录时显示设备分区', async () => {
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} });
+  serve(listing([desk]));
   for (const mode of ['open', 'locked', 'password', 'legacy'] as const) {
-    devices.mockClear();
-    const host = await mount(<AccessSettings initial={{ mode, revision: 'one' }} receipt={vi.fn()} devices={devices} />);
-    expect(host.textContent?.includes('设备列表')).toBe(mode === 'password' || mode === 'legacy');
+    const host = await mount(<QueryClientProvider client={queryClient}>
+      <NetworkSettings receipt={vi.fn()} data={{
+        editable: false, notice: '', revision: 'one', media_dirs: [], library_count: 0, port: 12010, facts: [],
+        access: { mode, revision: 'one' },
+        api_token: { rotatable: false, reason: '', paired: false },
+      }} />
+    </QueryClientProvider>);
+    const needsLogin = mode === 'password' || mode === 'legacy';
+    expect(Boolean(host.querySelector('a[href="#network-devices"]'))).toBe(needsLogin);
+    expect(Boolean(host.querySelector('#network-devices'))).toBe(needsLogin);
+    expect(host.querySelector('#network-access #network-api-token')).toBeNull();
+    expect(host.querySelector('a[href="#network-api-token"]')).not.toBeNull();
+    expect(host.querySelector('#network-api-token section[aria-label="访问口令"]')).not.toBeNull();
   }
-  expect(devices).toHaveBeenLastCalledWith({ mode: 'legacy', revision: 'one' });
 });
 
 it('最近活动按分钟、小时、天写，超过一个月写日期', () => {

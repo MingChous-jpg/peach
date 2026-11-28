@@ -31,7 +31,7 @@ export interface JavBrowserShape { enabled: boolean; ready: boolean }
 /** 每个网盘账号一项：[数据代理走代理, API 代理走代理]，走代理时多出地址、端口与认证三行。 */
 export interface CloudProxyShape { configured: boolean; accounts: [boolean, boolean][]; unlinked: number }
 export interface DownloadsShape { cloud: boolean; has115: boolean; pikpak: boolean; pikpakRoots: boolean; pikpakLoggedIn: boolean; browserLogin: boolean; localDownload: boolean }
-export interface NetworkShape { port: boolean; addresses?: number; networkEditable?: boolean; lan?: boolean; proxyAddress: boolean; access: string; tunnelNamed: boolean; tunnelNamedMode: boolean; tunnelNote: boolean }
+export interface NetworkShape { port: boolean; addresses?: number; networkEditable?: boolean; lan?: boolean; proxyAddress: boolean; access: string; apiToken?: boolean; tunnelNamed: boolean; tunnelNamedMode: boolean; tunnelNote: boolean }
 /** 已登录的设备：行数，以及底栏有没有「撤销其他设备」。 */
 export interface DevicesShape { rows: number; manageable: boolean }
 export interface MaintenanceShape {
@@ -168,8 +168,12 @@ export function credentialsSkeleton(): string {
 
 export function indexersSkeleton(): string {
   const open = list(rememberedShape('indexers')?.open, 20, on);
+  const actions = '<div class="flex min-h-10 items-center justify-between gap-3">'
+    + `<div class="flex items-center gap-2 text-body-medium text-text-primary">${block('42px', '24px')}${t('settings:shared.enable')}</div>`
+    + islandButton({ label: t('settings:shared.remove'), variant: 'secondary', size: 'small', glyph: 'trash', attrs: wait })
+    + '</div>';
   const rows = open.map(expanded => `<div class="min-w-0 border-t border-separator-border pt-2"><span class="flex w-full min-w-0 items-center gap-1 text-body-2-medium">${islandGlyph('chevron-right', `size-(--icon-inline) shrink-0 text-text-secondary${expanded ? ' rotate-90' : ''}`)}${text('6em')}${text('12em')}</span>`
-    + (expanded ? `<div class="flex flex-col gap-2 pt-3"><div class="flex min-w-0 flex-col gap-4">${inputField(t('settings:shared.name'))}${inputField(t('settings:indexers.torznabUrl'))}${inputField('API key')}<div class="flex flex-wrap items-center gap-x-6 gap-y-2">${check(t('settings:shared.enable'))}${button(t('settings:shared.remove'), 'secondary', 'small')}</div></div></div>` : '')
+    + (expanded ? `<div class="flex flex-col gap-2 pt-3"><div class="flex min-w-0 flex-col gap-4">${inputField(t('settings:shared.name'))}${inputField(t('settings:indexers.torznabUrl'))}${inputField('API key')}${actions}</div></div>` : '')
     + '</div>').join('');
   return section(t('settings:indexers.title'), stack(`<div class="flex min-w-0 flex-col gap-4">${summary(t('settings:indexers.connectHelp'))}${rows}</div>`), button(t('settings:indexers.add'), 'secondary') + button(t('settings:shared.saveSettings')));
 }
@@ -230,7 +234,7 @@ export function mediaSkeletonShape(shape = rememberedShape('media')): MediaShape
   return folders.length ? { folders, cloud: on(shape?.cloud) } : { folders: [1], cloud: false };
 }
 
-/** 自动发现新文件：三行开关是固定的；开着时的说明、Webhook 行与前缀表随配置。 */
+/** 自动发现新文件：三行开关与路径映射固定，状态和 Webhook 随配置。 */
 export function discoverySkeleton(): string {
   const shape = rememberedShape('discovery');
   const enabled = on(shape?.enabled);
@@ -240,9 +244,10 @@ export function discoverySkeleton(): string {
   return section(t('settings:fileDiscovery.title'), stack(`<div class="flex flex-wrap items-center gap-2"><span class="text-body-regular text-text-secondary">${t('settings:pushDiscovery.localMonitoring')}</span>${chip()}</div>`)
     + row(t('settings:fileDiscovery.autoImport'), t('settings:fileDiscovery.autoImportHelp') + (enabled ? `<br>${text('10em')}` : ''))
     + row(t('settings:fileDiscovery.monitorLocal'), t('settings:fileDiscovery.monitorLocalHelp') + (enabled && on(shape?.watchLocal) ? `<br>${text('12em')}` : ''))
-    + row(t('settings:fileDiscovery.cloudNotify'), t('settings:fileDiscovery.cloudNotifyHelp')) +(cloud ? controlRow(t('settings:fileDiscovery.webhookConfig'), text('20em'), '') : '')
-    + (webhook ? stack(summary(t('settings:fileDiscovery.viewConfig')), true) : '')
-    + (cloud ? stack(`<div class="flex flex-col gap-3">${fieldLabel(t('settings:pushDiscovery.cloudPrefixes'))}<div class="flex flex-col gap-3">${prefixRow.repeat(count(shape?.prefixes, 20))}</div><div>${button(t('settings:pushDiscovery.addPrefix'), 'secondary')}</div></div>`, true) : ''),
+    + row(t('settings:fileDiscovery.cloudNotify'), t('settings:fileDiscovery.cloudNotifyHelp'))
+    + (cloud ? stack(`<div class="flex flex-col gap-1">${fieldLabel(t('settings:fileDiscovery.webhookConfig'))}${help(text('20em'))}</div>`
+      + (webhook ? summary(t('settings:fileDiscovery.viewConfig')) : ''), true) : '')
+    + stack(`<div class="flex flex-col gap-3">${fieldLabel(t('settings:pushDiscovery.cloudPrefixes'))}${help(t('settings:pushDiscovery.cloudPrefixesHelp'))}<div class="flex flex-col gap-3">${prefixRow.repeat(count(shape?.prefixes, 20))}</div><div>${button(t('settings:pushDiscovery.addPrefix'), 'secondary')}</div></div>`, true),
   (webhook ? button(t('settings:fileDiscovery.rotateSecret'), 'secondary') : '') + button(t('settings:shared.saveSettings')));
 }
 
@@ -373,8 +378,10 @@ const network = () => {
   const proxy = section(t('settings:peachProxy.title'), row(t('settings:peachProxy.mode'), t('settings:peachProxy.modeHelp'), 'ui-configuration-skeleton-select') + (on(shape?.proxyAddress) ? stack(inputField(t('settings:peachProxy.url')), true) : ''), button(t('settings:shared.saveSettings')));
   const groups: [string, string][] = [];
   if (accessUrls) groups.push([t('settings:accessUrls.title'), accessUrls]);
-  groups.push([t('settings:accessPassword.title'), `<div class="flex min-w-0 flex-col gap-6">${access}${devices}</div>`],
-    [t('settings:certificateTrust.title'), ''], [t('settings:remoteAccess.title'), remote], [t('settings:peachProxy.title'), proxy]);
+  groups.push([t('settings:accessPassword.title'), access]);
+  if (devices) groups.push([t('settings:signedInDevices.title'), devices]);
+  if (shape?.apiToken) groups.push([t('settings:accessToken.title'), section(t('settings:accessToken.title'), stack(help(t('settings:accessToken.help'))))]);
+  groups.push([t('settings:certificateTrust.title'), ''], [t('settings:remoteAccess.title'), remote], [t('settings:peachProxy.title'), proxy]);
   return configurationGroupsSkeleton(groups);
 };
 

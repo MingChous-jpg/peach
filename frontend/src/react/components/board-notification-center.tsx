@@ -2,13 +2,15 @@
  * locked in docs/reference-snapshots/upstream/boardui-notification-center.json.
  * SPDX-License-Identifier: MIT */
 import type { ComponentType, MouseEvent, MouseEventHandler, ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   RiCheckboxCircleFill,
+  RiCloseLine,
   RiErrorWarningFill,
   RiInformationFill,
   RiNotification3Fill,
   RiNotificationOffLine,
+  RiSettings3Line,
 } from "@remixicon/react";
 import { Button, ButtonLink, type ButtonProps } from "@/components/base/buttons/button";
 import {
@@ -46,6 +48,7 @@ export type NotificationCenterItem = {
   description?: string;
   timestamp?: string;
   unread?: boolean;
+  hideable?: boolean;
   status?: NotificationCenterStatus;
   icon?: IconComponent;
   visual?: ReactNode;
@@ -59,13 +62,18 @@ interface NotificationCenterProps {
   tabs: readonly { id: NotificationCenterTab; label: string }[];
   title: string;
   categoryLabel: string;
-  unreadLabel(count: number): string;
-  unreadItemLabel: string;
+  summaryLabel(total: number, unread: number): string;
+  markItemLabel: string;
+  hideItemLabel: string;
   markAllLabel: string;
+  settingsLink: NotificationLink;
+  settingsLabel: string;
   emptyMessage: string;
   loadingLabel: string;
   loading: boolean;
+  canMarkAllRead: boolean;
   onMarkAllRead(): void;
+  onDismiss(item: NotificationCenterItem): void;
 }
 
 const STATUS_ICON: Record<NotificationCenterStatus, IconComponent> = {
@@ -120,6 +128,10 @@ function TabLabel({
   );
 }
 
+function UnreadDot() {
+  return <span className="size-2 rounded-full bg-accent-500" aria-hidden="true" />;
+}
+
 function openCard(event: MouseEvent<HTMLElement>) {
   if (event.defaultPrevented || event.button || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
   if (event.target instanceof Element && event.target.closest("a,button,input,select,textarea,[contenteditable]")) return;
@@ -133,15 +145,22 @@ export function BoardNotificationCenter({
   tabs,
   title,
   categoryLabel,
-  unreadLabel,
-  unreadItemLabel,
+  summaryLabel,
+  markItemLabel,
+  hideItemLabel,
   markAllLabel,
+  settingsLink,
+  settingsLabel,
   emptyMessage,
   loadingLabel,
   loading,
+  canMarkAllRead,
   onMarkAllRead,
+  onDismiss,
 }: NotificationCenterProps) {
   const [activeTab, setTab] = useState<NotificationCenterTab>("all");
+  const categories = useRef<HTMLDivElement>(null);
+  const focusCategory = () => categories.current?.querySelector<HTMLButtonElement>("button[data-selected]")?.focus();
   const unreadCount = notifications.filter((item) => item.unread).length;
   const tabCounts = {
     all: notifications.length,
@@ -159,14 +178,22 @@ export function BoardNotificationCenter({
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-0.5">
             <h2 className="text-title-3-medium text-text-primary">{title}</h2>
-            <p className="text-body-regular text-text-secondary">{unreadLabel(unreadCount)}</p>
+            <p className="text-body-regular text-text-secondary" aria-live="polite">
+              {loading && !notifications.length ? loadingLabel : summaryLabel(notifications.length, unreadCount)}
+            </p>
           </div>
-          <Button variant="ghost" size="small" className="shrink-0" onClick={onMarkAllRead} disabled={unreadCount === 0}>
-            {markAllLabel}
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="ghost" size="small" data-copy-interact="" disabled={!canMarkAllRead || loading}
+              onClick={() => { focusCategory(); onMarkAllRead(); }}>
+              {markAllLabel}
+            </Button>
+            <ButtonLink {...settingsLink} variant="secondary" size="small" iconOnly data-copy-interact=""
+              leadingIcon={RiSettings3Line} aria-label={settingsLabel} title={settingsLabel} />
+          </div>
         </div>
 
         <SegmentedControl
+          ref={categories}
           data-notification-categories=""
           aria-label={categoryLabel}
           selectedKeys={[activeTab]}
@@ -197,6 +224,7 @@ export function BoardNotificationCenter({
             {visibleNotifications.map((item) => {
               const openAction = item.actions?.find((action) => action.href);
               const titleLink = item.titleLink ?? (openAction?.href ? { href: openAction.href, onClick: openAction.follow } : undefined);
+              const controlLabel = item.unread ? markItemLabel : item.hideable ? hideItemLabel : '';
               return (
                 <article
                   key={item.id}
@@ -218,11 +246,14 @@ export function BoardNotificationCenter({
                       {titleLink ? <a {...titleLink} data-notification-title=""
                         className="line-clamp-2 min-w-0 wrap-anywhere rounded-sm text-body-medium text-text-primary hover:underline focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-focus-ring"
                         title={item.title}>{item.title}</a> : <p className="line-clamp-2 min-w-0 wrap-anywhere text-body-medium text-text-primary" title={item.title}>{item.title}</p>}
-                      {item.timestamp || item.unread ? <div className="flex shrink-0 items-center gap-2">
+                      {item.timestamp || controlLabel ? <div className="flex shrink-0 items-center gap-1">
                         {item.timestamp ? <span className="text-caption-1-medium whitespace-nowrap text-text-secondary">
                           {item.timestamp}
                         </span> : null}
-                        {item.unread ? <span className="mt-1 size-2 rounded-full bg-accent-500" aria-label={unreadItemLabel} /> : null}
+                        {controlLabel ? <Button iconOnly size="xs" variant="ghost"
+                          data-notification-quiet-action="" data-notification-unread={item.unread ? "" : undefined}
+                          leadingIcon={item.unread ? UnreadDot : RiCloseLine} aria-label={controlLabel} title={controlLabel}
+                          onClick={() => { focusCategory(); onDismiss(item); }} /> : null}
                       </div> : null}
                     </div>
                     {item.detail}

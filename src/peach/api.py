@@ -643,6 +643,7 @@ def _health_payload(request, settings, resolver, browser_transport, *, details: 
     migration = app.state.ledger_migration
     mounts = app.state.mount_reachability.summary()
     corrupted = app.state.database.corrupted
+    repairs = getattr(app.state, "upgrade_repairs", None)
     components = health_components(settings, mounts, migrating=migration.running, known_corruption=corrupted)
     return {"ok": True, "service": "peach-api", "version": __version__,
             "checks": components if details else {
@@ -667,6 +668,7 @@ def _health_payload(request, settings, resolver, browser_transport, *, details: 
             # 采集用的浏览器窗口正等着人点验证的站，供排查时看一眼；窗口本身就是提醒，不另弹通知（ADR-0065）。
             **({
                 "media_mounts": mounts,
+                "media_capacity_paused": bool(repairs and repairs.media_paused()),
                 "mdns_service": mdns.name if mdns is not None else None,
                 "mdns_service_host": mdns.hostname if mdns is not None else None,
                 "mdns_address": mdns.address if mdns is not None else None,

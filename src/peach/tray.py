@@ -25,7 +25,7 @@ import httpx
 import pystray
 from PIL import Image
 
-from . import (desktop_startup, error_reporting, interface_text, ledger_backups, log_retention, onboarding,
+from . import (desktop_alerts, desktop_startup, error_reporting, interface_text, ledger_backups, log_retention, onboarding,
                retention_settings, runtime_prepare, settings_file, sparkle_update, startup_diagnostics)
 from .appid import MACOS_LAUNCH_AGENT_LABEL
 from .certs import ensure_certificate
@@ -328,6 +328,7 @@ class ServiceManager:
             spec.name: (False, tray_text("tray.health.notChecked")) for spec in specs
         }
         self._mount_warnings: dict[str, tuple[str, ...]] = {}
+        self._desktop_health_faults: dict[str, set[str]] = {}
         # 拉起取证：诊断包要答得出「为什么拉起、拉起后多久才应答」。`_launched_at` 记本托盘
         # 拉起子进程的时刻，`_awaiting_ready` 是拉起后还没通过过健康检查的服务，
         # `_failures` 是自上次健康或拉起以来的连续失败（次数、首次失败时刻、最后一次的错误）。
@@ -368,6 +369,7 @@ class ServiceManager:
             self._last_health[spec.name] = (ok, detail)
             self._mount_warnings[spec.name] = warnings
             if ok:
+                self._desktop_health_faults[spec.name] = desktop_alerts.health_faults(payload)
                 self._failures.pop(spec.name, None)
                 if spec.name in self._awaiting_ready:
                     self._awaiting_ready.discard(spec.name)
@@ -378,6 +380,15 @@ class ServiceManager:
         if ready_after is not None:
             LOGGER.info("%s service passed its first health check %.1f s after launch", spec.name, ready_after)
         return ok
+
+    def desktop_faults(self) -> set[str]:
+        with self._lock:
+            active = set()
+            for spec in self.specs:
+                active.update(self._desktop_health_faults.get(spec.name, ()))
+                if not self._last_health.get(spec.name, (False, ""))[0]:
+                    active.add("service")
+        return active
 
     def _failure_summary(self, name: str) -> str:
         """自上次健康（或上次拉起、停止）以来的连续健康检查失败，写进拉起与超时日志。"""
@@ -1218,6 +1229,7 @@ class PeachTray:
         self._build_checked_at = time.monotonic()
         self._build_attempted_head: str | None = None
         self._pending_startup: tuple[list, bool, str | None] | None = None
+        self._desktop_alerts = desktop_alerts.FaultMonitor()
         enable_windows_menu_theme()
         version_menu = pystray.Menu(
             pystray.MenuItem(lambda _item: f"Peach {self.version.package_version}", None, enabled=False),
@@ -1613,13 +1625,22 @@ class PeachTray:
                             not down, steps, open_browser=open_browser, source_commit=source_commit,
                         )
                         if problems and self._pending_startup is None:
-                            self.icon.notify("；".join(problems), "Peach")
+                            self._notify_startup_problem()
                 finally:
                     self._action_lock.release()
             if down:
                 self.revive_services()
+            if not self._action_lock.locked():
+                allowed = not self.gate.waiting and desktop_alerts.enabled(self.gate.config.directory("state"))
+                for issue in self._desktop_alerts.observe(self.manager.desktop_faults(), allowed=allowed):
+                    self.icon.notify(tray_text(f"tray.desktopAlerts.{issue}"), "Peach")
             self.icon.update_menu()
             self.poll_build_age()
+
+    def _notify_startup_problem(self) -> None:
+        if desktop_alerts.enabled(self.gate.config.directory("state")):
+            self._desktop_alerts.remember(self.manager.desktop_faults())
+            self.icon.notify(tray_text("tray.desktopAlerts.startup"), "Peach")
 
     def revive_services(self) -> bool:
         """有服务不健康、又不在本托盘手里跑着，就补拉一份。返回这一轮有没有动手。
@@ -1645,7 +1666,7 @@ class PeachTray:
         apply_macos_template(icon)
         self.gate.notify = lambda message, title: icon.notify(message, title)
         if self._startup_warning:
-            icon.notify(self._startup_warning, "Peach")
+            self._notify_startup_problem()
 
     def run(self) -> None:
         # 迁移排在第一次拉起子服务之前：服务查到还没建的表就是 500。依赖只读核对，
@@ -1963,10 +1984,15 @@ def run_macos_menu_bar(manager: "ServiceManager", gate: "SetupGate | None" = Non
     # 线程定时重采样，这条路径漏了，于是缓存永远停在启动那一刻——服务还没起来时测的
     # 那一次 False，菜单里就一直显示「未运行」。
     def poll_health() -> None:
+        alerts = desktop_alerts.FaultMonitor()
         while not stopped.wait(5.0):
             gate.poll()
             for spec in manager.specs:
                 manager.healthy(spec)
+            if not action_lock.locked():
+                allowed = not gate.waiting and desktop_alerts.enabled(gate.config.directory("state"))
+                for issue in alerts.observe(manager.desktop_faults(), allowed=allowed):
+                    notify(tray_text(f"tray.desktopAlerts.{issue}"), "Peach")
             updates.follow(gate.config.directory("state"))
 
     def refresh_certificate() -> bool:

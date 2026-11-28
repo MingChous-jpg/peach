@@ -38,7 +38,7 @@ from .routes_auth import (FIRST_ACCESS_DENIED_CODE, login_mode, origin_allowed, 
 from .web_entry import field_errors, runtime_fact_entries
 from .user_messages import UserFacingError, UserOSError, UserTimeoutError, UserValueError, error_detail, message_fields
 from .web_local_access import local_client, loopback_client, managed_configuration
-from . import (interface_text, release_updates, standalone_update, peach_proxy, desktop_startup, desktop_uninstall,
+from . import (interface_text, release_updates, standalone_update, peach_proxy, desktop_alerts, desktop_startup, desktop_uninstall,
                docker_update, media_tools, listening)
 
 router = APIRouter()
@@ -904,6 +904,29 @@ def read_startup(request: Request, _args=Depends(require_auth)):
     if not config.present:
         raise HTTPException(409, message_fields("api.configuration.setupRequired"))
     return desktop_startup.snapshot(config)
+
+
+@router.get("/api/configuration/desktop-alerts")
+def read_desktop_alerts(request: Request, _args=Depends(require_auth)):
+    if not desktop_alerts.available() or not local_client(request):
+        return {"available": False, "enabled": False}
+    config = settings_file.load_config()
+    return {"available": bool(config.present),
+            "enabled": config.present and desktop_alerts.enabled(config.directory("state"))}
+
+
+@router.post("/api/configuration/desktop-alerts")
+def save_desktop_alerts(request: Request, body: dict = Body(...), _args=Depends(require_auth)):
+    local_only(request)
+    same_origin(request)
+    config = settings_file.load_config()
+    if not desktop_alerts.available() or not config.present:
+        raise HTTPException(409, message_fields("api.configuration.desktopAlertsUnavailable"))
+    value = body.get("enabled")
+    if not isinstance(value, bool):
+        raise HTTPException(400, message_fields("api.configuration.enabledNotBoolean"))
+    desktop_alerts.save(config.directory("state"), value)
+    return {"available": True, "enabled": value}
 
 
 @router.post("/api/configuration/startup")

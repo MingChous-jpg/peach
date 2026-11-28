@@ -1011,6 +1011,7 @@
       "deviceGone": "这台设备已经不在列表里了",
       "dockerUpdateOnly": "只有 Docker 镜像有一键更新",
       "enabledNotBoolean": "enabled 必须是 true 或 false",
+      "desktopAlertsUnavailable": "请在运行 Windows 托盘或 Mac 菜单栏的电脑上配置桌面提醒。",
       "errorLogUnwritable": "错误日志无法写入",
       "fieldNotText": "{{field}} 必须是文字",
       "fileManaged": "此部署通过配置文件管理服务",
@@ -4826,6 +4827,13 @@
     }
   },
   "tray": {
+    "desktopAlerts": {
+      "startup": "Peach 启动遇到问题，请查看启动诊断。",
+      "service": "Peach 服务持续不可用，请查看系统诊断。",
+      "database": "Peach 无法读取媒体库数据库，请查看系统诊断。",
+      "mounts": "媒体库目录持续无法访问，请检查挂载状态。",
+      "capacity": "容量保护已暂停部分后台处理，请查看容量设置。"
+    },
     "listSeparator": "、",
     "clauseSeparator": "；",
     "menu": {

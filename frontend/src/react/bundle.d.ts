@@ -53,11 +53,7 @@ export interface TunnelState {
 export interface AccessSettingsProps {
   initial: AccessState;
   receipt(message: string): void;
-  /** 需要登录时紧跟在密码分区下面的设备列表；改密码后拿到新 `revision` 重新画。 */
-  devices?(state: AccessState): import('react').ReactNode;
-  /** 不论访问方式都跟在后面的分区（访问口令）；确认文案随当前访问方式变。 */
-  after?(state: AccessState): import('react').ReactNode;
-  /** 保存成功后报新的访问状态：远程访问卡按它判断能不能开。 */
+  /** 保存后更新设备、访问口令和远程访问分区。 */
   onSaved?(state: AccessState): void;
 }
 

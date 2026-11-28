@@ -22,16 +22,16 @@
 [data-async-text]>.textswap:is(.leaving,.entering){filter:none;transform:none}
 
 /* ── 失败的那一下 ──
-   已经有红边表达「这一格不对」，抖动只是把视线拉过去，所以不另加红字、不改边框色，
-   只在原位左右各走一趟再回中。走的是站内那条通用时长与缓动，reduced motion 下归零。
-   `[aria-invalid]` 一挂上就开始走，是纯 CSS 的触发；同一次提交里同一格再报同一个错，
-   属性没变过，这一下就不重放——判据是「这一格刚变成不对」，不是「又提交了一次」。 */
+   抖动只在原位左右各走一趟再回中。走的是站内那条通用时长与缓动，reduced motion 下归零。
+   BoardUI 文本框带着外框一起动，选择框直接移动触发按钮。 */
 @keyframes field-shake{0%{transform:translateX(0)}
   28.57%{transform:translateX(6px)}
   57.14%{transform:translateX(-6px)}
   78.57%{transform:translateX(4px)}
   100%{transform:translateX(0)}}
-:is(input,textarea,select)[aria-invalid="true"]{animation:field-shake var(--board-motion)}
+:is(input,textarea,select)[aria-invalid="true"]:not([data-input-size] *){animation:field-shake var(--board-motion)}
+[data-input-size]>div:has(:is(input,textarea)[aria-invalid="true"]),
+[data-settings-field][data-invalid]>button[aria-haspopup="listbox"]{animation:field-shake var(--board-motion)}
 
 /* ── 作品卡共演头像里指到的那一枚抬起来 ──
    叠放头像本来彼此覆盖，指到的一枚抬起并放大，右侧邻座逐枚朝标题方向让开。全程只动

@@ -57,7 +57,7 @@ function DockActionButton({ entry }: { entry: DockAction }) {
       setBusy(false);
     }
   };
-  return <Button size="small" variant={action.danger ? 'danger' : (entry.variant ?? 'secondary')} data-bulk-action={action.key}
+  return <Button size="small" variant={entry.variant ?? 'secondary'} data-bulk-action={action.key}
     disabled={disabled || !items.length} {...busyProps(busy)} onClick={() => void press()}>{action.label}</Button>;
 }
 

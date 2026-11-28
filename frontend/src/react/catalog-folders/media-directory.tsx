@@ -635,7 +635,7 @@ function DirectoryBrowser({ initial, revision }: { initial: string; revision: nu
           title={picked.length > 100 ? t('shell:mediaDirectory.batchLimit') : undefined}
           onClick={() => { setMoveFrom({ root: rootId, relative: data.relative, params }); setFailure([]); setReceipt('') }}>
           {t('shell:mediaDirectory.move')}</Button>
-        <Button variant="danger" size="small" disabled={(busy && !trashingFile) || picked.length > 100} {...busyProps(trashingFile)}
+        <Button variant="secondary" size="small" disabled={(busy && !trashingFile) || picked.length > 100} {...busyProps(trashingFile)}
           title={picked.length > 100 ? t('shell:mediaDirectory.batchLimit') : undefined}
           onClick={() => {
             if (pendingWrite.current) return;

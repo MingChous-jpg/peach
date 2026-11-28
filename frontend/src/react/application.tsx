@@ -61,7 +61,7 @@ export function Application() {
   }, []);
   const notificationHost = document.getElementById('notificationCenter');
   return <RouterRoot actions={actions} processing background={actions ? <>
-    <ResultUpdates openItem={actions.openItem} />
+    <ResultUpdates openItem={actions.openItem} navigate={actions.navigate} />
     {notificationHost instanceof HTMLButtonElement
       ? createPortal(<NotificationCenter actions={actions} trigger={notificationHost} />, notificationHost) : null}
   </> : null} />;

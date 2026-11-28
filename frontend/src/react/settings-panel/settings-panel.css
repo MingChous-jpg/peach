@@ -289,6 +289,15 @@ html[data-theme-snapshot] [data-settings-panel] :is([data-settings-glide],[data-
 [data-settings-panel] [data-settings-card] [data-number-control] input{border:0;box-shadow:none;background:transparent;width:64px;min-width:0;height:30px;border-radius:0;padding:6px 8px;font:inherit;outline:none}
 [data-settings-panel] [data-settings-card] [data-number-control]:focus-within{box-shadow:0 0 0 3px var(--line);border-color:var(--muted)}
 [data-settings-panel] [data-settings-card] [data-number-control]>span{display:flex;align-items:center;padding:0 8px;border-left:1px solid var(--line);color:var(--muted);font-size:12px;background:var(--ground)}
+[data-settings-panel] [data-number-steppers]{display:grid;grid-template-rows:repeat(2,minmax(0,1fr));flex:none;border-inline-start:1px solid var(--line)}
+[data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]{width:26px;height:auto;min-height:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--color-foreground-icon-secondary);box-shadow:none}
+[data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]+[data-number-step]{border-block-start:1px solid var(--line)}
+[data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]:hover:not(:disabled){background:var(--color-background-tertiary-hover);color:var(--color-text-primary)}
+[data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]:disabled{cursor:not-allowed;color:var(--color-text-placeholder)}
+[data-settings-panel] [data-number-step]:focus-visible{outline:2px solid var(--color-border-focus-ring);outline-offset:-2px}
+@media (max-width:760px){
+  [data-settings-panel] [data-settings-card] [data-number-control] [data-number-step]{width:36px}
+}
 [data-settings-panel] [data-settings-card] [data-number-control]:has([aria-invalid=true]){border-color:var(--error,#e5484d);box-shadow:0 0 0 2px color-mix(in srgb,var(--error,#e5484d) 15%,transparent)}
 [data-settings-panel] [data-settings-card] [data-number-error]:not(:empty){position:absolute;z-index:10;right:0;top:calc(100% + 6px);width:max-content;max-width:240px;padding:6px 10px;background:var(--ground);border:1px solid color-mix(in srgb,var(--error,#e5484d) 35%,var(--line));border-radius:8px;box-shadow:0 4px 14px var(--settings-error-drop);color:var(--error,#e5484d);font-size:12px;line-height:18px;margin:0}
 [data-settings-panel] [data-settings-card] [data-number-error][hidden]{display:none}
@@ -357,6 +366,13 @@ html[class~=board-high-contrast] [data-settings-panel] [data-settings-card][data
 @media (max-width:760px){[data-settings-panel] [data-settings-card] [data-settings-scroll] [data-number-control]>span{font-size:14px}}
 @media (prefers-reduced-motion:reduce){[data-settings-panel] [data-settings-card] [data-settings-head]{transition:none}}
 [data-settings-panel] [data-settings-card] [data-settings-head] h2{font:var(--board-heading);letter-spacing:0}
+[data-settings-panel] [data-settings-head]{gap:12px}
+[data-settings-panel] [data-settings-save-status]{display:inline-flex;align-items:center;gap:4px;margin-inline-start:auto;min-width:0;color:var(--color-text-secondary);font:var(--board-compact)}
+[data-settings-panel] [data-settings-save-status="saved"]{color:var(--color-notification-success-foreground)}
+[data-settings-panel] [data-settings-save-status="failed"]{color:var(--color-notification-error-foreground)}
+[data-settings-panel] [data-setting-row] [data-setting-save-error]{color:var(--color-notification-error-foreground)}
+[data-settings-panel] [data-settings-save-status] span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+[data-settings-panel] [data-settings-save-status] svg{width:14px;height:14px;flex:none}
 [data-settings-panel] [data-setting-row] b{font:var(--board-body)}
 [data-settings-panel] [data-setting-row] small{font:var(--board-compact)}
 @media (max-width:760px){[data-settings-panel] [data-settings-card][data-settings-card] [data-settings-scroll]{padding-top:16px}}
@@ -373,6 +389,10 @@ html[class~=board-high-contrast] [data-settings-panel] [data-settings-card][data
 [data-settings-panel] [data-settings-service] button:disabled{color:var(--muted);cursor:not-allowed}
 [data-settings-panel] [data-settings-subheading]{margin:0;padding:16px 0 6px;color:var(--muted);font:var(--board-compact)}
 [data-settings-panel] [data-setting-layout="cards"] [data-settings-subheading]{padding:0 12px}
+[data-settings-panel] [data-settings-group-heading]{color:var(--color-text-primary);font:var(--board-body-medium)}
+[data-settings-panel] [data-setting-block]>[data-setting-block]+[data-setting-block]{margin-block-start:8px}
+[data-settings-panel] [data-setting-block]>[data-glow-setting]{margin-block-start:8px}
+[data-settings-panel] :is(#notification-settings,#homeGlowControls){scroll-margin-block-start:16px}
 [data-settings-panel] [data-settings-scroll] [data-settings-subheading]+[data-setting-row]{border-top:0}
 @media(max-width:760px){[data-settings-panel] [data-settings-service]{margin-top:0;padding:0 0 0 12px;border-top:0;border-left:1px solid var(--line-soft);flex-shrink:0}}
 @keyframes settings-backdrop-in{from{opacity:0}to{opacity:1}}

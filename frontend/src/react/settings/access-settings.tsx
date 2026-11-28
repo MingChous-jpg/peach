@@ -25,7 +25,7 @@ const HELP: Partial<Record<AccessState['mode'], string>> = {
   password: t('settings:accessPassword.passwordHelp'),
 };
 
-export function AccessSettings({ initial, receipt, devices, after, onSaved }: AccessSettingsProps) {
+export function AccessSettings({ initial, receipt, onSaved }: AccessSettingsProps) {
   const [state, setState] = useState(initial);
   const [current, setCurrent] = useState('');
   const [password, setPassword] = useState('');
@@ -64,7 +64,7 @@ export function AccessSettings({ initial, receipt, devices, after, onSaved }: Ac
 
   const help = HELP[state.mode];
   const editable = state.mode !== 'locked';
-  return (<>
+  return (
     <Section guide="access" title={t('settings:accessPassword.title')} onSubmit={submit}>
       <div ref={body}>
         <Stack>
@@ -94,7 +94,5 @@ export function AccessSettings({ initial, receipt, devices, after, onSaved }: Ac
         ? <Footer><Button type="submit" {...busyProps(action.busy === 'save')}>{t('settings:shared.saveSettings')}</Button></Footer>
         : null}
     </Section>
-    {devices && (state.mode === 'password' || state.mode === 'legacy') ? devices(state) : null}
-    {after ? after(state) : null}
-  </>);
+  );
 }

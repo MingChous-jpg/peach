@@ -11,13 +11,19 @@ import { ConfigurationChoice, ConfigurationInput } from '../components/configura
 import { RESTART_REDIRECT_MS } from '../restart-redirect';
 import { ErrorText, Footer, Help, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
-import { bodyFieldErrors } from '../../core/server-text';
+import { bodyFieldErrors, serverLabel } from '../../core/server-text';
 import { t } from '../../i18n';
+import { useFieldValidation } from './field-validation';
 
 const HOST_OPTIONS = [
   { value: '0.0.0.0', label: t('settings:accessAddress.lanDevices') },
   { value: '127.0.0.1', label: t('settings:accessAddress.thisComputerOnly') },
 ];
+type PortFields = 'port' | 'host' | 'mdns_name';
+const portError = (value: string) => /^\d+$/.test(value.trim()) && Number(value) >= 1 && Number(value) <= 65535
+  ? '' : serverLabel('errors.onboarding.portInvalid', '');
+const nameError = (value: string) => /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i.test(value.trim())
+  ? '' : serverLabel('errors.onboarding.mdnsNameInvalid', '');
 
 export function PortSettings({ data, receipt }: ConfigurationGroupProps) {
   const network = data.network;
@@ -25,7 +31,8 @@ export function PortSettings({ data, receipt }: ConfigurationGroupProps) {
   const [host, setHost] = useState(network?.host ?? '127.0.0.1');
   const [name, setName] = useState(network?.mdns_name ?? 'peach');
   const [port, setPort] = useState(String(data.port));
-  const [fields, setFields] = useState<Partial<Record<'port' | 'host' | 'mdns_name', string>>>({});
+  const validation = useFieldValidation<PortFields>();
+  const fields = validation.errors;
   const [saved, setSaved] = useState<{ url: string } | null>(null);
   const action = useAction();
   useEffect(() => {
@@ -35,7 +42,11 @@ export function PortSettings({ data, receipt }: ConfigurationGroupProps) {
   }, [saved]);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setFields({});
+    const form = event.currentTarget;
+    if (!validation.check(form, {
+      port: portError(port),
+      mdns_name: network?.editable && host === '0.0.0.0' ? nameError(name) : '',
+    })) return;
     void action.run('save', (signal) => apiSend<{ url: string }>(CONFIGURATION_URL, {
       revision: data.revision, media_dirs: data.media_dirs,
       ...(data.media_sources ? { media_sources: data.media_sources } : {}),
@@ -45,8 +56,8 @@ export function PortSettings({ data, receipt }: ConfigurationGroupProps) {
       setSaved({ url: new URL('/settings/network', result.url).href }); receipt(t('settings:shared.settingsSaved'));
     }, (cause) => {
       const fields = cause instanceof ApiError && cause.status === 400
-        ? bodyFieldErrors<Partial<Record<'port' | 'host' | 'mdns_name', string>>>(cause.body) : null;
-      if (fields && (fields.port || fields.host || fields.mdns_name)) setFields(fields);
+        ? bodyFieldErrors<Partial<Record<PortFields, string>>>(cause.body) : null;
+      if (fields && (fields.port || fields.host || fields.mdns_name)) validation.check(form, fields);
       else action.setError(errorMessage(cause));
     });
   };
@@ -72,12 +83,16 @@ export function PortSettings({ data, receipt }: ConfigurationGroupProps) {
           isDisabled={Boolean(action.busy)} isInvalid={Boolean(fields.host)}>
           {fields.host ? <ErrorText>{fields.host}</ErrorText> : null}
         </ConfigurationChoice>
-        {host === '0.0.0.0' ? <ConfigurationInput id="configMdnsName" label={t('settings:accessUrls.lanUrl')} value={name} onChange={setName}
+        {host === '0.0.0.0' ? <ConfigurationInput id="configMdnsName" data-settings-field="mdns_name" label={t('settings:accessUrls.lanUrl')} value={name}
+          onChange={value => { setName(value); validation.update('mdns_name'); }}
+          onBlur={() => validation.update('mdns_name', nameError(name))}
           prefix={network.local_url.startsWith('https:') ? 'https://' : 'http://'} suffix=".local"
           autoComplete="off" spellCheck="false" maxLength={63} isDisabled={Boolean(action.busy)} validationBehavior="aria"
           isInvalid={Boolean(fields.mdns_name)} hint={fields.mdns_name || undefined} /> : null}
       </> : null}
-      <ConfigurationInput id="configPort" label={t('settings:accessUrls.port')} prefix="localhost:" inputMode="numeric" value={port} onChange={setPort}
+      <ConfigurationInput id="configPort" data-settings-field="port" label={t('settings:accessUrls.port')} prefix="localhost:" inputMode="numeric" value={port}
+        onChange={value => { setPort(value); validation.update('port'); }}
+        onBlur={() => validation.update('port', portError(port))}
         isDisabled={Boolean(action.busy)} validationBehavior="aria" isInvalid={Boolean(fields.port)} hint={fields.port} />
     </> : <Help>{data.notice || t('settings:accessAddress.managedByStartup')}</Help>}
     {network?.editable && host === '0.0.0.0' && network.scope === 'local'

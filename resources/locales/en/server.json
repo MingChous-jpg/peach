@@ -1011,6 +1011,7 @@
       "deviceGone": "This device is no longer in the list.",
       "dockerUpdateOnly": "One-click updates are only available for the Docker image.",
       "enabledNotBoolean": "enabled must be true or false.",
+      "desktopAlertsUnavailable": "Configure desktop alerts on the computer running the Windows tray or Mac menu bar.",
       "errorLogUnwritable": "Can't write the error log.",
       "fieldNotText": "{{field}} must be text.",
       "fileManaged": "This deployment manages the service through a configuration file.",
@@ -4826,6 +4827,13 @@
     }
   },
   "tray": {
+    "desktopAlerts": {
+      "startup": "Peach ran into a startup problem. Check startup diagnostics.",
+      "service": "The Peach service is still unavailable. Check system diagnostics.",
+      "database": "Peach cannot read the media library database. Check system diagnostics.",
+      "mounts": "A media folder is still unavailable. Check your mounts.",
+      "capacity": "Storage limits paused some background processing. Check your storage settings."
+    },
     "listSeparator": ", ",
     "clauseSeparator": "; ",
     "menu": {

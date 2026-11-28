@@ -90,6 +90,7 @@ describe('媒体目录', () => {
     expect(source()?.textContent).toContain('SMB 共享');
     expect(paths(host)[0]?.value).toBe('smb://');
     expect(host.querySelector('input[aria-label="SMB 密码 1"]')?.getAttribute('type')).toBe('password');
+    expect(host.textContent).not.toContain('清除该共享的登录信息');
     await type(paths(host)[0], '');
     expect(source()?.textContent).toContain('SMB 共享');
     expect(host.querySelector('[aria-label="SMB 账号 1"]')).not.toBeNull();
@@ -97,18 +98,22 @@ describe('媒体目录', () => {
     expect(host.querySelector('[aria-label="SMB 账号 1"]')).toBeNull();
   });
 
-  it('勾了「移除账号」时账号、密码与加密一起禁用，取消后恢复', async () => {
-    const host = await open({ media_sources: [{ location: 'local', root: 'D:\\Media', path: 'D:\\Media' }] });
-    await choose(host.querySelector('[aria-label="媒体来源 1"]'), 'SMB 共享');
+  it('清除已保存的 SMB 登录信息时禁用凭据字段，取消或更换路径后恢复', async () => {
+    const host = await open({ media_sources: [{ location: 'local', root: 'P:\\NAS', path: 'smb://nas/Movies',
+      root_id: 'nas-root', transport: 'smb', smb_username: 'reader', smb_password_saved: true }] });
     const fields = () => [host.querySelector<HTMLInputElement>('input[aria-label="SMB 账号 1"]')!.disabled,
       host.querySelector<HTMLInputElement>('input[aria-label="SMB 密码 1"]')!.disabled,
       [...host.querySelectorAll<HTMLLabelElement>('label')].find((label) => label.textContent?.includes('要求 SMB 加密'))!
         .querySelector<HTMLInputElement>('input')!.disabled];
-    const remove = () => [...host.querySelectorAll<HTMLLabelElement>('label')].find((label) => label.textContent?.includes('移除已保存的 SMB 账号'))!;
+    const remove = () => [...host.querySelectorAll<HTMLLabelElement>('label')].find((label) => label.textContent === '清除该共享的登录信息')!;
     expect(fields()).toEqual([false, false, false]);
     await click(remove());
     expect(fields()).toEqual([true, true, true]);
     await click(remove());
+    expect(fields()).toEqual([false, false, false]);
+    await click(remove());
+    await type(paths(host)[0], 'smb://nas/Other');
+    expect(remove()).toBeUndefined();
     expect(fields()).toEqual([false, false, false]);
   });
 

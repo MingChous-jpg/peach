@@ -16,10 +16,11 @@ import {
   type CSSProperties, type KeyboardEvent, type ReactNode,
 } from 'react';
 import { flushSync } from 'react-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { VisuallyHidden } from 'react-aria-components';
 import { UNSAFE_PortalProvider } from 'react-aria';
 import { ButtonLink } from '@/components/base/buttons/button';
+import { apiGet, apiSend, errorMessage } from '../../api';
 import {
   attachOverlayScrollbar, closeAnchoredMenu, moveGlidePane, revealTexts,
   setActionBusy, wireHorizontalScroller,
@@ -39,7 +40,9 @@ import { IconSwitch } from './legacy-controls';
 import { SelectField } from '../components/select-field';
 import { overlayHost } from '../components/overlay-host';
 import { NumberSetting } from './number-setting';
-import type { Choice, PanelSettings, SettingsPanelApi, SettingsPanelHost } from './settings-panel-api';
+import type {
+  Choice, PanelSettings, SettingsEditorHost, SettingsPanelApi, SettingsPanelHost, SettingsSaveFeedback, SettingsSaveResult,
+} from './settings-panel-api';
 import { fetchSettings, refreshPanelData, SETTINGS_KEY, useSaveSettings } from './settings-data';
 import { queryClient } from '../query';
 import { Note } from '../components/note';
@@ -48,6 +51,7 @@ import { SidebarOrder } from './sidebar-order';
 import { NavigationDropLine, NavigationOrderMenu, NavigationOrderPreferences, useNavigationOrder } from '../components/navigation-order';
 import { useSidebarReorder } from '../sidebar/use-sidebar-reorder';
 import { SettingsDialogClose } from '../components/settings-dialog-close';
+import { browserNoticePermission } from '../browser-notifications';
 
 /* 左栏的分区，顺序即右边各组的顺序。字形按条目自己的名字取：整列取自 Remix，一家画的笔画
    才一样粗。 */
@@ -192,11 +196,12 @@ const groupId = (index: number) => `settings-group-${index}`;
 /* 左栏当前项由一块滑过去的玻璃标出来，和左侧抽屉是同一件事的两种形态。坐标取 `offsetTop`
    不取屏幕坐标：面板开合自带一段缩放动画，量屏幕坐标会把正在走的那一下吃进来。玻璃跟着指针走，
    指针离开这一列就滑回当前那格；触点没有悬停，碰一下就滑过去等于替用户点了一次，所以挡在外面。 */
-function SettingsNav({ tab, epoch, configurable, openConfiguration, onSelect }: {
+function SettingsNav({ tab, epoch, configurable, openConfiguration, onSelect, feedback }: {
   tab: number; epoch: number; configurable: boolean | null; openConfiguration(): void; onSelect(index: number): void;
+  feedback: SettingsSaveFeedback;
 }) {
   const nav = useRef<HTMLDivElement | null>(null);
-  const order = useNavigationOrder('preferences');
+  const order = useNavigationOrder('preferences', feedback);
   const items = order.keys.map(key => {
     const index = SECTIONS.findIndex(section => section.id === key);
     return { ...SECTIONS[index]!, index };
@@ -295,9 +300,9 @@ function SettingsNav({ tab, epoch, configurable, openConfiguration, onSelect }: 
   );
 }
 
-function Group({ index, tab, children, cards = false }: { index: number; tab: number; children: ReactNode; cards?: boolean }) {
+function Group({ index, tab, children }: { index: number; tab: number; children: ReactNode }) {
   return (
-    <section data-setting-group="" data-setting-layout={cards ? 'cards' : undefined}
+    <section data-setting-group="" data-setting-layout="cards"
       id={groupId(index)} role="tabpanel" aria-labelledby={tabId(index)} hidden={index !== tab}>
       <h3>{SECTIONS[index].title}</h3>
       {children}
@@ -305,9 +310,19 @@ function Group({ index, tab, children, cards = false }: { index: number; tab: nu
   );
 }
 
+function SettingsCard({ title, heading: Heading = 'h4', copyKey, children }: {
+  title?: string; heading?: 'h4' | 'h5'; copyKey?: string; children: ReactNode;
+}) {
+  const card = <div data-setting-card="">{children}</div>;
+  return title ? <section data-setting-block="" aria-label={title}>
+    <Heading data-settings-subheading="" data-copy-key={copyKey}>{title}</Heading>
+    {card}
+  </section> : card;
+}
+
 /** 一行开关：整行是 label，点哪儿都切。说明那一句的 id 默认取开关 id 去掉 `Setting` 再接 `Description`。 */
-function ToggleRow({ id, title, description, describedBy = `${id.replace(/Setting$/, '')}Description`, copyKey, checked, onToggle }: {
-  id: string; title: string; description?: string; describedBy?: string; copyKey?: string; checked: boolean; onToggle(on: boolean): void;
+function ToggleRow({ id, title, description, describedBy = `${id.replace(/Setting$/, '')}Description`, copyKey, checked, disabled, onToggle }: {
+  id: string; title: string; description?: string; describedBy?: string; copyKey?: string; checked: boolean; disabled?: boolean; onToggle(on: boolean): void;
 }) {
   return (
     <label data-setting-row="">
@@ -315,13 +330,13 @@ function ToggleRow({ id, title, description, describedBy = `${id.replace(/Settin
         <small id={describedBy} data-copy-key={copyKey ? `${copyKey}Help` : undefined}>{description}</small> : null}</span>
       <input data-toggle="" type="checkbox" id={id} role="switch" aria-label={title}
         aria-describedby={description ? describedBy : undefined}
-        checked={checked} onChange={(event) => onToggle(event.target.checked)} />
+        checked={checked} disabled={disabled} onChange={(event) => onToggle(event.target.checked)} />
     </label>
   );
 }
 
 function Row({ title, description, kind, children }: {
-  title: string; description?: ReactNode; kind?: 'sort' | 'related'; children: ReactNode;
+  title: string; description?: ReactNode; kind?: 'sort' | 'related'; children?: ReactNode;
 }) {
   return (
     <div data-setting-row="" data-setting-sort={kind === 'sort' ? '' : undefined}
@@ -342,6 +357,22 @@ function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost
   const scroll = useRef<HTMLDivElement | null>(null);
   const resync = useRef<(() => void) | null>(null);
   const lastTab = useRef(shown.tab);
+  const receiptId = useRef(0);
+  const [receipt, setReceipt] = useState<{ epoch: number; id: number; state: SettingsSaveResult | 'saving' } | null>(null);
+  const feedback: SettingsSaveFeedback = () => {
+    const id = ++receiptId.current;
+    const epoch = shown.epoch;
+    setReceipt({ epoch, id, state: 'saving' });
+    return (state) => { if (receiptId.current === id) setReceipt({ epoch, id, state }) };
+  };
+  const clearReceipt = () => { receiptId.current += 1; setReceipt(null) };
+  const save = (write: () => boolean | void = current.store.save) => {
+    let persisted: boolean;
+    try { persisted = write() !== false } catch { persisted = false }
+    setReceipt({ epoch: shown.epoch, id: ++receiptId.current, state: persisted ? 'saved' : 'failed' });
+    return persisted;
+  };
+  const editor: SettingsEditorHost = { ...current, saveLocal: save, feedback };
 
   /* 标题下那道影子的门槛是那段留白自己：它长在这一栏的上内边距上，滚掉它就等于两块重合，
      差 4px 时点亮。留白的值只写在 `--settings-gap` 一处，这里读它。 */
@@ -376,8 +407,15 @@ function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost
   useLayoutEffect(() => { resync.current?.() });
 
   const epoch = shown.epoch;
-  const select = (index: number) => { if (index !== view.tab) { update({ tab: index }); current.selectSection?.(SECTIONS[index].title) } };
-  const save = () => current.store.save();
+  const select = (index: number) => {
+    if (index === view.tab) return;
+    clearReceipt();
+    update({ tab: index });
+    current.selectSection?.(SECTIONS[index].title);
+  };
+  const receiptState = receipt?.epoch === epoch ? receipt.state : undefined;
+  const receiptCopy = receiptState === 'saving' ? 'saving' : receiptState === 'saved' ? 'saveConfirmed'
+    : receiptState === 'local' ? 'saveLocalOnly' : 'saveUnavailable';
 
   return (
     <section data-settings-panel="" data-copy-choice-host="" id="settingsPanel" hidden={!shown.open} aria-modal="true" role="dialog"
@@ -387,69 +425,92 @@ function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost
       <div data-settings-card="" ref={card}>
         <div data-settings-head="" ref={head}>
           <h2 id="settingsTitle">{SECTIONS[shown.tab].title}</h2>
+          <span data-settings-save-status={receiptState ?? ''} role="status" aria-live="polite" aria-atomic="true">
+            {receiptState ? <>
+              {receiptState !== 'saving' ? <Icon name={receiptState === 'saved' ? 'check' : 'circle-alert'} /> : null}
+              <span key={`${receipt?.id}:${receiptState}`} data-copy-key={`settings.preferencesPanel.${receiptCopy}`}>
+                {receiptState === 'saving' ? t('settings:preferencesPanel.saving')
+                  : receiptState === 'saved' ? t('settings:preferencesPanel.saveConfirmed')
+                  : receiptState === 'local' ? t('settings:preferencesPanel.saveLocalOnly') : t('settings:preferencesPanel.saveUnavailable')}
+              </span>
+            </> : null}
+          </span>
             <SettingsDialogClose id="settingsClose" label={t('settings:preferencesPanel.close')} onPress={() => close()} />
         </div>
-        <SettingsNav tab={shown.tab} epoch={epoch} configurable={shown.configurable} onSelect={select}
+        <SettingsNav tab={shown.tab} epoch={epoch} configurable={shown.configurable} onSelect={select} feedback={feedback}
           openConfiguration={() => { close(false); current.openConfiguration() }} />
-        <div data-settings-scroll="" ref={scroll}>
-          <Group index={0} tab={shown.tab} cards>
-            <div data-setting-card="">
-            <Row title={t('settings:preferencesPanel.theme')}>
-              <IconSwitch id="themeSetting" name="theme" legend={t('settings:preferencesPanel.theme')} options={current.themeOptions} value={settings.theme}
-                attr="data-theme-choice" variant="themeswitch" epoch={epoch}
-                onChoose={(choice) => { settings.theme = choice; save(); current.changed('theme') }} />
-            </Row>
-            <ToggleRow id="localAppearanceSetting" title={t('settings:preferencesPanel.localAppearance')}
-              description={t('settings:preferencesPanel.localAppearanceHelp')} checked={settings.localAppearance}
-              onToggle={on => { settings.localAppearance = on; save() }} />
-            <InterfaceLanguageSetting host={current} epoch={epoch} />
-            <ToggleRow id="glassContrastSetting" title={t('settings:preferencesPanel.increaseContrast')}
-              description={t('settings:preferencesPanel.increaseContrastHelp')} checked={current.highContrast()}
-              onToggle={(on) => current.setHighContrast(on)} />
-            <ToggleRow id="uiSoundsSetting" title={t('settings:preferencesPanel.interfaceSounds')} checked={settings.uiSounds}
-              onToggle={(on) => { settings.uiSounds = on; save(); current.changed('uiSounds') }} />
-            <ToggleRow id="ingestNoticesSetting" title={t('settings:preferencesPanel.ingestNotices')}
-              description={t('settings:preferencesPanel.ingestNoticesHelp')} checked={settings.ingestNotices}
-              onToggle={(on) => { settings.ingestNotices = on; save() }} />
-            <ToggleRow id="showFeedbackButtonSetting" title={t('settings:preferencesPanel.showFeedbackButton')}
-              description={t('settings:preferencesPanel.showFeedbackButtonHelp')} copyKey="preferencesPanel.showFeedbackButton"
-              checked={settings.showFeedbackButton} onToggle={(on) => { settings.showFeedbackButton = on; save() }} />
-            <ToggleRow id="homeGlowSetting" title={t('settings:preferencesPanel.sidebarGlow')} checked={settings.homeGlow.on}
-              onToggle={(on) => { settings.homeGlow.on = on; save(); current.changed('glow') }} />
-            </div>
-            <GlowSettings host={current} />
+        <div data-settings-scroll="" ref={scroll} onInputCapture={(event) => {
+          if (event.target instanceof HTMLInputElement && event.target.type === 'number') clearReceipt();
+        }}>
+          <Group index={0} tab={shown.tab}>
+            <SettingsCard title={t('settings:preferencesPanel.interfacePreferences')} copyKey="settings.preferencesPanel.interfacePreferences">
+              <Row title={t('settings:preferencesPanel.theme')}>
+                <IconSwitch id="themeSetting" name="theme" legend={t('settings:preferencesPanel.theme')} options={current.themeOptions} value={settings.theme}
+                  attr="data-theme-choice" variant="themeswitch" epoch={epoch}
+                  onChoose={(choice) => { settings.theme = choice; save(); current.changed('theme') }} />
+              </Row>
+              <ToggleRow id="localAppearanceSetting" title={t('settings:preferencesPanel.localAppearance')}
+                description={t('settings:preferencesPanel.localAppearanceHelp')} checked={settings.localAppearance}
+                onToggle={on => { settings.localAppearance = on; save() }} />
+              <InterfaceLanguageSetting host={editor} epoch={epoch} />
+              <ToggleRow id="glassContrastSetting" title={t('settings:preferencesPanel.increaseContrast')}
+                description={t('settings:preferencesPanel.increaseContrastHelp')} checked={current.highContrast()}
+                onToggle={(on) => save(() => current.setHighContrast(on))} />
+              <ToggleRow id="uiSoundsSetting" title={t('settings:preferencesPanel.interfaceSounds')} checked={settings.uiSounds}
+                onToggle={(on) => { settings.uiSounds = on; save(); current.changed('uiSounds') }} />
+              <ToggleRow id="showFeedbackButtonSetting" title={t('settings:preferencesPanel.showFeedbackButton')}
+                description={t('settings:preferencesPanel.showFeedbackButtonHelp')} copyKey="preferencesPanel.showFeedbackButton"
+                checked={settings.showFeedbackButton} onToggle={(on) => { settings.showFeedbackButton = on; save() }} />
+            </SettingsCard>
+            <NotificationSettings host={editor} epoch={epoch} />
+            <section data-setting-block="" id="homeGlowControls" aria-labelledby="sidebarGlowTitle">
+              <h4 data-settings-subheading="" data-settings-group-heading="" id="sidebarGlowTitle" data-copy-key="settings.preferencesPanel.sidebarGlow">
+                {t('settings:preferencesPanel.sidebarGlow')}
+              </h4>
+              <SettingsCard>
+                <ToggleRow id="homeGlowSetting" title={t('settings:sidebarGlow.enable')} copyKey="settings.sidebarGlow.enable"
+                  checked={settings.homeGlow.on} onToggle={(on) => { settings.homeGlow.on = on; save(); current.changed('glow') }} />
+              </SettingsCard>
+              <GlowSettings host={editor} />
+            </section>
             <section data-setting-block="" aria-labelledby="sidebarOrderTitle">
-              <h4 data-settings-subheading="" id="sidebarOrderTitle" data-copy-key="settings.preferencesPanel.navigationOrder">
+              <h4 data-settings-subheading="" data-settings-group-heading="" id="sidebarOrderTitle" data-copy-key="settings.preferencesPanel.navigationOrder">
                 {t('settings:preferencesPanel.navigationOrder')}
               </h4>
-              <div data-setting-card="">
-                <section data-sidebar-setting=""><SidebarOrder host={current} /></section>
-              </div>
-              <div data-setting-card="">
-                <section data-sidebar-setting=""><NavigationOrderPreferences /></section>
-              </div>
+              <SettingsCard heading="h5" title={t('settings:sidebarOrder.groupLabel')} copyKey="settings.sidebarOrder.groupLabel">
+                <section data-sidebar-setting=""><SidebarOrder host={editor} /></section>
+              </SettingsCard>
+              <SettingsCard heading="h5" title={t('settings:preferencesPanel.menuAndTabOrder')} copyKey="settings.preferencesPanel.menuAndTabOrder">
+                <section data-sidebar-setting=""><NavigationOrderPreferences feedback={feedback} /></section>
+              </SettingsCard>
             </section>
           </Group>
-          <BrowseGroup host={current} tab={shown.tab} epoch={epoch} />
-          <JavGroup host={current} tab={shown.tab} epoch={epoch} />
+          <BrowseGroup host={editor} tab={shown.tab} epoch={epoch} />
+          <JavGroup host={editor} tab={shown.tab} epoch={epoch} />
           <Group index={3} tab={shown.tab}>
-            <SearchHistoryRow host={current} epoch={epoch} />
-            <ToggleRow id="searchRecommendationsSetting" title={t('settings:preferencesPanel.searchRecommendations')}
-              description={t('settings:preferencesPanel.searchRecommendationsHelp')} checked={settings.searchRecommendations}
-              onToggle={(on) => { settings.searchRecommendations = on; save(); current.changed('searchRecommendations') }} />
-            <Row title={t('settings:preferencesPanel.relatedLimit')} description={t('settings:preferencesPanel.relatedLimitHelp')}>
-              <div id="relatedLimitSetting">
-                <NumberSetting key={epoch} id="relatedLimitSetting" label={t('settings:preferencesPanel.relatedLimit')} value={settings.relatedLimit}
-                  onApply={(value) => { settings.relatedLimit = value; save() }} />
-              </div>
-            </Row>
-            <Row title={t('settings:preferencesPanel.tasteAndHistory')}><div className="peach-react"><ButtonLink variant="secondary" href="/taste" onClick={() => close(false)}>{t('settings:preferencesPanel.openTaste')}</ButtonLink></div></Row>
+            <SettingsCard title={t('settings:preferencesPanel.recommendationsHeading')}>
+              <ToggleRow id="searchRecommendationsSetting" title={t('settings:preferencesPanel.searchRecommendations')}
+                description={t('settings:preferencesPanel.searchRecommendationsHelp')} checked={settings.searchRecommendations}
+                onToggle={(on) => { settings.searchRecommendations = on; save(); current.changed('searchRecommendations') }} />
+              <Row title={t('settings:preferencesPanel.relatedLimit')} description={t('settings:preferencesPanel.relatedLimitHelp')}>
+                <div id="relatedLimitSetting">
+                  <NumberSetting key={epoch} id="relatedLimitSetting" label={t('settings:preferencesPanel.relatedLimit')} value={settings.relatedLimit}
+                    onApply={(value) => { settings.relatedLimit = value; save() }} />
+                </div>
+              </Row>
+            </SettingsCard>
+            <SettingsCard title={t('settings:preferencesPanel.historyHeading')}>
+              <SearchHistoryRow host={editor} epoch={epoch} />
+              <Row title={t('settings:preferencesPanel.tasteAndHistory')}><div className="peach-react"><ButtonLink variant="secondary" href="/taste" data-copy-interact="" onClick={() => close(false)}>{t('settings:preferencesPanel.openTaste')}</ButtonLink></div></Row>
+            </SettingsCard>
           </Group>
           <Group index={4} tab={shown.tab}>
-            <ToggleRow id="censorSetting" title={t('settings:preferencesPanel.sfwMode')} describedBy="sfwDescription" checked={current.censored()}
-              description={t('settings:preferencesPanel.sfwModeHelp')}
-              onToggle={(on) => current.setCensored(on)} />
-            <ShortcutSetting current={current.sfwShortcut()} onChange={current.setSfwShortcut} />
+            <SettingsCard>
+              <ToggleRow id="censorSetting" title={t('settings:preferencesPanel.sfwMode')} describedBy="sfwDescription" checked={current.censored()}
+                description={t('settings:preferencesPanel.sfwModeHelp')}
+                onToggle={(on) => save(() => current.setCensored(on))} />
+              <ShortcutSetting current={current.sfwShortcut()} onChange={(shortcut) => save(() => current.setSfwShortcut(shortcut))} />
+            </SettingsCard>
           </Group>
         </div>
       </div>
@@ -458,78 +519,172 @@ function SettingsPanel({ host: current, view: shown }: { host: SettingsPanelHost
   );
 }
 
-interface GroupProps { host: SettingsPanelHost; tab: number; epoch: number }
+interface GroupProps { host: SettingsEditorHost; tab: number; epoch: number }
+
+type DesktopAlerts = { available: boolean; enabled: boolean };
+const DESKTOP_ALERTS_URL = '/api/configuration/desktop-alerts';
+const DESKTOP_ALERTS_KEY = ['desktop-alerts'] as const;
+
+function NotificationDeliverySettings({ host }: Pick<GroupProps, 'host'>) {
+  const settings = host.store.value;
+  const [requesting, setRequesting] = useState(false);
+  const [permission, setPermission] = useState(browserNoticePermission);
+  const desktop = useQuery({ queryKey: DESKTOP_ALERTS_KEY,
+    queryFn: ({ signal }) => apiGet<DesktopAlerts>(DESKTOP_ALERTS_URL, signal), retry: false });
+  const saveDesktop = useMutation({
+    mutationFn: (enabled: boolean) => apiSend<DesktopAlerts>(DESKTOP_ALERTS_URL, { enabled }),
+    onSuccess: value => {
+      queryClient.setQueryData(DESKTOP_ALERTS_KEY, value);
+      host.receipt(t('settings:shared.settingsSaved'));
+    },
+  });
+  const toggleBrowser = async (on: boolean) => {
+    if (!on) {
+      settings.browserNotices = false;
+      host.saveLocal();
+      return;
+    }
+    const current = browserNoticePermission();
+    if (current === 'denied' || current === 'unavailable') {
+      setPermission(current);
+      return;
+    }
+    let next: ReturnType<typeof browserNoticePermission> = current;
+    if (current === 'default') {
+      setRequesting(true);
+      try {
+        next = await Notification.requestPermission();
+      } catch {
+        next = browserNoticePermission();
+      } finally {
+        setRequesting(false);
+      }
+    }
+    setPermission(next);
+    if (next !== 'granted') return;
+    settings.browserNotices = true;
+    host.saveLocal();
+  };
+  return <SettingsCard heading="h5" title={t('settings:notificationCenter.deliveryHeading')} copyKey="settings.notificationCenter.deliveryHeading">
+    <ToggleRow id="ingestToastsSetting" title={t('settings:notificationCenter.ingestToasts')}
+      description={t('settings:notificationCenter.ingestToastsHelp')} copyKey="notificationCenter.ingestToasts"
+      checked={settings.ingestToasts} onToggle={on => { settings.ingestToasts = on; host.saveLocal() }} />
+    <ToggleRow id="browserNoticesSetting" title={t('settings:notificationCenter.browser')}
+      description={t('settings:notificationCenter.browserHelp')} copyKey="notificationCenter.browser"
+      checked={settings.browserNotices} disabled={requesting || (!settings.browserNotices && permission === 'unavailable')}
+      onToggle={on => void toggleBrowser(on)} />
+    {permission === 'unavailable' || permission === 'denied' || (settings.browserNotices && permission !== 'granted')
+      ? <Row title={t(permission === 'unavailable' ? 'settings:notificationCenter.browserUnavailable'
+        : 'settings:notificationCenter.browserPermission')} /> : null}
+    {desktop.data?.available ? <ToggleRow id="desktopAlertsSetting" title={t('settings:notificationCenter.desktop')}
+      description={t('settings:notificationCenter.desktopHelp')} copyKey="notificationCenter.desktop"
+      checked={desktop.data.enabled} disabled={saveDesktop.isPending} onToggle={on => saveDesktop.mutate(on)} /> : null}
+    {saveDesktop.error ? <Row title={errorMessage(saveDesktop.error)} /> : null}
+  </SettingsCard>;
+}
+
+function NotificationSettings({ host, epoch }: Pick<GroupProps, 'host' | 'epoch'>) {
+  const settings = host.store.value;
+  const fields = [
+    ['resume', 'notificationResume', t('settings:notificationCenter.resumeLimit')],
+    ['recommendation', 'notificationRecommendation', t('settings:notificationCenter.recommendationLimit')],
+    ['follow', 'notificationFollow', t('settings:notificationCenter.followLimit')],
+    ['task', 'notificationTask', t('settings:notificationCenter.taskLimit')],
+  ] as const;
+  return (
+    <section data-setting-block="" id="notification-settings" aria-labelledby="notificationSettingsTitle">
+      <h4 data-settings-subheading="" data-settings-group-heading="" id="notificationSettingsTitle" data-copy-key="settings.notificationCenter.title">
+        {t('settings:notificationCenter.title')}
+      </h4>
+      <SettingsCard heading="h5" title={t('settings:notificationCenter.contentsHeading')} copyKey="settings.notificationCenter.contentsHeading">
+        {fields.map(([key, id, label]) => (
+          <Row key={id} title={label}>
+            <div id={id}>
+              <NumberSetting key={epoch} id={id} label={label} value={settings.notificationLimits[key]}
+                onApply={(value) => { settings.notificationLimits[key] = value; host.saveLocal() }} />
+            </div>
+          </Row>
+        ))}
+        <ToggleRow id="ingestNoticesSetting" title={t('settings:notificationCenter.ingestRecords')}
+          description={t('settings:notificationCenter.ingestRecordsHelp')} copyKey="notificationCenter.ingestRecords" checked={settings.ingestNotices}
+          onToggle={(on) => { settings.ingestNotices = on; host.saveLocal() }} />
+      </SettingsCard>
+      <NotificationDeliverySettings key={epoch} host={host} />
+    </section>
+  );
+}
 
 /* 「浏览与播放」按作品列表、首页和播放分组。本机转码方式在 Peach 配置「媒体库与入库 → 视频播放」。 */
 function BrowseGroup({ host: current, tab, epoch }: GroupProps) {
   const settings = current.store.value;
-  const save = () => current.store.save();
+  const save = current.saveLocal;
   const random = settings.defaultSort === 'seed';
   const ascending = settings.defaultSortDirection === 'asc';
   return (
     <Group index={1} tab={tab}>
-      <h4 data-settings-subheading="">{t('settings:preferencesPanel.videoList')}</h4>
-      <Row title={t('settings:preferencesPanel.batchSize')}>
-        <div id="batchSizeSetting">
-          <NumberSetting key={epoch} id="batchSizeSetting" label={t('settings:preferencesPanel.batchSizeInput')} value={settings.batchSize}
-            onApply={(value) => { settings.batchSize = value || 60; save(); current.changed('batchSize') }} />
-        </div>
-      </Row>
-      <Row title={t('settings:preferencesPanel.defaultSort')} description={t('settings:preferencesPanel.defaultSortHelp')} kind="sort">
-        <div data-setting-sort-controls="">
-          <SelectField id="defaultSortSetting" label={t('settings:preferencesPanel.defaultSort')} options={SORT_OPTIONS} value={settings.defaultSort} epoch={epoch}
-            onPick={(value) => { settings.defaultSort = value; save(); current.changed('defaultSort') }} />
-          <SelectField id="defaultSortDirectionSetting" label={t('settings:preferencesPanel.defaultSortDirection')} options={DIRECTION_OPTIONS}
-            value={ascending ? 'asc' : 'desc'} hidden={random} disabled={random} epoch={epoch}
-            onPick={(value) => { settings.defaultSortDirection = value; save(); current.changed('sortDirection') }}
-            renderValue={<>
-              <span data-sort-direction-icon="" className={`inline-flex shrink-0 transition-transform duration-200 ${ascending ? 'rotate-180' : ''}`}>
-                <Icon name="arrow-down" />
-              </span>
-              <span data-sort-direction-label="">{ascending ? t('settings:shared.ascending') : t('settings:shared.descending')}</span>
-            </>} />
-        </div>
-      </Row>
-      <Row title={t('settings:preferencesPanel.videoCardSize')}>
-        <IconSwitch id="javSizeSetting" name="video-size" legend={t('settings:preferencesPanel.videoCardSize')} options={current.videoLayouts}
-          value={current.videoLayout()} attr="data-video-layout" variant="javimageswitch" text epoch={epoch}
-          onChoose={(layout) => current.setVideoLayout(layout)} />
-      </Row>
-      <ToggleRow id="groupCollapseSetting" title={t('settings:preferencesPanel.groupEditions')}
-        description={t('settings:preferencesPanel.groupEditionsHelp')} checked={settings.groupCollapse}
-        onToggle={(on) => { settings.groupCollapse = on; save(); current.changed('groupCollapse') }} />
-      <ToggleRow id="hoverPreviewSetting" title={t('settings:preferencesPanel.hoverPreview')} checked={settings.hoverPreview}
-        onToggle={(on) => { settings.hoverPreview = on; save(); current.changed('hoverPreview') }} />
-      {/* SFW 模式与关掉悬停预览时延迟不起作用：禁用，SFW 另加说明。 */}
-      <Row title={t('settings:preferencesPanel.hoverDelay')}
-        description={current.censored() ? t('settings:preferencesPanel.hoverDelaySfw') : t('settings:preferencesPanel.hoverDelayHelp')}>
-        <div id="hoverDelaySetting">
-          <NumberSetting key={epoch} id="hoverDelaySetting" label={t('settings:preferencesPanel.hoverDelay')} value={settings.hoverDelaySeconds}
-            disabled={current.censored() || !settings.hoverPreview}
-            onApply={(value) => {
-              settings.hoverDelaySeconds = boundedPreference(value, 0, 60, 5); save(); current.changed('hoverDelay');
-            }} />
-        </div>
-      </Row>
-      <ToggleRow id="completionPromptSetting" title={t('settings:preferencesPanel.completionPrompt')}
-        description={t('settings:preferencesPanel.completionPromptHelp')} checked={settings.completionPrompt}
-        onToggle={(on) => { settings.completionPrompt = on; save() }} />
-      <h4 data-settings-subheading="">{t('navigation:sidebar.home')}</h4>
-      <Row title={t('settings:preferencesPanel.homeShorts')} description={t('settings:preferencesPanel.homeShortsHelp')}>
-        <div id="homeShortsSetting">
-          <NumberSetting key={epoch} id="homeShortsSetting" label={t('settings:preferencesPanel.homeShorts')} value={settings.homeShortsLimit}
-            onApply={(value) => { settings.homeShortsLimit = value; save(); current.changed('homeShorts') }} />
-        </div>
-      </Row>
-      <ToggleRow id="homeTiersSetting" title={t('settings:preferencesPanel.homeTiers')} checked={settings.homeTiers}
-        onToggle={(on) => { settings.homeTiers = on; save(); current.changed('homeTiers') }} />
-      <ToggleRow id="homePreviewOnlySetting" title={t('settings:preferencesPanel.homePreviewOnly')}
-        description={t('settings:preferencesPanel.homePreviewOnlyHelp')} checked={settings.homePreviewOnly}
-        onToggle={(on) => { settings.homePreviewOnly = on; save(); current.changed('homePreviewOnly') }} />
-      <ToggleRow id="containHomeScrollSetting" title={t('settings:preferencesPanel.containHomeScroll')}
-        description={t('settings:preferencesPanel.containHomeScrollDescription')} checked={settings.containHomeScroll}
-        onToggle={(on) => { settings.containHomeScroll = on; save(); current.changed('containHomeScroll') }} />
-      <h4 data-settings-subheading="">{t('settings:preferencesPanel.playbackHeading')}</h4>
+      <SettingsCard title={t('settings:preferencesPanel.videoList')}>
+        <Row title={t('settings:preferencesPanel.batchSize')}>
+          <div id="batchSizeSetting">
+            <NumberSetting key={epoch} id="batchSizeSetting" label={t('settings:preferencesPanel.batchSizeInput')} value={settings.batchSize}
+              onApply={(value) => { settings.batchSize = value || 60; save(); current.changed('batchSize') }} />
+          </div>
+        </Row>
+        <Row title={t('settings:preferencesPanel.defaultSort')} description={t('settings:preferencesPanel.defaultSortHelp')} kind="sort">
+          <div data-setting-sort-controls="">
+            <SelectField id="defaultSortSetting" label={t('settings:preferencesPanel.defaultSort')} options={SORT_OPTIONS} value={settings.defaultSort} epoch={epoch}
+              onPick={(value) => { settings.defaultSort = value; save(); current.changed('defaultSort') }} />
+            <SelectField id="defaultSortDirectionSetting" label={t('settings:preferencesPanel.defaultSortDirection')} options={DIRECTION_OPTIONS}
+              value={ascending ? 'asc' : 'desc'} hidden={random} disabled={random} epoch={epoch}
+              onPick={(value) => { settings.defaultSortDirection = value; save(); current.changed('sortDirection') }}
+              renderValue={<>
+                <span data-sort-direction-icon="" className={`inline-flex shrink-0 transition-transform duration-200 ${ascending ? 'rotate-180' : ''}`}>
+                  <Icon name="arrow-down" />
+                </span>
+                <span data-sort-direction-label="">{ascending ? t('settings:shared.ascending') : t('settings:shared.descending')}</span>
+              </>} />
+          </div>
+        </Row>
+        <Row title={t('settings:preferencesPanel.videoCardSize')}>
+          <IconSwitch id="javSizeSetting" name="video-size" legend={t('settings:preferencesPanel.videoCardSize')} options={current.videoLayouts}
+            value={current.videoLayout()} attr="data-video-layout" variant="javimageswitch" text epoch={epoch}
+            onChoose={(layout) => save(() => current.setVideoLayout(layout))} />
+        </Row>
+        <ToggleRow id="groupCollapseSetting" title={t('settings:preferencesPanel.groupEditions')}
+          description={t('settings:preferencesPanel.groupEditionsHelp')} checked={settings.groupCollapse}
+          onToggle={(on) => { settings.groupCollapse = on; save(); current.changed('groupCollapse') }} />
+        <ToggleRow id="hoverPreviewSetting" title={t('settings:preferencesPanel.hoverPreview')} checked={settings.hoverPreview}
+          onToggle={(on) => { settings.hoverPreview = on; save(); current.changed('hoverPreview') }} />
+        {/* SFW 模式与关掉悬停预览时延迟不起作用：禁用，SFW 另加说明。 */}
+        <Row title={t('settings:preferencesPanel.hoverDelay')}
+          description={current.censored() ? t('settings:preferencesPanel.hoverDelaySfw') : t('settings:preferencesPanel.hoverDelayHelp')}>
+          <div id="hoverDelaySetting">
+            <NumberSetting key={epoch} id="hoverDelaySetting" label={t('settings:preferencesPanel.hoverDelay')} value={settings.hoverDelaySeconds}
+              disabled={current.censored() || !settings.hoverPreview}
+              onApply={(value) => {
+                settings.hoverDelaySeconds = boundedPreference(value, 0, 60, 5); save(); current.changed('hoverDelay');
+              }} />
+          </div>
+        </Row>
+        <ToggleRow id="completionPromptSetting" title={t('settings:preferencesPanel.completionPrompt')}
+          description={t('settings:preferencesPanel.completionPromptHelp')} checked={settings.completionPrompt}
+          onToggle={(on) => { settings.completionPrompt = on; save() }} />
+      </SettingsCard>
+      <SettingsCard title={t('navigation:sidebar.home')}>
+        <Row title={t('settings:preferencesPanel.homeShorts')} description={t('settings:preferencesPanel.homeShortsHelp')}>
+          <div id="homeShortsSetting">
+            <NumberSetting key={epoch} id="homeShortsSetting" label={t('settings:preferencesPanel.homeShorts')} value={settings.homeShortsLimit}
+              onApply={(value) => { settings.homeShortsLimit = value; save(); current.changed('homeShorts') }} />
+          </div>
+        </Row>
+        <ToggleRow id="homeTiersSetting" title={t('settings:preferencesPanel.homeTiers')} checked={settings.homeTiers}
+          onToggle={(on) => { settings.homeTiers = on; save(); current.changed('homeTiers') }} />
+        <ToggleRow id="homePreviewOnlySetting" title={t('settings:preferencesPanel.homePreviewOnly')}
+          description={t('settings:preferencesPanel.homePreviewOnlyHelp')} checked={settings.homePreviewOnly}
+          onToggle={(on) => { settings.homePreviewOnly = on; save(); current.changed('homePreviewOnly') }} />
+        <ToggleRow id="containHomeScrollSetting" title={t('settings:preferencesPanel.containHomeScroll')}
+          description={t('settings:preferencesPanel.containHomeScrollDescription')} checked={settings.containHomeScroll}
+          onToggle={(on) => { settings.containHomeScroll = on; save(); current.changed('containHomeScroll') }} />
+      </SettingsCard>
       <PlaybackRows host={current} epoch={epoch} />
     </Group>
   );
@@ -537,35 +692,37 @@ function BrowseGroup({ host: current, tab, epoch }: GroupProps) {
 
 function JavGroup({ host: current, tab, epoch }: GroupProps) {
   const settings = current.store.value;
-  const save = () => current.store.save();
+  const save = current.saveLocal;
   return (
     <Group index={2} tab={tab}>
-      <h4 data-settings-subheading="">{t('settings:preferencesPanel.videoDisplay')}</h4>
-      <NameLanguageSetting host={current} epoch={epoch} />
-      <SourceTagSetting host={current} epoch={epoch} />
-      <Row title={t('settings:preferencesPanel.defaultImage')} description={t('settings:preferencesPanel.defaultImageHelp')}>
-        <IconSwitch id="javImageSetting" name="jav-image" legend={t('settings:preferencesPanel.defaultImage')} options={JAV_IMAGE_OPTIONS}
-          value={settings.javImage} attr="data-jav-image-choice" variant="javimageswitch" text epoch={epoch}
-          onChoose={(choice) => { settings.javImage = normalizeJavImage(choice); save(); current.changed('javImage') }} />
-      </Row>
-      <h4 data-settings-subheading="">{t('settings:preferencesPanel.newReleases')}</h4>
-      <ToggleRow id="feedNewRowsSetting" title={t('settings:preferencesPanel.feedNewRows')} checked={settings.feedNewRows}
-        onToggle={(on) => { settings.feedNewRows = on; save(); current.changed('feedNewRows') }} />
-      {/* 数量与自动滚动只作用于首页和人物页的新作行：行关了就收起；合集开关还管「JAV → 新作」与未读数，照常显示。 */}
-      {settings.feedNewRows ? <>
-        <Row title={t('settings:preferencesPanel.feedLimit')} description={t('settings:preferencesPanel.feedLimitHelp')}>
-          <div id="feedLimitSetting">
-            <NumberSetting key={epoch} id="feedLimitSetting" label={t('settings:preferencesPanel.feedLimitInput')} value={settings.feedLimit}
-              onApply={(value) => { settings.feedLimit = boundedPreference(value, 1, 100, 12); save(); current.changed('feedLimit') }} />
-          </div>
+      <SettingsCard title={t('settings:preferencesPanel.videoDisplay')}>
+        <NameLanguageSetting host={current} epoch={epoch} />
+        <SourceTagSetting host={current} epoch={epoch} />
+        <Row title={t('settings:preferencesPanel.defaultImage')} description={t('settings:preferencesPanel.defaultImageHelp')}>
+          <IconSwitch id="javImageSetting" name="jav-image" legend={t('settings:preferencesPanel.defaultImage')} options={JAV_IMAGE_OPTIONS}
+            value={settings.javImage} attr="data-jav-image-choice" variant="javimageswitch" text epoch={epoch}
+            onChoose={(choice) => { settings.javImage = normalizeJavImage(choice); save(); current.changed('javImage') }} />
         </Row>
-        <ToggleRow id="feedAutoScrollSetting" title={t('settings:preferencesPanel.autoScroll')}
-          description={t('settings:preferencesPanel.autoScrollHelp')} checked={settings.feedAutoScroll}
-          onToggle={(on) => { settings.feedAutoScroll = on; save(); current.changed('feedAutoScroll') }} />
-      </> : null}
-      {FEED_COMPILATIONS.map(([id, key, label, title]) => (
-        <CompilationToggle key={id} host={current} id={id} settingKey={key} label={label} title={title} />
-      ))}
+      </SettingsCard>
+      <SettingsCard title={t('settings:preferencesPanel.newReleases')}>
+        <ToggleRow id="feedNewRowsSetting" title={t('settings:preferencesPanel.feedNewRows')} checked={settings.feedNewRows}
+          onToggle={(on) => { settings.feedNewRows = on; save(); current.changed('feedNewRows') }} />
+        {/* 数量与自动滚动只作用于首页和人物页的新作行：行关了就收起；合集开关还管「JAV → 新作」与未读数，照常显示。 */}
+        {settings.feedNewRows ? <>
+          <Row title={t('settings:preferencesPanel.feedLimit')} description={t('settings:preferencesPanel.feedLimitHelp')}>
+            <div id="feedLimitSetting">
+              <NumberSetting key={epoch} id="feedLimitSetting" label={t('settings:preferencesPanel.feedLimitInput')} value={settings.feedLimit}
+                onApply={(value) => { settings.feedLimit = boundedPreference(value, 1, 100, 12); save(); current.changed('feedLimit') }} />
+            </div>
+          </Row>
+          <ToggleRow id="feedAutoScrollSetting" title={t('settings:preferencesPanel.autoScroll')}
+            description={t('settings:preferencesPanel.autoScrollHelp')} checked={settings.feedAutoScroll}
+            onToggle={(on) => { settings.feedAutoScroll = on; save(); current.changed('feedAutoScroll') }} />
+        </> : null}
+        {FEED_COMPILATIONS.map(([id, key, label, title]) => (
+          <CompilationToggle key={id} host={current} id={id} settingKey={key} label={label} title={title} />
+        ))}
+      </SettingsCard>
     </Group>
   );
 }
@@ -573,7 +730,7 @@ function JavGroup({ host: current, tab, epoch }: GroupProps) {
 const languageChoices = (): readonly (readonly [InterfaceLanguageChoice, string])[] =>
   [['auto', t('settings:interfaceLanguage.auto')], ...INTERFACE_LANGUAGES.map(code => [code, LANGUAGE_SELF_NAMES[code]] as const)];
 /* 存进数据库、回来交壳对账；壳发现本地那份变了就整页重载，换成新语言。 */
-function InterfaceLanguageSetting({ host: current, epoch }: { host: SettingsPanelHost; epoch: number }) {
+function InterfaceLanguageSetting({ host: current, epoch }: { host: SettingsEditorHost; epoch: number }) {
   const query = useQuery({ queryKey: SETTINGS_KEY, queryFn: ({ signal }) => fetchSettings(signal), staleTime: 0 });
   const save = useSaveSettings();
   const [pending, setPending] = useState<InterfaceLanguageChoice | null>(null);
@@ -588,10 +745,11 @@ function InterfaceLanguageSetting({ host: current, epoch }: { host: SettingsPane
         disabled={query.isPending || query.isError || save.isPending || !language} busy={save.isPending}
         onPick={(value) => {
           if (save.isPending || !isInterfaceLanguageChoice(value) || value === language) return;
+          const report = current.feedback();
           setPending(value);
           save.mutate({ interfaceLanguage: value }, {
-            onSuccess: (saved) => { current.receipt(t('settings:interfaceLanguage.saved')); current.syncRemote(saved) },
-            onError: (error) => current.failure(t('settings:interfaceLanguage.saveFailed'), error),
+            onSuccess: (saved) => { report('saved'); current.receipt(t('settings:interfaceLanguage.saved')); current.syncRemote(saved) },
+            onError: (error) => { report('failed'); current.failure(t('settings:interfaceLanguage.saveFailed'), error) },
             onSettled: () => setPending(null),
           });
         }} />
@@ -599,7 +757,7 @@ function InterfaceLanguageSetting({ host: current, epoch }: { host: SettingsPane
     {query.isError ? <Note tone="error">{t('settings:interfaceLanguage.unavailable')}</Note> : null}
   </>;
 }
-function SourceTagSetting({ host: current, epoch }: { host: SettingsPanelHost; epoch: number }) {
+function SourceTagSetting({ host: current, epoch }: { host: SettingsEditorHost; epoch: number }) {
   const query = useQuery({ queryKey: SETTINGS_KEY, queryFn: ({ signal }) => fetchSettings(signal), staleTime: 0 });
   const save = useSaveSettings();
   const [pending, setPending] = useState<boolean | null>(null);
@@ -614,6 +772,7 @@ function SourceTagSetting({ host: current, epoch }: { host: SettingsPanelHost; e
         onPick={(value) => {
           const next = value === 'source';
           if (save.isPending || next === original) return;
+          const report = current.feedback();
           setPending(next);
           save.mutate({ sourceTagsOriginal: next }, {
             onSuccess: () => {
@@ -622,9 +781,10 @@ function SourceTagSetting({ host: current, epoch }: { host: SettingsPanelHost; e
               void queryClient.invalidateQueries({ queryKey: ['jav-releases'] });
               void queryClient.invalidateQueries({ queryKey: ['jav-release-column'] });
               void queryClient.invalidateQueries({ queryKey: ['jav-catalog'] });
+              report('saved');
               current.receipt(t('settings:sourceTags.saved'));
             },
-            onError: (error) => current.failure(t('settings:sourceTags.saveFailed'), error),
+            onError: (error) => { report('failed'); current.failure(t('settings:sourceTags.saveFailed'), error) },
             onSettled: () => setPending(null),
           });
         }} />
@@ -633,7 +793,7 @@ function SourceTagSetting({ host: current, epoch }: { host: SettingsPanelHost; e
   </>;
 }
 
-function NameLanguageSetting({ host: current, epoch }: { host: SettingsPanelHost; epoch: number }) {
+function NameLanguageSetting({ host: current, epoch }: { host: SettingsEditorHost; epoch: number }) {
   const query = useQuery({ queryKey: SETTINGS_KEY, queryFn: ({ signal }) => fetchSettings(signal), staleTime: 0 });
   const save = useSaveSettings();
   const [pending, setPending] = useState<NameLanguage | null>(null);
@@ -649,10 +809,11 @@ function NameLanguageSetting({ host: current, epoch }: { host: SettingsPanelHost
         onPick={(value) => {
           const choice = value as NameLanguage;
           if (save.isPending || !NAME_LANGUAGES.includes(choice) || choice === language) return;
+          const report = current.feedback();
           setPending(choice);
           save.mutate({ performerNameLanguage: choice }, {
-            onSuccess: (saved) => { current.syncRemote(saved); current.receipt(t('settings:performerNameLanguage.saved')) },
-            onError: (error) => current.failure(t('settings:performerNameLanguage.saveFailed'), error),
+            onSuccess: (saved) => { current.syncRemote(saved); report('saved'); current.receipt(t('settings:performerNameLanguage.saved')) },
+            onError: (error) => { report('failed'); current.failure(t('settings:performerNameLanguage.saveFailed'), error) },
             onSettled: () => setPending(null),
           });
         }} />
@@ -663,13 +824,14 @@ function NameLanguageSetting({ host: current, epoch }: { host: SettingsPanelHost
 /* 合集开关由服务端判，列表、未读数和补封面排队都跟着它，所以先存到服务端再重画；往返期间开关
    停在新位置、挂忙态，失败退回原位。 */
 function CompilationToggle({ host: current, id, settingKey, label, title }: {
-  host: SettingsPanelHost; id: string; settingKey: CompilationKey; label: string; title: string;
+  host: SettingsEditorHost; id: string; settingKey: CompilationKey; label: string; title: string;
 }) {
   const save = useSaveSettings();
   const [pending, setPending] = useState<boolean | null>(null);
   const box = useRef<HTMLInputElement | null>(null);
   const settings: PanelSettings = current.store.value;
   const toggle = (on: boolean) => {
+    const report = current.feedback();
     setPending(on);
     setActionBusy(box.current);
     save.mutate({ [settingKey]: on }, {
@@ -677,9 +839,10 @@ function CompilationToggle({ host: current, id, settingKey, label, title }: {
         settings[settingKey] = saved[settingKey] === true;
         current.store.save();
         current.changed('feedCompilations');
+        report('saved');
         current.receipt(on ? t('settings:feedCompilations.hidden', { label }) : t('settings:feedCompilations.shown', { label }));
       },
-      onError: (error) => current.failure(t('settings:feedCompilations.saveFailed', { label }), error),
+      onError: (error) => { report('failed'); current.failure(t('settings:feedCompilations.saveFailed', { label }), error) },
       onSettled: () => { setPending(null); setActionBusy(box.current, false) },
     });
   };
@@ -697,74 +860,86 @@ const HOLD_RATES = [1.5, 2, 3, 4] as const;
 
 function PlaybackRows({ host: current, epoch }: Omit<GroupProps, 'tab'>) {
   const settings = current.store.value;
-  const save = () => current.store.save();
+  const save = current.saveLocal;
   return (
     <>
-      <ToggleRow id="detailAutoplaySetting" title={t('settings:preferencesPanel.detailAutoplay')} checked={settings.detailAutoplay}
-        onToggle={(on) => { settings.detailAutoplay = on; save() }} />
-      <ToggleRow id="autoChineseSubtitlesSetting" title={t('settings:preferencesPanel.autoChineseSubtitles')}
-        description={t('settings:preferencesPanel.autoChineseSubtitlesHelp')}
-        checked={settings.autoChineseSubtitles} onToggle={(on) => { settings.autoChineseSubtitles = on; save() }} />
-      <Row title={t('settings:playbackEnd.title')} description={t('settings:playbackEnd.titleHelp')}>
-        <SelectField id="afterPlaybackSetting" label={t('settings:playbackEnd.title')} options={afterPlaybackOptions()} value={settings.afterPlayback} epoch={epoch}
-          onPick={(value) => { settings.afterPlayback = allowedSetting(value, AFTER_PLAYBACK_CHOICES, 'next'); save() }} />
-      </Row>
-      <Row title={t('settings:playbackEnd.restart')} description={t('settings:playbackEnd.restartHelp')}>
-        <div id="resumeRestartSetting">
-          <NumberSetting key={epoch} id="resumeRestartSetting" label={t('settings:playbackEnd.restart')} value={settings.resumeRestartPercent}
-            onApply={(value) => { settings.resumeRestartPercent = boundedPreference(value, 0, 20, 5); save() }} />
-        </div>
-      </Row>
-      <ToggleRow id="miniplayerSetting" title={t('settings:preferencesPanel.miniPlayer')} checked={settings.miniplayer}
-        onToggle={(on) => { settings.miniplayer = on; save(); current.changed('miniplayer') }} />
-      <Row title={t('settings:preferencesPanel.seekStep')} description={t('settings:preferencesPanel.seekStepHelp')}>
-        <div id="seekSecondsSetting">
-          <NumberSetting key={epoch} id="seekSecondsSetting" label={t('settings:preferencesPanel.seekStepInput')} value={settings.seekSeconds}
-            onApply={(value) => { settings.seekSeconds = value || 10; save(); current.changed('seekSeconds') }} />
-        </div>
-      </Row>
-      {/* 长按倍速也管右方向键，不随画面手势开关收起；拖动与双击区只在画面手势开着时有用。 */}
-      <Row title={t('settings:playbackGestures.holdRate')} description={t('settings:playbackGestures.holdRateHelp')}>
-        <SelectField id="holdRateSetting" label={t('settings:playbackGestures.holdRate')} epoch={epoch}
-          options={HOLD_RATES.map((rate) => [String(rate), `${rate}×`] as Choice)} value={String(settings.holdRate)}
-          onPick={(value) => { settings.holdRate = normalizeGestures({ holdRate: Number(value) }).holdRate; save() }} />
-      </Row>
-      <ToggleRow id="touchGesturesSetting" title={t('settings:playbackGestures.touch')} checked={settings.touchGestures}
-        onToggle={(on) => { settings.touchGestures = on; save() }} />
-      {settings.touchGestures ? <>
-        <Row title={t('settings:playbackGestures.swipeMinutes')}>
-          <div id="swipeMinutesSetting">
-            <NumberSetting key={epoch} id="swipeMinutesSetting" label={t('settings:playbackGestures.swipeMinutes')} value={settings.swipeMinutes}
-              onApply={(value) => { settings.swipeMinutes = normalizeGestures({ swipeMinutes: value }).swipeMinutes; save() }} />
+      <SettingsCard title={t('settings:preferencesPanel.playbackHeading')}>
+        <ToggleRow id="detailAutoplaySetting" title={t('settings:preferencesPanel.detailAutoplay')} checked={settings.detailAutoplay}
+          onToggle={(on) => { settings.detailAutoplay = on; save() }} />
+        <ToggleRow id="autoChineseSubtitlesSetting" title={t('settings:preferencesPanel.autoChineseSubtitles')}
+          description={t('settings:preferencesPanel.autoChineseSubtitlesHelp')}
+          checked={settings.autoChineseSubtitles} onToggle={(on) => { settings.autoChineseSubtitles = on; save() }} />
+        <Row title={t('settings:playbackEnd.title')} description={t('settings:playbackEnd.titleHelp')}>
+          <SelectField id="afterPlaybackSetting" label={t('settings:playbackEnd.title')} options={afterPlaybackOptions()} value={settings.afterPlayback} epoch={epoch}
+            onPick={(value) => { settings.afterPlayback = allowedSetting(value, AFTER_PLAYBACK_CHOICES, 'next'); save() }} />
+        </Row>
+        <Row title={t('settings:playbackEnd.restart')} description={t('settings:playbackEnd.restartHelp')}>
+          <div id="resumeRestartSetting">
+            <NumberSetting key={epoch} id="resumeRestartSetting" label={t('settings:playbackEnd.restart')} value={settings.resumeRestartPercent}
+              onApply={(value) => { settings.resumeRestartPercent = boundedPreference(value, 0, 20, 5); save() }} />
           </div>
         </Row>
-        <Row title={t('settings:playbackGestures.doubleTapPercent')} description={t('settings:playbackGestures.doubleTapPercentHelp')}>
-          <div id="doubleTapPercentSetting">
-            <NumberSetting key={epoch} id="doubleTapPercentSetting" label={t('settings:playbackGestures.doubleTapPercent')} value={settings.doubleTapPercent}
-              onApply={(value) => { settings.doubleTapPercent = normalizeGestures({ doubleTapPercent: value }).doubleTapPercent; save() }} />
+        <ToggleRow id="miniplayerSetting" title={t('settings:preferencesPanel.miniPlayer')} checked={settings.miniplayer}
+          onToggle={(on) => { settings.miniplayer = on; save(); current.changed('miniplayer') }} />
+      </SettingsCard>
+      <SettingsCard title={t('settings:preferencesPanel.playerControlsHeading')}>
+        <Row title={t('settings:preferencesPanel.seekStep')} description={t('settings:preferencesPanel.seekStepHelp')}>
+          <div id="seekSecondsSetting">
+            <NumberSetting key={epoch} id="seekSecondsSetting" label={t('settings:preferencesPanel.seekStepInput')} value={settings.seekSeconds}
+              onApply={(value) => { settings.seekSeconds = value || 10; save(); current.changed('seekSeconds') }} />
           </div>
         </Row>
-      </> : null}
-      <ToggleRow id="autoFullscreenSetting" title={t('settings:playbackGestures.autoFullscreen')}
-        description={t('settings:playbackGestures.autoFullscreenHelp')} checked={settings.autoFullscreen}
-        onToggle={(on) => { settings.autoFullscreen = on; save() }} />
+        {/* 长按倍速也管右方向键，不随画面手势开关收起；拖动与双击区只在画面手势开着时有用。 */}
+        <Row title={t('settings:playbackGestures.holdRate')} description={t('settings:playbackGestures.holdRateHelp')}>
+          <SelectField id="holdRateSetting" label={t('settings:playbackGestures.holdRate')} epoch={epoch}
+            options={HOLD_RATES.map((rate) => [String(rate), `${rate}×`] as Choice)} value={String(settings.holdRate)}
+            onPick={(value) => { settings.holdRate = normalizeGestures({ holdRate: Number(value) }).holdRate; save() }} />
+        </Row>
+        <ToggleRow id="touchGesturesSetting" title={t('settings:playbackGestures.touch')} checked={settings.touchGestures}
+          onToggle={(on) => { settings.touchGestures = on; save() }} />
+        {settings.touchGestures ? <>
+          <Row title={t('settings:playbackGestures.swipeMinutes')}>
+            <div id="swipeMinutesSetting">
+              <NumberSetting key={epoch} id="swipeMinutesSetting" label={t('settings:playbackGestures.swipeMinutes')} value={settings.swipeMinutes}
+                onApply={(value) => { settings.swipeMinutes = normalizeGestures({ swipeMinutes: value }).swipeMinutes; save() }} />
+            </div>
+          </Row>
+          <Row title={t('settings:playbackGestures.doubleTapPercent')} description={t('settings:playbackGestures.doubleTapPercentHelp')}>
+            <div id="doubleTapPercentSetting">
+              <NumberSetting key={epoch} id="doubleTapPercentSetting" label={t('settings:playbackGestures.doubleTapPercent')} value={settings.doubleTapPercent}
+                onApply={(value) => { settings.doubleTapPercent = normalizeGestures({ doubleTapPercent: value }).doubleTapPercent; save() }} />
+            </div>
+          </Row>
+        </> : null}
+        <ToggleRow id="autoFullscreenSetting" title={t('settings:playbackGestures.autoFullscreen')}
+          description={t('settings:playbackGestures.autoFullscreenHelp')} checked={settings.autoFullscreen}
+          onToggle={(on) => { settings.autoFullscreen = on; save() }} />
+      </SettingsCard>
     </>
   );
 }
 
-function SearchHistoryRow({ host: current, epoch }: { host: SettingsPanelHost; epoch: number }) {
+function SearchHistoryRow({ host: current, epoch }: { host: SettingsEditorHost; epoch: number }) {
   const settings = current.store.value;
   const save = useSaveSettings();
   /* 条数跟着数据库走（`/api/settings`），所有访问端看到同一个数；本地那份只是镜像。 */
   return (
-    <Row title={t('settings:preferencesPanel.searchHistoryLimit')} description={t('settings:preferencesPanel.searchHistoryLimitHelp')}>
+    <Row title={t('settings:preferencesPanel.searchHistoryLimit')} description={<>
+      <small>{t('settings:preferencesPanel.searchHistoryLimitHelp')}</small>
+      {save.isError ? <small role="alert" data-setting-save-error="">{errorMessage(save.error)}</small> : null}
+    </>}>
       <div id="searchHistoryLimitSetting">
-        <NumberSetting key={epoch} id="searchHistoryLimitSetting" label={t('settings:preferencesPanel.searchHistoryInput')} value={settings.searchHistoryLimit}
+        <NumberSetting key={`${epoch}:${save.failureCount}`} id="searchHistoryLimitSetting" label={t('settings:preferencesPanel.searchHistoryInput')}
+          value={save.isPending ? save.variables?.searchHistoryLimit ?? settings.searchHistoryLimit : settings.searchHistoryLimit}
+          disabled={save.isPending}
           onApply={(value) => {
-            settings.searchHistoryLimit = boundedPreference(value, 0, 50, 10);
-            current.store.save();
-            current.changed('searchHistoryLimit');
-            save.mutate({ searchHistoryLimit: settings.searchHistoryLimit }, { onError: () => {} });
+            const next = boundedPreference(value, 0, 50, 10);
+            if (save.isPending || next === settings.searchHistoryLimit) return;
+            const report = current.feedback();
+            save.mutate({ searchHistoryLimit: next }, {
+              onSuccess: (saved) => { current.syncRemote(saved); report('saved') },
+              onError: (error) => { report('failed'); current.failure(t('settings:preferencesPanel.saveSearchHistory'), error) },
+            });
           }} />
       </div>
     </Row>

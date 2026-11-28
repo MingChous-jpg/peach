@@ -5,10 +5,10 @@ import { restoreNavigationOrder } from '../components/navigation-order';
 import { OrderedPreferenceList } from '../components/ordered-preference-list';
 import { useCommitNavigationOrder } from '../sidebar/sidebar-order';
 import { Icon } from './icon';
-import type { SettingsPanelHost } from './settings-panel-api';
+import type { SettingsEditorHost } from './settings-panel-api';
 
-export function SidebarOrder({ host }: { host: SettingsPanelHost }) {
-  const commit = useCommitNavigationOrder(host.store);
+export function SidebarOrder({ host }: { host: SettingsEditorHost }) {
+  const commit = useCommitNavigationOrder(host.store, 'sidebarOrder', host.feedback);
   const order = host.store.value.sidebarOrder;
   const defaults = resetSidebarOrder(order);
   const items = host.navCatalog.map(([key, label, glyph]) => ({ key, label, icon: <Icon name={glyph ?? ''} /> }));

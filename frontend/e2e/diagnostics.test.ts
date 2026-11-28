@@ -44,6 +44,34 @@ describe('配置中的系统诊断', () => {
     } finally { await opened.close(); }
   });
 
+  it('撤销全部已读只恢复本次操作的通知，且通知面板打开时可点撤销', async () => {
+    const titles = ['先标记的事项', '批量标记的事项'];
+    const opened = await visit(browser, '/settings/diagnostics', VIEWPORTS[1]!, async page => {
+      await page.route('**/api/background-issues', route => route.fulfill({ json: {
+        issues: titles.map((title, index) => ({
+          key: `notice-${index}`, title, href: '/settings/diagnostics', link_label: '查看诊断',
+          since: null, noticed_at: '2026-11-28T00:04:00Z', retry: null, retry_available: false,
+        })),
+      } }));
+    });
+    try {
+      const { page } = opened;
+      await page.locator('#notificationCenter').click();
+      const menu = page.locator('[data-notification-menu]');
+      const earlier = menu.locator('[data-notification-card]').filter({ hasText: titles[0] });
+      const later = menu.locator('[data-notification-card]').filter({ hasText: titles[1] });
+      await earlier.getByRole('button', { name: '将这条标为已读' }).click();
+      await earlier.waitFor({ state: 'hidden' });
+      await menu.getByRole('button', { name: '全部标为已读' }).click();
+      await later.waitFor({ state: 'hidden' });
+      const receipt = page.locator('#toasts [data-sonner-toast][data-front="true"]');
+      await receipt.getByRole('button', { name: '撤销' }).click();
+      await later.waitFor();
+      assert.equal(await earlier.count(), 0);
+      await receipt.getByText('已撤销', { exact: true }).waitFor();
+    } finally { await opened.close(); }
+  });
+
   it('显示系统自动保留的启动诊断', async () => {
     const opened = await visit(browser, '/settings/diagnostics', VIEWPORTS[0]!, async page => {
       await page.route('**/api/diagnostics/startup', route => route.fulfill({ json: { available: true, pending: false,

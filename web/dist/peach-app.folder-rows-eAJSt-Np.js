@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "14b41d0b-83b5-474f-a05f-b16030f36fda", e._sentryDebugIdIdentifier = "sentry-dbid-14b41d0b-83b5-474f-a05f-b16030f36fda");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "b58f2307-6b37-4e7d-962f-86fd2aeef2a3", e._sentryDebugIdIdentifier = "sentry-dbid-b58f2307-6b37-4e7d-962f-86fd2aeef2a3");
 	} catch {}
 })();
 import { Button as e, CLOUD_LOCATIONS as t, ErrorText as n, Help as r, IconButton as i, Input as a, Label as o, M6 as s, MEDIA_SOURCE_ICONS as c, MEDIA_SOURCE_OPTIONS as l, Select$1 as u, SelectItem as d, SourceMark as f, __toESM as p, busyProps as m, cx as h, require_jsx_runtime as g, require_react as _, t as v } from "./peach-app.js";
@@ -153,7 +153,7 @@ function A({ label: t, path: n, onPath: r, error: o, inputRef: c, picking: l, on
 					...m(l)
 				}),
 				d ? /* @__PURE__ */ (0, b.jsx)(e, {
-					variant: "danger",
+					variant: "secondary",
 					iconOnly: !0,
 					leadingIcon: s,
 					"aria-label": v("settings:folderRow.removeDirectory"),
@@ -187,4 +187,4 @@ function j({ index: e, value: t, onChange: n, options: r = S }) {
 }
 export { T as FolderField, E as FolderFieldLine, A as FolderRow, x as FolderSearchIcon, S as MEDIA_SOURCES, D as MediaReadPolicy, O as MediaReadPolicyHelp, j as SourceSelect, w as isCloudSource, C as sourceMark, k as useFolderRows };
 
-//# debugId=14b41d0b-83b5-474f-a05f-b16030f36fda
+//# debugId=b58f2307-6b37-4e7d-962f-86fd2aeef2a3

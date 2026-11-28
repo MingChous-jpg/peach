@@ -179,7 +179,7 @@ export function FolderRow({ label, path, onPath, error, inputRef, picking, onPic
           validationBehavior="aria" isInvalid={Boolean(error)} hint={error || undefined} />
         {status ? <div className="flex h-9 shrink-0 items-center">{status}</div> : null}
         <IconButton icon={FolderSearchIcon} aria-label={t('settings:folderRow.pickDirectory')} onClick={onPick} {...busyProps(picking)} />
-        {onRemove ? <Button variant="danger" iconOnly leadingIcon={RiDeleteBinLine} aria-label={t('settings:folderRow.removeDirectory')} onClick={onRemove} /> : null}
+        {onRemove ? <Button variant="secondary" iconOnly leadingIcon={RiDeleteBinLine} aria-label={t('settings:folderRow.removeDirectory')} onClick={onRemove} /> : null}
       </div>
       <div className="flex flex-wrap items-end gap-2">
         {children}

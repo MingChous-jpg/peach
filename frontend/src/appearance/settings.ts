@@ -33,6 +33,9 @@ export const FOLLOW_INITIAL_DAYS: readonly number[] = [0, 7, 30, 90];
 export const HOME_SHORTS_DEFAULT = 18;
 export const HOME_SHORTS_MIN = 6;
 export const HOME_SHORTS_MAX = 60;
+export const NOTIFICATION_LIMIT_MAX = 10;
+export const NOTIFICATION_DEFAULTS = { resume: 3, recommendation: 1, follow: 1, task: 2 } as const;
+export type NotificationLimits = Record<keyof typeof NOTIFICATION_DEFAULTS, number>;
 export const FEED_COMPILATION_KEYS = ['feedHideGroupCompilations', 'feedHideSoloCompilations', 'feedHideExcerpts'] as const;
 /** 播完一条之后怎么接：停下、顺序、列表循环、随机、单片循环。顺序与循环、随机只在播放列表和 Mix 队列里有下一条可接。 */
 export const AFTER_PLAYBACK_CHOICES = ['stop', 'next', 'repeat-all', 'shuffle', 'repeat-one'] as const;
@@ -99,6 +102,9 @@ export interface AppSettings extends BrowsePreferences {
   searchRecommendations: boolean;
   /** 新文件入库、下载完成时的 toast。 */
   ingestNotices: boolean;
+  ingestToasts: boolean;
+  browserNotices: boolean;
+  notificationLimits: NotificationLimits;
   showFeedbackButton: boolean;
   feedHideGroupCompilations: boolean;
   feedHideSoloCompilations: boolean;
@@ -179,6 +185,15 @@ export function normalizeAppSettings(raw: unknown): { settings: AppSettings; mig
   settings.completionPrompt = settings.completionPrompt !== false;
   settings.searchRecommendations = settings.searchRecommendations !== false;
   settings.ingestNotices = settings.ingestNotices !== false;
+  settings.ingestToasts = saved.ingestToasts ?? settings.ingestNotices;
+  settings.ingestToasts = settings.ingestToasts !== false;
+  settings.browserNotices = saved.browserNotices === true;
+  const limits = saved.notificationLimits as Partial<NotificationLimits> | null | undefined;
+  const notificationLimits: NotificationLimits = { ...NOTIFICATION_DEFAULTS };
+  for (const key of Object.keys(NOTIFICATION_DEFAULTS) as (keyof NotificationLimits)[]) {
+    notificationLimits[key] = boundedPreference(limits?.[key] ?? NaN, 0, NOTIFICATION_LIMIT_MAX, NOTIFICATION_DEFAULTS[key]);
+  }
+  settings.notificationLimits = notificationLimits;
   settings.showFeedbackButton = settings.showFeedbackButton !== false;
   settings.feedHideGroupCompilations = settings.feedHideGroupCompilations !== false;
   settings.feedHideSoloCompilations = settings.feedHideSoloCompilations === true;

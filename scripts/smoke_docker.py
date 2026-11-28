@@ -150,7 +150,7 @@ def published_upgrade_checks(name: str, previous: str, image: str) -> None:
         receipt = json.loads(request(old, "/api/activity",
                                      body={"id": asset, "position": 0.75, "duration": 2, "delta": 0.75}))
         assert receipt["leave_ratio"] == 3 / 8, receipt
-        version = json.loads(request(old, "/healthz?ready=1", authenticated=False))["version"]
+        version = exec_as(old, "1000:1000", "python", "-c", "from peach import __version__; print(__version__)")
         # Exact seconds were added in 0.63.0. Earlier images used the leave ratio.
         exact = tuple(map(int, version.split("-")[0].split("."))) >= (0, 63, 0)
         memory_path = f"/api/player/memory?video=item:{asset}"

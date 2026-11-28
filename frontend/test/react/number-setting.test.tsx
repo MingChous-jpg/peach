@@ -96,6 +96,24 @@ it('必填的那几项没有开关', async () => {
   expect(host.querySelector('[data-number-control] span')!.textContent).toBe('个');
 });
 
+it('点步进或按方向键立即提交一档，达到上下限时停住', async () => {
+  const { host, apply, input, rerender } = await setup('seekSecondsSetting', 299, '快进 / 快退步长');
+  const up = host.querySelector<HTMLButtonElement>('[data-number-step="up"]')!;
+  const down = host.querySelector<HTMLButtonElement>('[data-number-step="down"]')!;
+  await act(async () => up.click());
+  expect([input().value, up.disabled, apply.mock.calls]).toEqual(['300', true, [[300]]]);
+  await act(async () => up.click());
+  expect(apply).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    input().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+  });
+  expect([input().value, up.disabled, apply.mock.calls]).toEqual(['299', false, [[300], [299]]]);
+  await rerender(1);
+  expect(down.disabled).toBe(true);
+  await commit(input(), '301');
+  expect([up.disabled, down.disabled, apply.mock.calls]).toEqual([true, true, [[300], [299]]]);
+});
+
 it('读回的偏好只认区间内的整数', () => {
   expect(boundedPreference(0, 0, 50, 10)).toBe(0);
   expect(boundedPreference(2.5, 1, 50, 10)).toBe(10);

@@ -20,7 +20,7 @@ import type { JunkQueueProps } from '../junk-queue/junk-queue';
 import type { SearchProps } from '../search/search';
 
 export interface ShellActions {
-  openSettings?(section: string): Promise<unknown>;
+  openSettings?(section: string, anchor?: string): Promise<unknown>;
   closeSettings?(): void;
   /** 打开作品详情（舞台）。 */
   openItem(id: number): void;

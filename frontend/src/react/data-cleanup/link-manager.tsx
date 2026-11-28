@@ -238,7 +238,7 @@ export function LinkManager() {
         <LinkTable title={t('cleanup:links.dead')} items={gone} hint={GONE_HINT} picked={gonePicked} onPick={setGonePicked} confirmed
           footer={done && gone.length ? <>
             <p className="mr-auto min-w-0 text-caption-1-regular text-text-secondary">{PRUNE_HINT}</p>
-            <Button variant="danger" {...busyProps(removing)} onClick={removeAll}>
+            <Button variant="secondary" {...busyProps(removing)} onClick={removeAll}>
               {t('cleanup:links.deleteDeadCount', { count: gone.length })}
             </Button>
           </> : null}
