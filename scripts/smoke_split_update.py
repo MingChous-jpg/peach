@@ -11,6 +11,7 @@ import zipfile
 
 def inventory(package: zipfile.ZipFile) -> dict[str, str]:
     result = {}
+    names = set()
     for entry in package.infolist():
         if entry.is_dir():
             continue
@@ -18,15 +19,16 @@ def inventory(package: zipfile.ZipFile) -> dict[str, str]:
         if (not parts or parts[0] != "Peach" or ".." in parts or "\\" in entry.filename
                 or ":" in entry.filename or entry.filename.startswith("/")
                 or (entry.external_attr >> 16) & 0o170000 == 0o120000
-                or entry.filename.casefold() in {name.casefold() for name in result}):
+                or entry.filename.casefold() in names):
             raise ValueError("发行 ZIP 包含无效路径")
+        names.add(entry.filename.casefold())
         with package.open(entry) as source:
             result[entry.filename] = hashlib.file_digest(source, "sha256").hexdigest()
     return result
 
 
 def verify(root: Path, version: str, destination: Path, *, prepare_with_app: bool = False,
-           online: bool = False) -> dict:
+           online: bool = False, defer_face_models: bool = False) -> dict:
     prefix = f"Peach-{version}-windows-x64"
     if destination.exists():
         raise ValueError("制品验收目录须不存在")
@@ -66,6 +68,10 @@ def verify(root: Path, version: str, destination: Path, *, prepare_with_app: boo
         if process.returncode:
             raise ValueError(error.read_text(encoding='utf-8') if error.exists() else '轻量安装工具准备失败')
         for name, checksum in expected.items():
+            if defer_face_models and name.startswith("Peach/tools/face-models/"):
+                if (destination / name).exists():
+                    raise ValueError(f"Lightweight install prepared a deferred model: {name}")
+                continue
             with (destination / name).open('rb') as source:
                 if hashlib.file_digest(source, 'sha256').hexdigest() != checksum:
                     raise ValueError(f'轻量安装文件不符：{name}')
@@ -83,6 +89,8 @@ if __name__ == "__main__":
     parser.add_argument("--destination", type=Path, required=True)
     parser.add_argument("--prepare-with-app", action="store_true", help="由实际应用准备轻量安装所需工具")
     parser.add_argument("--online", action="store_true", help="使用空缓存从公开下载入口验收工具准备")
+    parser.add_argument("--defer-face-models", action="store_true", help="Verify a fresh lightweight install defers models until use")
     args = parser.parse_args()
     print(json.dumps(verify(args.root.resolve(), args.version, args.destination.resolve(),
-                            prepare_with_app=args.prepare_with_app, online=args.online), ensure_ascii=False))
+                            prepare_with_app=args.prepare_with_app, online=args.online,
+                            defer_face_models=args.defer_face_models), ensure_ascii=False))

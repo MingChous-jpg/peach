@@ -180,7 +180,8 @@ def prepare_install_tools(program: Path, cache: Path, error_file: Path, *, stage
                    'asset_url': f'{release_updates.RELEASES_URL}/download/v{__version__}/package.zip'}
         with tempfile.TemporaryDirectory(prefix='peach-installer-tools-', dir=stage.parent) as folder:
             standalone_update.prepare_tools(stage, program, Path(folder).resolve(), release, {'total': 0, 'downloaded': 0},
-                                            report=lambda data, **changes: data.update(changes), fetch=fetch)
+                                            report=lambda data, **changes: data.update(changes), fetch=fetch,
+                                            defer_optional=True)
         return 0
     except Exception as exc:
         from . import interface_text

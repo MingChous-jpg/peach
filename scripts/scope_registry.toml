@@ -178,6 +178,10 @@ follow = [
 "scripts/fetch_sparkle_macos.py" = ["tooling", "packaging"]
 "scripts/sparkle-macos.json" = ["tooling", "packaging"]
 "scripts/sparkle_appcast.py" = ["tooling", "packaging"]
+"scripts/macos_update_delta.py" = ["tooling", "packaging"]
+"scripts/release_update_base.py" = ["tooling", "packaging"]
+"scripts/windows_update_delta.py" = ["tooling", "packaging"]
+"src/peach/update_delta.py" = ["packaging"]
 # 发布签名脚本的用例与客户端校验放在同一份 `test_release_signing.py` 里。
 "scripts/sign_release.py" = ["tooling"]
 "scripts/fetch_ffmpeg_sources.py" = ["tooling", "packaging"]

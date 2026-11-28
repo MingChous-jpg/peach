@@ -19,6 +19,7 @@ Entries are written for users to scan: one sentence each, saying where something
 ### Added / 新增
 
 - **Settings**: Choose whether to precompute Taste, Review, Junk Review and Following at startup (#912). / **配置**：可选择启动时是否在后台预先计算口味、复核、垃圾复核和关注页面（#912）。
+- **Updates**: Download smaller signed desktop updates when a patch matches your installed version (#911). / **更新**：有适用补丁时，桌面版会下载体积更小的签名增量更新（#911）。
 
 - **Settings**: Export recent server and child-process resource samples and media first-response timings in local diagnostics. / **配置**：本机诊断可导出近期服务进程与子进程的资源记录，以及媒体首段响应耗时。
 
@@ -29,6 +30,8 @@ Entries are written for users to scan: one sentence each, saying where something
 - **Settings**: Choose Peach curated or original source tags for JAV scraping, online browsing, and work details (#902). / **配置**：JAV 的抓取标签可切换「Peach 优选」和「来源原文」，适用于后续采集和在线浏览（#902）。
 
 ### Changed / 变更
+
+- **Desktop**: Windows lightweight installs fetch optional recognition models when they are first needed. / **桌面**：Windows 轻量安装在首次使用识别功能时下载所需模型。
 
 - **Desktop**: Reduce Windows installer and application size by dropping an unused OpenCV video plugin. / **桌面**：移除未使用的 OpenCV 视频插件，缩小 Windows 安装包和解压后的应用体积。
 - **Library**: Compute viewing-history analysis when the Taste page is opened. / **馆藏**：打开口味页时再计算观看历史分析，减少服务启动时的后台工作。
