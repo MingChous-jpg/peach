@@ -18,6 +18,8 @@ Entries are written for users to scan: one sentence each, saying where something
 
 ### Added / 新增
 
+- **Settings**: Record slow page loads, playback planning, startup and buffering in local diagnostics. / **配置**：本机诊断记录页面加载、播放计划、起播和缓冲耗时。
+
 - **Interface**: Learn AI Assistant, folder mode, and JAV views in the tutorial, or finish the tutorial directly (#563). / **界面**：新手教程加入 AI 助手、文件夹模式和 JAV 视图导览，并支持直接结束整套教程（#563）。
 
 - **Settings**: Choose Peach curated or original source tags for JAV scraping, online browsing, and work details (#902). / **配置**：JAV 的抓取标签可切换「Peach 优选」和「来源原文」，适用于后续采集和在线浏览（#902）。
@@ -30,6 +32,10 @@ Entries are written for users to scan: one sentence each, saying where something
 
 - **Playback**: Repair missing MP4 timestamp tables when only a few frames cannot be decoded (#176). / **播放**：MP4 只有极少数帧无法解码时仍可修复缺失的时间戳表（#176）。 <!-- release-highlight -->
 - **Interface**: Align the JAV New Releases avatar rows with Home and move the card and list switch to the lower filter row (#891). / **界面**：JAV 新作的艺人与厂牌横排和首页对齐，卡片与列表切换移回筛选栏下排（#891）。
+- **Library**: Remove recovered scan problems from current notices and retry lists while keeping the original task history. / **馆藏**：已恢复的扫描问题自动从现行提醒和重试清单撤下，保留原任务记录。
+- **Settings**: Clear an automatic download error after the same update is ready. / **配置**：同一版本更新下载就绪后，撤下此前的自动下载错误。
+- **Playback**: Reuse file status when preparing the playback plan. / **播放**：制定播放计划时复用片源文件状态，减少重复读盘。
+
 - **Sourcing**: Use consistent JAV tags across languages and separate bridal roles, wedding dresses, and studio affiliations (#902). / **采集**：统一 JAV 日英来源的同类标签，区分新娘角色、婚纱服装和厂牌归属（#902）。
 - **Interface**: Show reviewed names in the JAV online catalog and make filter searches easier to see in light mode (#902). / **界面**：JAV 在线目录显示已复核的艺名，亮色下的筛选查找框更清晰（#902）。
 - **Interface**: Align empty file-browser results with the header, match the fullscreen and close buttons, and show one retry notice for a directory read error (#376). / **界面**：浏览文件的空状态与表头对齐，全屏和关闭使用同款按钮，目录读取失败时只显示一条重试提示（#376）。

@@ -1,5 +1,6 @@
 /* Peach 播放会话：Video.js 10 的媒体、原生事件与自有控制条共用同一枚 video。 */
 import { randomId } from '../core/random-id';
+import { observePlaybackWait } from '../slow-load';
 import type { PlayerEvents, PlayerSource, QualityLevelList, VideojsFactory, VjsPlayer } from './types';
 import { interfaceLanguage, t } from '../i18n';
 import { mountPlayerFullscreen } from './fullscreen';
@@ -63,6 +64,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
   const cleanup = new AbortController();
   const signal = cleanup.signal;
   let disposed = false, sourceGeneration = 0, playGeneration = 0, expectedDuration = 0, source: PlayerSource = { src: '', type: '' }, failure: unknown = null;
+  const resetPlaybackWait = observePlaybackWait(video, () => source.src, signal);
   const { active, cancel } = wirePlayerInteractions(root, video, signal, () => expectedDuration || video.duration, options.controls !== false);
   const update = () => {
     root.classList.toggle('vjs-paused', video.paused); root.classList.toggle('vjs-playing', !video.paused);
@@ -164,6 +166,7 @@ export const createV10Player: VideojsFactory = (video, options) => {
     poster: (url: string) => { video.poster = url },
     src: (next: PlayerSource) => {
       cancel(false);
+      resetPlaybackWait();
       source = next; failure = null; root.classList.remove('vjs-error');
       sourceGeneration++; playGeneration++; selectionQueued = false; enabledLevels = []; levels.length = 0;
       const tag = next.type.toLowerCase().includes('dash') ? 'dash-video' : 'hlsjs-video';

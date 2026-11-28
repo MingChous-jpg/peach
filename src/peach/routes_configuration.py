@@ -175,16 +175,19 @@ def diagnostic_export_download(request: Request, identity: str, _args=Depends(re
 _CLIENT_ERROR_LOCK = threading.Lock()
 
 
-def _client_error_budget(request: Request) -> None:
+def _client_diagnostic_slot(request: Request, *, performance: bool = False) -> bool:
+    """慢加载采样有独立额度，避免挤掉浏览器错误。"""
+    field = 'client_performance_times' if performance else 'client_error_times'
     with _CLIENT_ERROR_LOCK:
-        recent = getattr(request.app.state, 'client_error_times', deque(maxlen=20))
-        request.app.state.client_error_times = recent
+        recent = getattr(request.app.state, field, deque(maxlen=20))
+        setattr(request.app.state, field, recent)
         now = time.monotonic()
         while recent and now - recent[0] >= 60:
             recent.popleft()
-        if len(recent) >= 20:
-            raise HTTPException(429, message_fields('api.configuration.clientErrorRateLimited'))
+        if len(recent) >= recent.maxlen:
+            return False
         recent.append(now)
+    return True
 
 
 def _record_browser_context(request: Request, context: dict) -> bool:
@@ -223,6 +226,17 @@ async def client_error(request: Request):
         raise HTTPException(400, message_fields("api.configuration.clientErrorInvalid")) from None
     if not isinstance(data, dict) or not isinstance(data.get("message"), str):
         raise HTTPException(400, message_fields("api.configuration.clientErrorMissingMessage"))
+    from . import diagnostic_context
+    if data.get('kind') == 'performance':
+        timing = diagnostic_context.performance_timing(data['message'], data.get('timing'))
+        if timing is None:
+            raise HTTPException(400, message_fields("api.configuration.clientErrorInvalid"))
+        if not _client_diagnostic_slot(request, performance=True):
+            return {'recorded': False}
+        recorded = error_reporting.local_event('browser-performance', **timing)
+        if recorded is None:
+            raise HTTPException(503, message_fields("api.configuration.errorLogUnwritable"))
+        return {'recorded': True}
     fields = {key: value[:6000] for key in ("message", "stack", "kind", "page", "source_file", "error_name")
               if isinstance(value := data.get(key), str)}
     fields.update({key: value for key in ('line', 'column')
@@ -233,11 +247,11 @@ async def client_error(request: Request):
         fields['bundle_debug_ids'] = {key: value for key, value in identities.items()
             if shipped(key) and isinstance(value, str) and len(value) == 36}
     fields['user_agent'] = request.headers.get('user-agent', '')[:512]
-    from . import diagnostic_context
     context = {'browser': diagnostic_context.browser(data.get('browser'), user_agent=fields['user_agent'])}
     if data.get('kind') == 'context':
         return {'recorded': _record_browser_context(request, context)}
-    _client_error_budget(request)
+    if not _client_diagnostic_slot(request):
+        raise HTTPException(429, message_fields('api.configuration.clientErrorRateLimited'))
     if isinstance(data.get('playback'), dict):
         context['playback'] = diagnostic_context.playback(data['playback'])
         recorded = error_reporting.local_event('browser', **fields, **context)

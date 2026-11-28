@@ -257,9 +257,10 @@ export function busyText(state: LibraryProcessingData): string {
   return origin ? t('manage:scanFetch.busyOrigin', { origin }) : t('manage:scanFetch.busy');
 }
 
-/** 同一个键只由停靠栏一处驱动轮询，卡片与补全提示只读缓存。在跑两秒一次，失败退避，闲着不问。 */
+/** 停靠栏负责轮询，含等待来源恢复的未处理告警。 */
 export const pollInterval = withBackoff<LibraryProcessingData>((data) =>
-  (processingActive(data) ? RUNNING_POLL_MS : false));
+  (processingActive(data) ? RUNNING_POLL_MS
+    : data?.status === 'failed' && data.outcome === 'partial' && !data.archived ? 30_000 : false));
 
 const ACTION_LABELS: Record<string, string> = {
   scanning_files: t('manage:scanFetch.actionScanning'),

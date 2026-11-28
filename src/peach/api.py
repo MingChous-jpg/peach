@@ -709,6 +709,7 @@ def create_app(
     repository = LedgerRepository(database)
     from .mount_reachability import source_roots
     mount_reachability = MountReachability(source_roots())
+    contract.mount_reachability = mount_reachability
     from .network_reachability import NetworkReachability
     from .web_library_processing import retry_after_network_recovery
     network_reachability = NetworkReachability(

@@ -157,6 +157,19 @@ class LibraryDiagnosticsTests(unittest.TestCase):
         with patch.object(diagnostics.os, 'scandir', side_effect=PermissionError):
             self.assertIsNone(diagnostics.inventory(self.root))
 
+    def test_new_parsed_profile_clears_an_older_source_failure(self):
+        from peach.scraping_access import record_source_check
+
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            connection.execute("INSERT INTO performer_profile(entity_id,source,source_url,fetched_at) "
+                               "VALUES(1,'auto:performer-profile@42','https://www.minnano-av.com/actress1.html','2023-11-14T22:13:20Z')")
+        root = self.config.directory('secrets')
+        record_source_check(root, 'minnano-av', 'metadata', {
+            'ok': False, 'reason': 'network', 'checked_at': 1_699_999_990})
+        rows = {row['source']: row for row in diagnostics.sources(self.settings, self.config, now=1_700_000_100)}
+        self.assertEqual(rows['minnano-av']['status'], 'ok')
+        self.assertIsNotNone(rows['minnano-av']['last_check_at'])
+
     def test_source_history_and_absent_checks_have_explicit_states(self):
         from peach.scraping_access import record_source_check
         root = self.config.directory('secrets')

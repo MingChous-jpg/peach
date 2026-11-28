@@ -656,10 +656,16 @@ describe('设计决定：作品卡、管理页与复核', () => {
         const writes: string[] = [];
         const streams: string[] = [];
         page.on('request', request => {
-          if (/^\/(?:stream|api\/stream-plan)/.test(new URL(request.url()).pathname)) streams.push(request.url());
-          if (new URL(request.url()).pathname === '/api/diagnostics/client-error' && request.postDataJSON()?.kind === 'context') return;
-          if (new URL(request.url()).pathname.startsWith('/api/') && new URL(request.url()).pathname !== '/api/tutorial-progress' && !['GET', 'HEAD'].includes(request.method())) {
-            writes.push(`${request.method()} ${new URL(request.url()).pathname}`);
+          const path = new URL(request.url()).pathname;
+          if (/^\/(?:stream|api\/stream-plan)/.test(path)) streams.push(request.url());
+          if (path === '/api/diagnostics/client-error' && request.method() === 'POST') {
+            const report = request.postDataJSON();
+            if (report?.kind === 'context' || (report?.kind === 'performance'
+              && ['page-load', 'page-data'].includes(report.message)
+              && report.timing?.elapsed_ms >= 1000)) return;
+          }
+          if (path.startsWith('/api/') && path !== '/api/tutorial-progress' && !['GET', 'HEAD'].includes(request.method())) {
+            writes.push(`${request.method()} ${path}`);
           }
         });
         const opener = page.locator('#tutorialBtn');

@@ -56,6 +56,12 @@ class AutomaticUpdates:
             if (data.get('listing_rule') == release_updates.LISTING_RULE
                     and result.get("current_version") == release_updates.snapshot()["current_version"]):
                 data["result"] = dict(result, checked_at=data.get("checked_at"))
+                if data.get('error') and data['mode'] == 'download':
+                    job = standalone_update.public()
+                    if (job.get('state') == 'ready' and job.get('version') == result.get('latest_version')
+                            and job.get('updated_at', 0) > data.get('checked_at', 0)):
+                        data.pop('error', None)
+                        data.pop('error_code', None)
             else:
                 data.pop("result")
         data.pop('listing_rule', None)

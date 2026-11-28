@@ -199,10 +199,12 @@ def _feedback_error_site(frames) -> str:
 
 
 def feedback_error_summary(directory: Path) -> str | None:
-    """最近 30 分钟至多三条错误的技术摘要，排除错误原文、日志上下文和路径。"""
+    """最近 30 分钟的错误与慢加载技术摘要。"""
+    from .diagnostic_context import performance_timing
     now = datetime.now(timezone.utc)
     since = now - timedelta(minutes=30)
     reports = []
+    timings = []
     unavailable = []
     for path in _recent(directory, 'errors-*.log', 4, unavailable):
         try:
@@ -230,15 +232,24 @@ def feedback_error_summary(directory: Path) -> str | None:
                 continue
             if at.tzinfo is None or not since <= at <= now:
                 continue
+            if stage == 'browser-performance':
+                phase = entry.get('phase')
+                sample = performance_timing(phase, entry) if isinstance(phase, str) else None
+                if sample:
+                    pending = '+' if sample.get('pending') else ''
+                    timings.append((at, f"{at.astimezone(timezone.utc):%H:%M:%S} UTC · {phase} · "
+                                         f"{sample['elapsed_ms']:.0f}{pending} ms"))
+                continue
             errors = entry.get("exception")
             error = errors[0].get("type") if isinstance(errors, list) and errors and isinstance(errors[0], dict) else entry.get("level")
             if not isinstance(error, str) or not re.fullmatch(r"(?:ERROR|CRITICAL|[a-zA-Z_]\w{0,47}(?:Error|Exception))", error, re.ASCII):
                 continue
             location = _feedback_error_site(entry.get("frames"))
             reports.append((at, f"{at.astimezone(timezone.utc):%H:%M:%S} UTC · {stage} · {error}{location}"))
-    if unavailable and not reports:
+    if unavailable and not (reports or timings):
         return None
-    return "\n".join(line for _, line in sorted(set(reports), reverse=True)[:3])
+    return "\n".join(line for _, line in sorted(set(reports), reverse=True)[:3]
+                     + sorted(set(timings), reverse=True)[:3])
 
 
 def _archive_files(archive, directory, candidates, prefix, entries, *, structured=False):

@@ -290,13 +290,16 @@ class FeedbackTests(unittest.TestCase):
                 entry,
                 {**entry, "at": (now - timedelta(hours=1)).isoformat(), "stage": "too-old"},
                 {**entry, "stage": "failed-playback", "frames": [{"file": "/synthetic-root/hidden/file.py", "line": 8}]},
+                {"at": now.isoformat(), "stage": "browser-performance", "phase": "playback-buffer",
+                 "elapsed_ms": 5200, "pending": True, "asset_id": 754, "url": "private-path"},
             ]), encoding="utf-8")
             summary = support_bundle.feedback_error_summary(root)
         expected = f"{now:%H:%M:%S} UTC"
         self.assertEqual(
             set(summary.splitlines()),
             {f"{expected} · serve · PermissionError · routes_api.py:51",
-             f"{expected} · failed-playback · PermissionError"},
+             f"{expected} · failed-playback · PermissionError",
+             f"{expected} · playback-buffer · 5200+ ms"},
         )
 
     def test_github_retains_issue_when_repository_rejects_attachments(self):
