@@ -81,7 +81,7 @@ class HlsDisconnectTests(unittest.IsolatedAsyncioTestCase):
 
         for patcher in (
             patch("peach.routes_media._hls_plan", return_value=(
-                None, self.source, [(0, 6), (6, 6)], True,
+                SimpleNamespace(location="local"), self.source, [(0, 6), (6, 6)], "transcode",
             )),
             patch.object(self.service, "_attempts", return_value=[("process", command)]),
         ):
