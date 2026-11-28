@@ -674,6 +674,14 @@ class ErrorReportingTests(unittest.TestCase):
         self.assertEqual((row['stage'], row['phase'], row['elapsed_ms'], row['ttfb_ms'], row['pending']),
                          ('browser-performance', 'playback-start', 5100, 3000, True))
         self.assertNotIn('private', str(row))
+        sample = {'kind': 'performance', 'message': 'page-load', 'timing': {'elapsed_ms': 3000}}
+        with mock.patch.object(remote_reporting, 'capture') as capture:
+            replies = [client.post(path, json=sample) for _ in range(22)]
+            self.assertTrue(all(reply.status_code == 200 for reply in replies))
+            self.assertEqual(sum(reply.json()['recorded'] for reply in replies), 19)
+            capture.assert_not_called()
+            self.assertEqual(client.post(path, json={'message': 'Still record a browser error'}).status_code, 200)
+            capture.assert_called_once()
 
     def test_uncaught_import_and_thread_failures_are_saved_without_a_console(self):
         result = self.probe("import sys, threading; from peach import error_reporting as e; "
