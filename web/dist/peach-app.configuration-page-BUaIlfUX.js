@@ -1,17 +1,10 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "73cda814-b392-4a85-8c06-de2d2a12c6e4", e._sentryDebugIdIdentifier = "sentry-dbid-73cda814-b392-4a85-8c06-de2d2a12c6e4");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "e19b61e8-259e-4f15-8413-0a3889ab4707", e._sentryDebugIdIdentifier = "sentry-dbid-e19b61e8-259e-4f15-8413-0a3889ab4707");
 	} catch {}
 })();
-import { $2ec61d1d4f780267$export$a8a3e93435678ff9 as e, $542a13ca2fa5b484$export$5b6b19405a83ff9d as t, $72abaeab4d80592f$export$78efe591171d7d45 as n, $ea3928288112382f$export$439d29a4e110a164 as r, $f2ff30fde7b014be$export$3ddf2d174ce01153 as i, $fe21c36db05242bb$export$a98f0dcb43a68a25 as a, $fe21c36db05242bb$export$d7b12c4107be0d61 as o, ACCENTS as s, AILibrarySettings as c, ActionSpinner as l, ActivityStatus as u, AnimatedItems as d, AnimatedNumber as f, ApiError as p, Button as m, ButtonLink as h, CLOUD_LOCATIONS as g, CLOUD_PROXY_HELP as _, CONFIGURATION_KEY as v, CONFIGURATION_SECTIONS as y, CONFIGURATION_URL as b, CREDENTIAL_STATE as x, Cell as S, ChartBackground as C, ChartContainer as w, ChartLegend as T, ChartLegendContent as E, ChartTip as ee, ChartTooltip as D, ChartTooltipContent as te, Checkbox as O, Chip as k, CommandSteps as ne, Curve as re, DATA_ITEM_GRAPHICAL_ITEM_ID_ATTRIBUTE_NAME as ie, DATA_ITEM_INDEX_ATTRIBUTE_NAME as ae, DataLabelColorsContextProvider as oe, DataLabelThemeContextProvider as se, DefaultZIndexes as ce, Disclosure as le, EDITION_TONE as ue, ENTRY_LINKS_HELP as de, ENTRY_LINKS_HINT as fe, EmptyState as pe, ErrorText as A, Eu as me, EvilBarChart as he, ExternalLink as ge, FOLLOW_CREDENTIALS_KEY as _e, FOLLOW_CREDENTIALS_KEY$1 as ve, FOLLOW_INITIAL_RANGE_OPTIONS as ye, Fact as j, FactList as be, FieldLabel as xe, FillObjectDefinition as Se, Footer as M, Help as N, Input as P, L1 as Ce, LIBRARY_FOLDER_HELP as we, LIBRARY_PROCESSING_KEY as Te, Label as Ee, LabelList as De, LabelListFromLabelProp as Oe, Layer as ke, LinkButton as Ae, LoadingIndicator as je, M6 as Me, MEDIA_PROCESSING_KEY as Ne, MEDIA_PROCESSING_URL as Pe, MEDIA_SOURCE_ICONS as Fe, MENU_POPOVER_SURFACE as Ie, NavigationOrderRows as Le, Note as F, PICK_FOLDER_URL as Re, POLICY_COLUMNS as ze, POLICY_COVER_NOTE as Be, POLICY_MATRIX as Ve, POLICY_SUMMARY as He, PathLine as Ue, PolarLabelContextProvider as We, PolarLabelListContextProvider as Ge, ProcessingMode as Ke, Progress as qe, QueryErrorNote as Je, RELEASE_NOTICE_EVENT as Ye, REPAIR_CENTER_PATH as Xe, RegisterGraphicalItemId as Ze, Rows as I, SCHEDULES as Qe, SCRAPING_KEY as $e, SCRAPING_SETTINGS_URL as et, SEGMENT as tt, SEGMENTED_TRACK as nt, SETTINGS_KEY as rt, SETTINGS_URL as it, Section as L, SectionSkeleton as at, SectionToc as ot, Sector as st, SegmentedRadioGroup as ct, Select as lt, Select$1 as R, SelectItem as z, SetPolarGraphicalItem as ut, SetPolarLegendPayload as dt, SetTooltipEntrySettings as ft, SettingsCard as pt, SettingsRow as B, Shape as mt, SiteLabel as ht, SortableBoardTabs as gt, SourceLabel as _t, SourceMark as vt, Stack as V, StatusLabel as yt, Switch as H, THUMBNAIL_JOBS_KEY as bt, TIP_SWATCH as xt, TaskCenterLink as St, TaskProgress as Ct, Text as wt, Textarea as Tt, Uz as Et, ZIndexLayer as Dt, __toESM as Ot, _p as kt, activityKind as At, adaptEventsOfChild as jt, apiGet as U, apiSend as W, appSettingsStore as Mt, applyLabelTheme as Nt, arrayTooltipSearcher as Pt, bodyFieldErrors as Ft, boundedPreference as It, busyProps as G, cardClass as Lt, checkClientUpdates as Rt, cloudProxySkeleton as zt, clsx as Bt, cn$1 as Vt, codedText as K, configurationDescriptionKey as Ht, confirmModal as Ut, createSelector as Wt, credentialDone as Gt, credentialsSkeleton as Kt, cx as qt, d6 as Jt, devicesSkeleton as Yt, editionName as Xt, errorMessage as q, fetchConfiguration as Zt, fetchCredentials as Qt, fetchLibraryProcessing as $t, fetchMediaProcessing as en, fetchSettings as tn, fetchSources as nn, fetchThumbnailJobs as rn, filledShapeLabelColors as an, findAllByType as on, fmtSize as sn, get as cn, getActiveStyleOverrides as ln, getClassNameFromUnknown as un, getColorGraphicalItems as dn, getColorsCount as fn, getEntryFillId as pn, getFillUrl as mn, getIndexedEntryFillObject as hn, getMaxRadius as gn, getOwnStyles as _n, getPercentValue as vn, getTooltipNameProp as yn, getValueByDataKey as bn, hasOwnColors as xn, i2 as Sn, indexersSkeleton as Cn, interfaceLanguage as wn, interpolate as Tn, isDataAttribute as En, isNumber as Dn, isSvgElementPropKey as On, javBrowserSkeleton as kn, jobText as An, joinList as jn, l1 as Mn, ledgerBackupsSkeleton as Nn, localizedFact as Pn, matchAppend as Fn, mathSign as In, momentText as Ln, motion as Rn, overlayHost as zn, peachHistory$1 as Bn, pickServerFolder as Vn, polarToCartesian as Hn, pollUntil as Un, previewLibraryColor as Wn, processingActive as Gn, providerIcon as Kn, queryClient as qn, randomId as Jn, readEntryFill as Yn, rememberShape as Xn, require_jsx_runtime as Zn, require_react as Qn, resolveDefaultProps as $n, restartEffectText as er, saveCredential as tr, schedulePollInterval as nr, sectionTitle as rr, selectActiveTooltipDataKey as ir, selectActiveTooltipGraphicalItemId as ar, selectActiveTooltipIndex as or, selectChartDataAndAlwaysIgnoreIndexes as sr, selectChartOffsetInternal as cr, serverLabel as lr, serverLabelList as ur, serverText as dr, settingsPath as fr, shellNavigate as pr, sourceDefaultCost as mr, spinnerHtml as hr, splitFill as gr, stageText as _r, svgPropertiesNoEvents as vr, svgPropertiesNoEventsFromUnknown as yr, t as J, tone as br, translateWithNodes as xr, useAction as Y, useAnimationCallbacks as Sr, useAppSelector as Cr, useBackwardsCompatibleTheme as wr, useClientUpdates as Tr, useDataLabelThemeResolver as Er, useIndexedLabelThemeResolver as Dr, useLibraryTints as Or, useMouseClickItemDispatch as kr, useMouseEnterItemDispatch as Ar, useMouseLeaveItemDispatch as jr, useMutation as Mr, useOrderedLibraries as Nr, usePolarChartLayout as Pr, useQuery as X, useQueryClient as Fr, useRunSchedule as Ir, useSaveSchedule as Lr, useSaveSettings as Rr, useSaveThumbnailMode as zr, useThemeFillObjects as Br, we as Vr, withoutColors as Hr, z3 as Ur } from "./peach-app.js";
-========
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "0be3f71d-df46-4c26-a860-1f30e12664b9", e._sentryDebugIdIdentifier = "sentry-dbid-0be3f71d-df46-4c26-a860-1f30e12664b9");
-	} catch {}
-})();
-import { $2ec61d1d4f780267$export$a8a3e93435678ff9 as e, $542a13ca2fa5b484$export$5b6b19405a83ff9d as t, $72abaeab4d80592f$export$78efe591171d7d45 as n, $ea3928288112382f$export$439d29a4e110a164 as r, $f2ff30fde7b014be$export$3ddf2d174ce01153 as i, $fe21c36db05242bb$export$a98f0dcb43a68a25 as a, $fe21c36db05242bb$export$d7b12c4107be0d61 as o, ACCENTS as s, AILibrarySettings as c, ActionSpinner as l, ActivityStatus as u, AnimatedItems as d, AnimatedNumber as f, ApiError as p, Button as m, ButtonLink as h, CLOUD_LOCATIONS as g, CLOUD_PROXY_HELP as _, CONFIGURATION_KEY as v, CONFIGURATION_SECTIONS as y, CONFIGURATION_URL as b, CREDENTIAL_STATE as x, Cell as S, ChartBackground as C, ChartContainer as w, ChartLegend as T, ChartLegendContent as E, ChartTip as ee, ChartTooltip as D, ChartTooltipContent as te, Checkbox as O, Chip as k, CommandSteps as ne, Curve as re, DATA_ITEM_GRAPHICAL_ITEM_ID_ATTRIBUTE_NAME as ie, DATA_ITEM_INDEX_ATTRIBUTE_NAME as ae, DataLabelColorsContextProvider as oe, DataLabelThemeContextProvider as se, DefaultZIndexes as ce, Disclosure as le, EDITION_TONE as ue, ENTRY_LINKS_HELP as de, ENTRY_LINKS_HINT as fe, EmptyState as pe, ErrorText as A, Eu as me, EvilBarChart as he, ExternalLink as ge, FOLLOW_CREDENTIALS_KEY as _e, FOLLOW_CREDENTIALS_KEY$1 as ve, FOLLOW_INITIAL_RANGE_OPTIONS as ye, Fact as j, FactList as be, FieldLabel as xe, FillObjectDefinition as Se, Footer as M, Help as N, Input as P, L1 as Ce, LIBRARY_FOLDER_HELP as we, LIBRARY_PROCESSING_KEY as Te, Label as Ee, LabelList as De, LabelListFromLabelProp as Oe, Layer as ke, LinkButton as Ae, LoadingIndicator as je, M6 as Me, MEDIA_PROCESSING_KEY as Ne, MEDIA_PROCESSING_URL as Pe, MEDIA_SOURCE_ICONS as Fe, MENU_POPOVER_SURFACE as Ie, NavigationOrderRows as Le, Note as F, PICK_FOLDER_URL as Re, POLICY_COLUMNS as ze, POLICY_COVER_NOTE as Be, POLICY_MATRIX as Ve, POLICY_SUMMARY as He, PathLine as Ue, PolarLabelContextProvider as We, PolarLabelListContextProvider as Ge, ProcessingMode as Ke, Progress as qe, QueryErrorNote as Je, RELEASE_NOTICE_EVENT as Ye, REPAIR_CENTER_PATH as Xe, RegisterGraphicalItemId as Ze, Rows as I, SCHEDULES as Qe, SCRAPING_KEY as $e, SCRAPING_SETTINGS_URL as et, SEGMENT as tt, SEGMENTED_TRACK as nt, SETTINGS_KEY as rt, SETTINGS_URL as it, Section as L, SectionSkeleton as at, SectionToc as ot, Sector as st, SegmentedRadioGroup as ct, Select as lt, Select$1 as R, SelectItem as z, SetPolarGraphicalItem as ut, SetPolarLegendPayload as dt, SetTooltipEntrySettings as ft, SettingsCard as pt, SettingsRow as B, Shape as mt, SiteLabel as ht, SortableBoardTabs as gt, SourceLabel as _t, SourceMark as vt, Stack as V, StatusLabel as yt, Switch as H, THUMBNAIL_JOBS_KEY as bt, TIP_SWATCH as xt, TaskCenterLink as St, TaskProgress as Ct, Text as wt, Textarea as Tt, Uz as Et, ZIndexLayer as Dt, __toESM as Ot, _p as kt, activityKind as At, adaptEventsOfChild as jt, apiGet as Mt, apiSend as U, appSettingsStore as Nt, applyLabelTheme as Pt, arrayTooltipSearcher as Ft, bodyFieldErrors as It, boundedPreference as Lt, busyProps as W, cardClass as Rt, checkClientUpdates as zt, cloudProxySkeleton as Bt, clsx as Vt, cn$1 as Ht, codedText as G, configurationDescriptionKey as Ut, confirmModal as Wt, createSelector as Gt, credentialDone as Kt, credentialsSkeleton as qt, cx as Jt, d6 as Yt, devicesSkeleton as Xt, editionName as Zt, errorMessage as K, fetchConfiguration as Qt, fetchCredentials as $t, fetchLibraryProcessing as en, fetchMediaProcessing as tn, fetchSettings as nn, fetchSources as rn, fetchThumbnailJobs as an, filledShapeLabelColors as on, findAllByType as sn, fmtSize as cn, get as ln, getActiveStyleOverrides as un, getClassNameFromUnknown as dn, getColorGraphicalItems as fn, getColorsCount as pn, getEntryFillId as mn, getFillUrl as hn, getIndexedEntryFillObject as gn, getMaxRadius as _n, getOwnStyles as vn, getPercentValue as yn, getTooltipNameProp as bn, getValueByDataKey as xn, hasOwnColors as Sn, i2 as Cn, indexersSkeleton as wn, interfaceLanguage as Tn, interpolate as En, isDataAttribute as Dn, isNumber as On, isSvgElementPropKey as kn, javBrowserSkeleton as An, jobText as jn, joinList as Mn, l1 as Nn, ledgerBackupsSkeleton as Pn, localizedFact as Fn, matchAppend as In, mathSign as Ln, momentText as Rn, motion as zn, overlayHost as Bn, peachHistory$1 as Vn, pickServerFolder as Hn, polarToCartesian as Un, pollUntil as Wn, previewLibraryColor as Gn, processingActive as Kn, providerIcon as qn, queryClient as Jn, randomId as Yn, readEntryFill as Xn, rememberShape as Zn, require_jsx_runtime as Qn, require_react as $n, resolveDefaultProps as er, restartEffectText as tr, saveCredential as nr, schedulePollInterval as rr, sectionTitle as ir, selectActiveTooltipDataKey as ar, selectActiveTooltipGraphicalItemId as or, selectActiveTooltipIndex as sr, selectChartDataAndAlwaysIgnoreIndexes as cr, selectChartOffsetInternal as lr, serverLabel as q, serverLabelList as ur, serverText as dr, settingsPath as fr, shellNavigate as pr, sourceDefaultCost as mr, spinnerHtml as hr, splitFill as gr, stageText as _r, svgPropertiesNoEvents as vr, svgPropertiesNoEventsFromUnknown as yr, t as J, tone as br, translateWithNodes as xr, useAction as Y, useAnimationCallbacks as Sr, useAppSelector as Cr, useBackwardsCompatibleTheme as wr, useClientUpdates as Tr, useDataLabelThemeResolver as Er, useIndexedLabelThemeResolver as Dr, useLibraryTints as Or, useMouseClickItemDispatch as kr, useMouseEnterItemDispatch as Ar, useMouseLeaveItemDispatch as jr, useMutation as Mr, useOrderedLibraries as Nr, usePolarChartLayout as Pr, useQuery as X, useQueryClient as Fr, useRunSchedule as Ir, useSaveSchedule as Lr, useSaveSettings as Rr, useSaveThumbnailMode as zr, useThemeFillObjects as Br, we as Vr, withoutColors as Hr, z3 as Ur } from "./peach-app.js";
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+import { $2ec61d1d4f780267$export$a8a3e93435678ff9 as e, $542a13ca2fa5b484$export$5b6b19405a83ff9d as t, $72abaeab4d80592f$export$78efe591171d7d45 as n, $ea3928288112382f$export$439d29a4e110a164 as r, $f2ff30fde7b014be$export$3ddf2d174ce01153 as i, $fe21c36db05242bb$export$a98f0dcb43a68a25 as a, $fe21c36db05242bb$export$d7b12c4107be0d61 as o, ACCENTS as s, AILibrarySettings as c, ActionSpinner as l, ActivityStatus as u, AnimatedItems as d, AnimatedNumber as f, ApiError as p, Button as m, ButtonLink as h, CLOUD_LOCATIONS as g, CLOUD_PROXY_HELP as _, CONFIGURATION_KEY as v, CONFIGURATION_SECTIONS as y, CONFIGURATION_URL as b, CREDENTIAL_STATE as x, Cell as S, ChartBackground as C, ChartContainer as w, ChartLegend as T, ChartLegendContent as E, ChartTip as ee, ChartTooltip as D, ChartTooltipContent as te, Checkbox as ne, Chip as O, CommandSteps as re, Curve as ie, DATA_ITEM_GRAPHICAL_ITEM_ID_ATTRIBUTE_NAME as ae, DATA_ITEM_INDEX_ATTRIBUTE_NAME as oe, DataLabelColorsContextProvider as se, DataLabelThemeContextProvider as ce, DefaultZIndexes as le, Disclosure as ue, EDITION_TONE as de, ENTRY_LINKS_HELP as fe, ENTRY_LINKS_HINT as pe, EmptyState as me, ErrorText as k, Eu as he, EvilBarChart as ge, ExternalLink as _e, FOLLOW_CREDENTIALS_KEY as ve, FOLLOW_CREDENTIALS_KEY$1 as ye, FOLLOW_INITIAL_RANGE_OPTIONS as be, Fact as A, FactList as xe, FieldLabel as Se, FillObjectDefinition as Ce, Footer as j, Help as M, Input as N, L1 as we, LIBRARY_FOLDER_HELP as Te, LIBRARY_PROCESSING_KEY as Ee, Label as De, LabelList as Oe, LabelListFromLabelProp as ke, Layer as Ae, LinkButton as je, LoadingIndicator as Me, M6 as Ne, MEDIA_PROCESSING_KEY as Pe, MEDIA_PROCESSING_URL as Fe, MEDIA_SOURCE_ICONS as Ie, MENU_POPOVER_SURFACE as Le, NavigationOrderRows as Re, Note as P, PICK_FOLDER_URL as ze, POLICY_COLUMNS as Be, POLICY_COVER_NOTE as Ve, POLICY_MATRIX as He, POLICY_SUMMARY as Ue, PathLine as We, PolarLabelContextProvider as Ge, PolarLabelListContextProvider as Ke, ProcessingMode as qe, Progress as Je, QueryErrorNote as Ye, RELEASE_NOTICE_EVENT as Xe, REPAIR_CENTER_PATH as Ze, RegisterGraphicalItemId as Qe, Rows as F, SCHEDULES as $e, SCRAPING_KEY as et, SCRAPING_SETTINGS_URL as tt, SEGMENT as nt, SEGMENTED_TRACK as rt, SETTINGS_KEY as it, SETTINGS_URL as at, Section as I, SectionSkeleton as ot, SectionToc as st, Sector as ct, SegmentedRadioGroup as lt, Select as ut, Select$1 as L, SelectItem as R, SetPolarGraphicalItem as dt, SetPolarLegendPayload as ft, SetTooltipEntrySettings as pt, SettingsCard as mt, SettingsRow as z, Shape as ht, SiteLabel as gt, SortableBoardTabs as _t, SourceLabel as vt, SourceMark as yt, Stack as B, StatusLabel as bt, Switch as V, THUMBNAIL_JOBS_KEY as xt, TIP_SWATCH as St, TaskCenterLink as Ct, TaskProgress as wt, Text as Tt, Textarea as Et, Uz as Dt, ZIndexLayer as Ot, __toESM as kt, _p as At, activityKind as jt, adaptEventsOfChild as Mt, apiGet as H, apiSend as U, appSettingsStore as Nt, applyLabelTheme as Pt, arrayTooltipSearcher as Ft, bodyFieldErrors as It, boundedPreference as Lt, busyProps as W, cardClass as Rt, checkClientUpdates as zt, cloudProxySkeleton as Bt, clsx as Vt, cn$1 as Ht, codedText as G, configurationDescriptionKey as Ut, confirmModal as Wt, createSelector as Gt, credentialDone as Kt, credentialsSkeleton as qt, cx as Jt, d6 as Yt, devicesSkeleton as Xt, editionName as Zt, errorMessage as K, fetchConfiguration as Qt, fetchCredentials as $t, fetchLibraryProcessing as en, fetchMediaProcessing as tn, fetchSettings as nn, fetchSources as rn, fetchThumbnailJobs as an, filledShapeLabelColors as on, findAllByType as sn, fmtSize as cn, get as ln, getActiveStyleOverrides as un, getClassNameFromUnknown as dn, getColorGraphicalItems as fn, getColorsCount as pn, getEntryFillId as mn, getFillUrl as hn, getIndexedEntryFillObject as gn, getMaxRadius as _n, getOwnStyles as vn, getPercentValue as yn, getTooltipNameProp as bn, getValueByDataKey as xn, hasOwnColors as Sn, i2 as Cn, indexersSkeleton as wn, interfaceLanguage as Tn, interpolate as En, isDataAttribute as Dn, isNumber as On, isSvgElementPropKey as kn, javBrowserSkeleton as An, jobText as jn, joinList as Mn, l1 as Nn, ledgerBackupsSkeleton as Pn, localizedFact as Fn, matchAppend as In, mathSign as Ln, momentText as Rn, motion as zn, overlayHost as Bn, peachHistory$1 as Vn, pickServerFolder as Hn, polarToCartesian as Un, pollUntil as Wn, previewLibraryColor as Gn, processingActive as Kn, providerIcon as qn, queryClient as Jn, randomId as Yn, readEntryFill as Xn, rememberShape as Zn, require_jsx_runtime as Qn, require_react as $n, resolveDefaultProps as er, restartEffectText as tr, saveCredential as nr, schedulePollInterval as rr, sectionTitle as ir, selectActiveTooltipDataKey as ar, selectActiveTooltipGraphicalItemId as or, selectActiveTooltipIndex as sr, selectChartDataAndAlwaysIgnoreIndexes as cr, selectChartOffsetInternal as lr, serverLabel as q, serverLabelList as ur, serverText as dr, settingsPath as fr, shellNavigate as pr, sourceDefaultCost as mr, spinnerHtml as hr, splitFill as gr, stageText as _r, svgPropertiesNoEvents as vr, svgPropertiesNoEventsFromUnknown as yr, t as J, tone as br, translateWithNodes as xr, useAction as Y, useAnimationCallbacks as Sr, useAppSelector as Cr, useBackwardsCompatibleTheme as wr, useClientUpdates as Tr, useDataLabelThemeResolver as Er, useIndexedLabelThemeResolver as Dr, useLibraryTints as Or, useMouseClickItemDispatch as kr, useMouseEnterItemDispatch as Ar, useMouseLeaveItemDispatch as jr, useMutation as Mr, useOrderedLibraries as Nr, usePolarChartLayout as Pr, useQuery as X, useQueryClient as Fr, useRunSchedule as Ir, useSaveSchedule as Lr, useSaveSettings as Rr, useSaveThumbnailMode as zr, useThemeFillObjects as Br, we as Vr, withoutColors as Hr, z3 as Ur } from "./peach-app.js";
 import { useCheckReceipt as Wr } from "./peach-app.use-check-receipt-CVw_ZYdx.js";
 import { ConnectionStatus as Gr } from "./peach-app.connection-status-BrXhLGSm.js";
 import { CodeBlock as Kr } from "./peach-app.code-block-BdQewVJ0.js";
@@ -101,7 +94,7 @@ var vi = Gt([Yr, (e, t) => t], (e, t) => e.filter((e) => e.type === "pie").find(
 		displayedData: e,
 		cells: n
 	});
-}), Z = /* @__PURE__ */ Ot($n()), wi = ["key"], Ti = [
+}), Z = /* @__PURE__ */ kt($n()), wi = ["key"], Ti = [
 	"onMouseEnter",
 	"onClick",
 	"onMouseLeave"
@@ -192,7 +185,7 @@ function Ii(e) {
 	for (var n in e) Object.prototype.hasOwnProperty.call(e, n) && (n === "id" || Dn(n) || (!kn(n) || Fi.has(n)) && (t[n] = e[n]));
 	return t;
 }
-var Li = st;
+var Li = ct;
 function Ri(e, t, n, r) {
 	var i = n[t % n.length];
 	if (i != null) {
@@ -227,7 +220,7 @@ function Vi(e) {
 			fill: s
 		});
 	});
-	return /*#__PURE__*/ Z.createElement(dt, { legendPayload: i });
+	return /*#__PURE__*/ Z.createElement(ft, { legendPayload: i });
 }
 function Hi(e) {
 	if (e != null && typeof e != "boolean" && typeof e != "function") {
@@ -264,7 +257,7 @@ var Ui = /*#__PURE__*/ Z.memo((e) => {
 			graphicalItemId: d
 		}
 	};
-	return /*#__PURE__*/ Z.createElement(ft, { tooltipEntrySettings: p });
+	return /*#__PURE__*/ Z.createElement(pt, { tooltipEntrySettings: p });
 }), Wi = (e, t) => e > t ? "start" : e < t ? "end" : "middle", Gi = (e, t, n) => yn(typeof t == "function" ? t(e) : t, n, n * .8), Ki = (e, t, n) => {
 	var r = t.top, i = t.left, a = t.width, o = t.height, s = e.maxRadius ?? _n(a, o);
 	return {
@@ -280,7 +273,7 @@ var Ui = /*#__PURE__*/ Z.memo((e) => {
 	var n = Vt("recharts-pie-label-line", typeof e == "boolean" ? "" : e.className);
 	t.key;
 	var r = ki(t, wi);
-	return /*#__PURE__*/ Z.createElement(re, Oi({}, r, {
+	return /*#__PURE__*/ Z.createElement(ie, Oi({}, r, {
 		type: "linear",
 		className: n
 	}));
@@ -289,7 +282,7 @@ var Ui = /*#__PURE__*/ Z.memo((e) => {
 	var i = n;
 	if (typeof e == "function" && (i = e(t), /*#__PURE__*/ Z.isValidElement(i))) return i;
 	var a = Vt("recharts-pie-label-text", dn(e));
-	return /*#__PURE__*/ Z.createElement(wt, Oi({}, t, {
+	return /*#__PURE__*/ Z.createElement(Tt, Oi({}, t, {
 		alignmentBaseline: "middle",
 		className: a,
 		background: r
@@ -320,16 +313,16 @@ function Zi(e) {
 			points: [Un(e.cx, e.cy, e.outerRadius, n), r],
 			key: "line"
 		});
-		return /*#__PURE__*/ Z.createElement(Dt, {
-			zIndex: ce.label,
+		return /*#__PURE__*/ Z.createElement(Ot, {
+			zIndex: le.label,
 			key: `label-${e.startAngle}-${e.endAngle}-${e.midAngle}-${t}`
-		}, /*#__PURE__*/ Z.createElement(ke, null, o && Ji(o, _), Yi(a, g, xn(e.payload, s, e.value), h.background)));
+		}, /*#__PURE__*/ Z.createElement(Ae, null, o && Ji(o, _), Yi(a, g, xn(e.payload, s, e.value), h.background)));
 	});
-	return /*#__PURE__*/ Z.createElement(ke, { className: "recharts-pie-labels" }, p);
+	return /*#__PURE__*/ Z.createElement(Ae, { className: "recharts-pie-labels" }, p);
 }
 function Qi(e) {
 	var t = e.sectors, n = e.props, r = e.showLabels, i = n.label;
-	return typeof i == "object" && i && "position" in i ? /*#__PURE__*/ Z.createElement(Oe, { label: i }) : /*#__PURE__*/ Z.createElement(Zi, {
+	return typeof i == "object" && i && "position" in i ? /*#__PURE__*/ Z.createElement(ke, { label: i }) : /*#__PURE__*/ Z.createElement(Zi, {
 		sectors: t,
 		props: n,
 		showLabels: r
@@ -350,18 +343,18 @@ function $i(e) {
 			animationElapsedTime: s,
 			isAnimating: c,
 			isEntrance: l,
-			[ae]: m,
-			[ie]: o
+			[oe]: m,
+			[ae]: o
 		}), T = g && !C ? un(S === Li || S, u[m % u.length], e.payload) : void 0, E = T == null ? w : Q(Q({}, w), T);
-		return /*#__PURE__*/ Z.createElement(ke, Oi({
+		return /*#__PURE__*/ Z.createElement(Ae, Oi({
 			key: `sector-${e?.startAngle}-${e?.endAngle}-${e.midAngle}-${m}`,
 			tabIndex: -1,
 			className: "recharts-pie-sector"
-		}, jt(_, e, m), {
+		}, Mt(_, e, m), {
 			onMouseEnter: v(e, m),
 			onMouseLeave: y(e, m),
 			onClick: b(e, m)
-		}), /*#__PURE__*/ Z.createElement(mt, {
+		}), /*#__PURE__*/ Z.createElement(ht, {
 			option: S,
 			DefaultShape: Li,
 			shapeProps: E
@@ -386,7 +379,7 @@ function ta(e) {
 			delete C.id;
 			var w = Xn(x), T = w.color ?? t.fill, E = n > 0 && n === g, ee = ea(s) && !E;
 			_ = n ? S.endAngle + Ln(f) * h * +!!ee : o;
-			var D = _ + Ln(f) * ((ea(s) ? y : 0) + m * b), te = (_ + D) / 2, O = (p.innerRadius + p.outerRadius) / 2, k = [{
+			var D = _ + Ln(f) * ((ea(s) ? y : 0) + m * b), te = (_ + D) / 2, ne = (p.innerRadius + p.outerRadius) / 2, O = [{
 				name: d,
 				value: s,
 				payload: x,
@@ -395,15 +388,15 @@ function ta(e) {
 				color: T,
 				fill: T,
 				graphicalItemId: t.id
-			}], ne = Un(p.cx, p.cy, O, te);
+			}], re = Un(p.cx, p.cy, ne, te);
 			return S = Q(Q(Q(Q(Q({}, t.presentationProps), {}, {
 				percent: m,
 				cornerRadius: typeof a == "string" ? parseFloat(a) : a,
 				name: d,
-				tooltipPayload: k,
+				tooltipPayload: O,
 				midAngle: te,
-				middleRadius: O,
-				tooltipPosition: ne
+				middleRadius: ne,
+				tooltipPosition: re
 			}, C), w.fillObject == null ? void 0 : { fill: T }), p), {}, {
 				value: s,
 				dataKey: c,
@@ -433,7 +426,7 @@ function na(e) {
 		},
 		fill: e.fill
 	})), [n, t]);
-	return /*#__PURE__*/ Z.createElement(Ge, { value: t ? i : void 0 }, r);
+	return /*#__PURE__*/ Z.createElement(Ke, { value: t ? i : void 0 }, r);
 }
 var ra = (e, t) => {
 	if (e == null) return [];
@@ -460,7 +453,7 @@ function ia(e) {
 	var t = e.props, n = e.previousSectorsRef, r = e.id, i = e.graphicalItems, a = e.indexedActiveStyles, o = t.sectors, s = t.activeShape, c = t.inactiveShape, l = t.animationInterpolateFn, u = Dr(i), f = Sr(t.onAnimationStart, t.onAnimationEnd), p = f.isAnimating, m = f.handleAnimationStart, h = f.handleAnimationEnd, g = Pr();
 	if (g == null) return null;
 	var _ = o[0];
-	return /*#__PURE__*/ Z.createElement(se, { value: u }, /*#__PURE__*/ Z.createElement(oe, { value: on }, /*#__PURE__*/ Z.createElement(na, {
+	return /*#__PURE__*/ Z.createElement(ce, { value: u }, /*#__PURE__*/ Z.createElement(se, { value: on }, /*#__PURE__*/ Z.createElement(na, {
 		showLabels: !p,
 		sectors: o
 	}, /*#__PURE__*/ Z.createElement(d, {
@@ -477,7 +470,7 @@ function ia(e) {
 		animationInterpolateFn: l,
 		animationMatchBy: t.animationMatchBy,
 		layout: g
-	}, (e, n, i) => /*#__PURE__*/ Z.createElement(ke, null, /*#__PURE__*/ Z.createElement($i, {
+	}, (e, n, i) => /*#__PURE__*/ Z.createElement(Ae, null, /*#__PURE__*/ Z.createElement($i, {
 		sectors: e,
 		activeShape: s,
 		inactiveShape: c,
@@ -492,7 +485,7 @@ function ia(e) {
 		showLabels: !p,
 		sectors: o,
 		props: t
-	}), /*#__PURE__*/ Z.createElement(We, {
+	}), /*#__PURE__*/ Z.createElement(Ge, {
 		cx: _?.cx ?? 0,
 		cy: _?.cy ?? 0,
 		innerRadius: _?.innerRadius ?? 0,
@@ -527,16 +520,16 @@ var aa = {
 	shape: Li,
 	startAngle: 0,
 	stroke: "#fff",
-	zIndex: ce.area
+	zIndex: le.area
 };
 function oa(e) {
 	var t = e.id, n = e.graphicalItems, r = e.explicitStyleProps, i = e.pieFillObject, a = ki(e, Ei), o = e.hide, s = e.className, c = e.rootTabIndex, l = Br(), u = (0, Z.useMemo)(() => sn(e.children, S), [e.children]), d = Sn(r), f = (0, Z.useMemo)(() => n.map((e) => d ? Hr(e.active) : e.active), [n, d]), p = Cr((e) => Ci(e, t, u)), m = (0, Z.useRef)(null), h = Vt("recharts-pie", s);
-	if (o || p == null) return m.current = null, /*#__PURE__*/ Z.createElement(ke, {
+	if (o || p == null) return m.current = null, /*#__PURE__*/ Z.createElement(Ae, {
 		tabIndex: c,
 		className: h
 	});
 	var g = p.map((e, t) => Bi(e, t, n, r)), _ = g.map((e, t) => gn(e.payload, t, i, l, d)), v = _.map((e, n) => e == null ? void 0 : hn(mn(t, n))), y = n.length > 0;
-	return /*#__PURE__*/ Z.createElement(Dt, { zIndex: e.zIndex }, /*#__PURE__*/ Z.createElement(Ui, {
+	return /*#__PURE__*/ Z.createElement(Ot, { zIndex: e.zIndex }, /*#__PURE__*/ Z.createElement(Ui, {
 		dataKey: e.dataKey,
 		nameKey: e.nameKey,
 		sectors: g,
@@ -549,10 +542,10 @@ function oa(e) {
 		formatter: e.formatter,
 		id: t,
 		activeShape: e.activeShape
-	}), /*#__PURE__*/ Z.createElement(ke, {
+	}), /*#__PURE__*/ Z.createElement(Ae, {
 		tabIndex: c,
 		className: h
-	}, _.some((e) => e != null) && /*#__PURE__*/ Z.createElement("defs", null, _.map((e, n) => e == null ? null : /*#__PURE__*/ Z.createElement(Se, {
+	}, _.some((e) => e != null) && /*#__PURE__*/ Z.createElement("defs", null, _.map((e, n) => e == null ? null : /*#__PURE__*/ Z.createElement(Ce, {
 		key: n,
 		id: mn(t, n),
 		fillObject: e,
@@ -577,10 +570,10 @@ function sa(e) {
 		strokeWidth: i.strokeWidth,
 		strokeDasharray: i.strokeDasharray
 	}, c = a.id, l = ki(a, Di), u = vr(l);
-	return /*#__PURE__*/ Z.createElement(Ze, {
+	return /*#__PURE__*/ Z.createElement(Qe, {
 		id: c,
 		type: "pie"
-	}, (e) => /*#__PURE__*/ Z.createElement(Z.Fragment, null, /*#__PURE__*/ Z.createElement(ut, {
+	}, (e) => /*#__PURE__*/ Z.createElement(Z.Fragment, null, /*#__PURE__*/ Z.createElement(dt, {
 		type: "pie",
 		id: e,
 		data: l.data,
@@ -679,7 +672,7 @@ var ma = ["item"], ha = ua(ua({}, Jr), {}, {
 }), $ = Qn();
 function _a({ entries: e }) {
 	let t = e.filter((e) => !!e);
-	return t.length ? /* @__PURE__ */ (0, $.jsx)(ot, {
+	return t.length ? /* @__PURE__ */ (0, $.jsx)(st, {
 		inline: !0,
 		label: J("settings:configurationPage.contents"),
 		entries: t,
@@ -775,7 +768,7 @@ function ba({ enabled: e, release: t }) {
 				children: [/* @__PURE__ */ (0, $.jsx)("span", {
 					className: "text-body-regular text-text-secondary",
 					children: J("settings:userscriptStatus.addFromBrowser")
-				}), /* @__PURE__ */ (0, $.jsx)(yt, {
+				}), /* @__PURE__ */ (0, $.jsx)(bt, {
 					tone: e ? "success" : "neutral",
 					children: /* @__PURE__ */ (0, $.jsx)("span", {
 						"data-copy-key": `userscript.adding.${e ? "enabled" : "disabled"}`,
@@ -791,14 +784,14 @@ function ba({ enabled: e, release: t }) {
 			/* @__PURE__ */ (0, $.jsxs)("div", {
 				className: "flex flex-wrap items-center gap-2",
 				children: [
-					i === "missing" || l || u ? /* @__PURE__ */ (0, $.jsx)(ge, {
+					i === "missing" || l || u ? /* @__PURE__ */ (0, $.jsx)(_e, {
 						href: t.install_url,
 						children: /* @__PURE__ */ (0, $.jsx)("span", {
 							"data-copy-key": `userscript.${i === "missing" ? "install" : "update"}.action`,
 							children: J(l || u ? "settings:userscriptStatus.update" : "settings:userscriptStatus.install")
 						})
 					}) : null,
-					i === "missing" ? /* @__PURE__ */ (0, $.jsx)(ge, {
+					i === "missing" ? /* @__PURE__ */ (0, $.jsx)(_e, {
 						href: "https://www.tampermonkey.net/faq.php#Q209",
 						children: J("settings:userscriptStatus.permissionGuide")
 					}) : null,
@@ -819,17 +812,17 @@ var xa = "/api/configuration/jav-browser";
 function Sa({ receipt: e, refreshKey: t }) {
 	let n = X({
 		queryKey: ["jav-browser-settings", t],
-		queryFn: ({ signal: e }) => Mt(xa, e),
+		queryFn: ({ signal: e }) => H(xa, e),
 		refetchOnMount: "always",
 		refetchOnWindowFocus: "always"
 	});
-	return n.error && !n.data ? /* @__PURE__ */ (0, $.jsx)(Je, {
+	return n.error && !n.data ? /* @__PURE__ */ (0, $.jsx)(Ye, {
 		titleKey: "settings:browserAdd.loadFailed",
 		query: n
-	}) : n.isFetching && !n.data ? /* @__PURE__ */ (0, $.jsx)(at, {
+	}) : n.isFetching && !n.data ? /* @__PURE__ */ (0, $.jsx)(ot, {
 		label: J("settings:browserAdd.loading"),
 		html: An
-	}) : n.data ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [n.error ? /* @__PURE__ */ (0, $.jsx)(Je, {
+	}) : n.data ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [n.error ? /* @__PURE__ */ (0, $.jsx)(Ye, {
 		titleKey: "settings:browserAdd.loadFailed",
 		query: n
 	}) : null, /* @__PURE__ */ (0, $.jsx)(Ca, {
@@ -864,10 +857,10 @@ function Ca({ initial: e, receipt: t }) {
 			})), c.setError(K(t));
 		}));
 	}, d = n.providers.some((e) => e.key === i && e.configured && e.target);
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "browser",
 		title: J("settings:javBrowser.title"),
-		children: [/* @__PURE__ */ (0, $.jsxs)(V, { children: [/* @__PURE__ */ (0, $.jsxs)("div", {
+		children: [/* @__PURE__ */ (0, $.jsxs)(B, { children: [/* @__PURE__ */ (0, $.jsxs)("div", {
 			className: "flex min-w-0 flex-col gap-4",
 			children: [
 				/* @__PURE__ */ (0, $.jsx)(ba, {
@@ -876,7 +869,7 @@ function Ca({ initial: e, receipt: t }) {
 				}),
 				/* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex flex-col gap-1",
-					children: [/* @__PURE__ */ (0, $.jsx)(xe, { children: J("settings:browserAdd.channel") }), /* @__PURE__ */ (0, $.jsx)(R, {
+					children: [/* @__PURE__ */ (0, $.jsx)(Se, { children: J("settings:browserAdd.channel") }), /* @__PURE__ */ (0, $.jsx)(L, {
 						"aria-label": J("settings:browserAdd.channel"),
 						selectedKey: i || null,
 						placeholder: J("settings:browserAdd.noChannels"),
@@ -884,10 +877,10 @@ function Ca({ initial: e, receipt: t }) {
 							e !== null && a(String(e));
 						},
 						isDisabled: !n.providers.length || !!c.busy,
-						children: n.providers.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+						children: n.providers.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 							id: e.key,
 							textValue: e.label,
-							children: /* @__PURE__ */ (0, $.jsx)(_t, {
+							children: /* @__PURE__ */ (0, $.jsx)(vt, {
 								source: e.key,
 								label: e.label
 							})
@@ -896,7 +889,7 @@ function Ca({ initial: e, receipt: t }) {
 				}),
 				d ? null : /* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex flex-wrap items-center gap-2",
-					children: [/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:browserAdd.needsCloudDrive") }), /* @__PURE__ */ (0, $.jsx)(h, {
+					children: [/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:browserAdd.needsCloudDrive") }), /* @__PURE__ */ (0, $.jsx)(h, {
 						href: "/settings/downloads",
 						variant: "secondary",
 						size: "small",
@@ -906,26 +899,26 @@ function Ca({ initial: e, receipt: t }) {
 						})
 					})]
 				}),
-				n.problems?.map((e) => /* @__PURE__ */ (0, $.jsx)(N, { children: e }, e)),
-				n.enabled && n.active_provider && !n.providers.some((e) => e.key === n.active_provider) ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:browserAdd.channelUnavailable") }) : null,
-				/* @__PURE__ */ (0, $.jsx)("div", { children: /* @__PURE__ */ (0, $.jsx)(B, {
+				n.problems?.map((e) => /* @__PURE__ */ (0, $.jsx)(M, { children: e }, e)),
+				n.enabled && n.active_provider && !n.providers.some((e) => e.key === n.active_provider) ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:browserAdd.channelUnavailable") }) : null,
+				/* @__PURE__ */ (0, $.jsx)("div", { children: /* @__PURE__ */ (0, $.jsx)(z, {
 					label: J("settings:browserAdd.wantOnNoMatch"),
 					description: J("settings:browserAdd.wantOnNoMatchHelp"),
-					children: /* @__PURE__ */ (0, $.jsx)(H, {
+					children: /* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": J("settings:browserAdd.wantOnNoMatch"),
 						isSelected: n.want_on_no_match,
 						isDisabled: !!c.busy || !n.enabled,
 						onChange: u
 					})
 				}) }),
-				/* @__PURE__ */ (0, $.jsx)(P, {
+				/* @__PURE__ */ (0, $.jsx)(N, {
 					label: J("settings:browserAdd.peachUrl"),
 					value: window.location.origin,
 					isReadOnly: !0,
 					autoComplete: "off"
 				}),
 				o ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-					/* @__PURE__ */ (0, $.jsx)(P, {
+					/* @__PURE__ */ (0, $.jsx)(N, {
 						label: J("settings:browserAdd.token"),
 						type: "password",
 						value: o,
@@ -945,10 +938,10 @@ function Ca({ initial: e, receipt: t }) {
 						...W(c.busy === "copy"),
 						children: J("settings:browserAdd.copyPairing")
 					}) }),
-					/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:browserAdd.pairingHelp") })
+					/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:browserAdd.pairingHelp") })
 				] }) : null
 			]
-		}), c.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: c.error }) : null] }), /* @__PURE__ */ (0, $.jsxs)(M, { children: [n.enabled ? /* @__PURE__ */ (0, $.jsx)(m, {
+		}), c.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: c.error }) : null] }), /* @__PURE__ */ (0, $.jsxs)(j, { children: [n.enabled ? /* @__PURE__ */ (0, $.jsx)(m, {
 			variant: "secondary",
 			type: "button",
 			disabled: !!c.busy,
@@ -986,7 +979,7 @@ function Ta() {
 				t[0]?.focus();
 				let n = t.map((e) => e.closest("[data-input-size]>div") ?? e).filter((e) => getComputedStyle(e).animationName === "field-shake");
 				for (let e of n) e.style.animationName = "none";
-				n.length && getComputedStyle(n[0]).animationName;
+				n[0]?.offsetWidth;
 				for (let e of n) e.style.removeProperty("animation-name");
 			}), !1);
 		}
@@ -996,8 +989,8 @@ var Ea = (e) => e.trim().replace(/\/+$/, "");
 function Da(e) {
 	let t = Ea(e);
 	if (!t) return "";
-	let n = t.includes("://") ? t : `http://${t}`;
-	if (!/^https?:\/\/[^/?#@\\\s]+\/?$/i.test(n) || /[\x00-\x1f]/.test(n)) return "errors.downloads.addressFormat";
+	let n = t.includes("://") ? t : `http://${t}`, r = Array.from(t).some((e) => e.charCodeAt(0) < 32);
+	if (!/^https?:\/\/[^/?#@\\\s]+\/?$/i.test(n) || r) return "errors.downloads.addressFormat";
 	try {
 		let e = new URL(n);
 		if (!e.hostname) return "errors.downloads.addressFormat";
@@ -1042,7 +1035,7 @@ function Fa({ state: e, settle: t, receipt: n }) {
 		o.media_root,
 		o.username
 	]);
-	let k = {
+	let O = {
 		...e.config,
 		qbittorrent_address: c,
 		qbittorrent_save_path: u,
@@ -1050,7 +1043,7 @@ function Fa({ state: e, settle: t, receipt: n }) {
 		qbittorrent_username: g,
 		qbittorrent_password: v,
 		clear_qbittorrent_password: b
-	}, ne = (e, t) => {
+	}, re = (e, t) => {
 		let n = !!Ea(c), r = !t && !n && (!!o.address || b), i = {
 			address: !r && !n ? q("labels.downloadsQbittorrent.addressMissing", "") : ja(c),
 			savePath: Ma(u),
@@ -1060,34 +1053,34 @@ function Fa({ state: e, settle: t, receipt: n }) {
 			}) : ""
 		};
 		return T(""), ee.check(e, i) ? !0 : (C(null), !1);
-	}, re = (e) => {
+	}, ie = (e) => {
 		let t = e.currentTarget.form;
-		if (!ne(t, !0)) return;
+		if (!re(t, !0)) return;
 		let n = f.current;
-		E.run("check", (e) => U(Aa, k, "POST", e), (e) => {
+		E.run("check", (e) => U(Aa, O, "POST", e), (e) => {
 			C(e), n === f.current && !u.trim() && e.save_path && d(e.save_path), T(""), e.ok ? r(J("settings:connectionCheck.passed", { service: "qBittorrent" })) : i(a, Pa(e)[0] || J("settings:connectionCheck.details"));
 		}, (e) => {
 			let t = K(e);
 			T(t), i(a, t);
 		});
-	}, ie = (e) => {
-		e.preventDefault(), ne(e.currentTarget, !1) && E.run("save", (e) => U("/api/configuration/downloads", k, "POST", e), (e) => {
+	}, ae = (e) => {
+		e.preventDefault(), re(e.currentTarget, !1) && E.run("save", (e) => U("/api/configuration/downloads", O, "POST", e), (e) => {
 			let { report: r, qbittorrent_report: i, ...a } = e;
 			t(a), y(""), x(!1), C(i || null), T(""), n(J("settings:localDownload.saved"));
 		}, (e) => T(K(e)));
-	}, ae = Na(e);
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	}, oe = Na(e);
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		title: J("settings:localDownload.title"),
-		onSubmit: ie,
+		onSubmit: ae,
 		children: [
-			ae.length ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(F, {
+			oe.length ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "error",
 				title: J("settings:localDownload.needsAttention"),
-				children: ae.join("\n")
+				children: oe.join("\n")
 			}) }) : null,
-			/* @__PURE__ */ (0, $.jsxs)(V, { children: [
-				/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:localDownload.help") }),
-				/* @__PURE__ */ (0, $.jsx)(P, {
+			/* @__PURE__ */ (0, $.jsxs)(B, { children: [
+				/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:localDownload.help") }),
+				/* @__PURE__ */ (0, $.jsx)(N, {
 					label: J("settings:localDownload.address"),
 					placeholder: J("settings:localDownload.addressPlaceholder"),
 					autoComplete: "off",
@@ -1105,7 +1098,7 @@ function Fa({ state: e, settle: t, receipt: n }) {
 						l(e), ee.update("address");
 					}
 				}),
-				/* @__PURE__ */ (0, $.jsx)(P, {
+				/* @__PURE__ */ (0, $.jsx)(N, {
 					label: J("settings:localDownload.username"),
 					autoComplete: "username",
 					maxLength: 200,
@@ -1113,7 +1106,7 @@ function Fa({ state: e, settle: t, receipt: n }) {
 					isDisabled: !e.available,
 					onChange: _
 				}),
-				/* @__PURE__ */ (0, $.jsx)(P, {
+				/* @__PURE__ */ (0, $.jsx)(N, {
 					label: J("settings:localDownload.password"),
 					type: "password",
 					autoComplete: "current-password",
@@ -1123,13 +1116,13 @@ function Fa({ state: e, settle: t, receipt: n }) {
 					isDisabled: !e.available,
 					onChange: y
 				}),
-				o.password_set ? /* @__PURE__ */ (0, $.jsx)(O, {
+				o.password_set ? /* @__PURE__ */ (0, $.jsx)(ne, {
 					isSelected: b,
 					isDisabled: !e.available,
 					onChange: x,
 					children: J("settings:localDownload.clearPassword")
 				}) : null,
-				/* @__PURE__ */ (0, $.jsx)(P, {
+				/* @__PURE__ */ (0, $.jsx)(N, {
 					label: J("settings:localDownload.savePath"),
 					placeholder: J("settings:localDownload.savePathPlaceholder"),
 					autoComplete: "off",
@@ -1148,8 +1141,8 @@ function Fa({ state: e, settle: t, receipt: n }) {
 				/* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex flex-col gap-1",
 					children: [
-						/* @__PURE__ */ (0, $.jsx)(xe, { children: J("settings:localDownload.mediaRoot") }),
-						s.length ? /* @__PURE__ */ (0, $.jsx)(R, {
+						/* @__PURE__ */ (0, $.jsx)(Se, { children: J("settings:localDownload.mediaRoot") }),
+						s.length ? /* @__PURE__ */ (0, $.jsx)(L, {
 							"aria-label": J("settings:localDownload.mediaRoot"),
 							selectedKey: p || null,
 							"aria-describedby": D.mediaRoot ? te : void 0,
@@ -1161,7 +1154,7 @@ function Fa({ state: e, settle: t, receipt: n }) {
 							onSelectionChange: (e) => {
 								h(e === null ? "" : String(e)), ee.update("mediaRoot");
 							},
-							children: s.map((e) => /* @__PURE__ */ (0, $.jsxs)(z, {
+							children: s.map((e) => /* @__PURE__ */ (0, $.jsxs)(R, {
 								id: e.root,
 								textValue: J("shell:format.withNote", {
 									text: e.label,
@@ -1173,17 +1166,17 @@ function Fa({ state: e, settle: t, receipt: n }) {
 									e.root
 								]
 							}, e.root))
-						}) : D.mediaRoot ? /* @__PURE__ */ (0, $.jsx)(A, { children: J("settings:localDownload.noLocalRoots", { section: J("navigation:configurationSections.library") }) }) : /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:localDownload.noLocalRoots", { section: J("navigation:configurationSections.library") }) }),
-						D.mediaRoot && s.length ? /* @__PURE__ */ (0, $.jsx)(A, {
+						}) : D.mediaRoot ? /* @__PURE__ */ (0, $.jsx)(k, { children: J("settings:localDownload.noLocalRoots", { section: J("navigation:configurationSections.library") }) }) : /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:localDownload.noLocalRoots", { section: J("navigation:configurationSections.library") }) }),
+						D.mediaRoot && s.length ? /* @__PURE__ */ (0, $.jsx)(k, {
 							id: te,
 							children: D.mediaRoot
 						}) : null,
-						/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:localDownload.mediaRootHelp") })
+						/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:localDownload.mediaRootHelp") })
 					]
 				}),
-				w ? /* @__PURE__ */ (0, $.jsx)(A, { children: w }) : null
+				w ? /* @__PURE__ */ (0, $.jsx)(k, { children: w }) : null
 			] }),
-			S ? /* @__PURE__ */ (0, $.jsxs)(V, {
+			S ? /* @__PURE__ */ (0, $.jsxs)(B, {
 				divided: !0,
 				children: [
 					/* @__PURE__ */ (0, $.jsx)("h4", {
@@ -1191,39 +1184,39 @@ function Fa({ state: e, settle: t, receipt: n }) {
 						"data-copy-key": "settings.connectionCheck.results",
 						children: J("settings:connectionCheck.results")
 					}),
-					/* @__PURE__ */ (0, $.jsxs)(be, { children: [
-						/* @__PURE__ */ (0, $.jsx)(j, {
+					/* @__PURE__ */ (0, $.jsxs)(xe, { children: [
+						/* @__PURE__ */ (0, $.jsx)(A, {
 							term: J("settings:localDownload.version"),
 							children: S.version || J("settings:shared.notFound")
 						}),
-						/* @__PURE__ */ (0, $.jsx)(j, {
+						/* @__PURE__ */ (0, $.jsx)(A, {
 							term: "WebAPI",
 							children: S.webapi_version || J("settings:shared.notFound")
 						}),
-						/* @__PURE__ */ (0, $.jsx)(j, {
+						/* @__PURE__ */ (0, $.jsx)(A, {
 							term: J("settings:localDownload.savePath"),
 							children: S.save_path || J("settings:shared.notSet")
 						}),
-						/* @__PURE__ */ (0, $.jsx)(j, {
+						/* @__PURE__ */ (0, $.jsx)(A, {
 							term: J("settings:localDownload.mediaRoot"),
 							children: S.media_root || J("settings:shared.notSet")
 						})
 					] }),
-					S.problems.length ? /* @__PURE__ */ (0, $.jsx)(F, {
+					S.problems.length ? /* @__PURE__ */ (0, $.jsx)(P, {
 						tone: "error",
 						title: J("settings:localDownload.checkFailed"),
 						children: Pa(S).join("\n")
 					}) : null
 				]
 			}) : null,
-			/* @__PURE__ */ (0, $.jsxs)(M, {
+			/* @__PURE__ */ (0, $.jsxs)(j, {
 				status: e.available ? void 0 : J("settings:cloudDownload.primaryOnly"),
 				children: [/* @__PURE__ */ (0, $.jsxs)(m, {
 					type: "button",
 					variant: "secondary",
 					disabled: !e.available || E.busy === "save",
 					...W(E.busy === "check"),
-					onClick: re,
+					onClick: ie,
 					children: [E.busy === "check" ? /* @__PURE__ */ (0, $.jsx)("span", {
 						"aria-hidden": !0,
 						dangerouslySetInnerHTML: { __html: hr() }
@@ -1313,13 +1306,13 @@ function Ja({ initial: e, receipt: t, active: n = !0 }) {
 	] });
 }
 function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
-	let { checked: a, checkFailed: o } = Wr(), s = J("settings:connectionCheck.action", { service: "CloudDrive2" }), [c, l] = (0, Z.useState)(e.config), [d, f] = (0, Z.useState)(""), [p, h] = (0, Z.useState)(String(e.config.wait_hours)), [g, _] = (0, Z.useState)(null), [v, y] = (0, Z.useState)(""), [b, x] = (0, Z.useState)(Qa), [S, C] = (0, Z.useState)(""), w = Y(), T = Ta(), { errors: E } = T, ee = (0, Z.useRef)(!1), D = e.media_sources ?? [], te = D.includes("115"), O = D.includes("pikpak"), k = (e) => c.targets[e] ?? "", ne = (e, t) => l({
+	let { checked: a, checkFailed: o } = Wr(), s = J("settings:connectionCheck.action", { service: "CloudDrive2" }), [c, l] = (0, Z.useState)(e.config), [d, f] = (0, Z.useState)(""), [p, h] = (0, Z.useState)(String(e.config.wait_hours)), [g, _] = (0, Z.useState)(null), [v, y] = (0, Z.useState)(""), [b, x] = (0, Z.useState)(Qa), [S, C] = (0, Z.useState)(""), w = Y(), T = Ta(), { errors: E } = T, ee = (0, Z.useRef)(!1), D = e.media_sources ?? [], te = D.includes("115"), ne = D.includes("pikpak"), O = (e) => c.targets[e] ?? "", re = (e, t) => l({
 		...c,
 		targets: {
 			...c.targets,
 			[e]: t
 		}
-	}), re = te && !(!b.target || b.target.exists || k("115") !== b.target.path), ie = (e, t, n = "") => {
+	}), ie = te && !(!b.target || b.target.exists || O("115") !== b.target.path), ae = (e, t, n = "") => {
 		let r = t.target ? e.suggested_target : null, i = !!(r && n && r.path === n), a = t.root ? e.suggested_pikpak_root : "";
 		l((n) => ({
 			...n,
@@ -1334,10 +1327,10 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 			root: a,
 			saved: i
 		}), C("");
-	}, ae = (e) => {
+	}, oe = (e) => {
 		let t = Da(e);
 		return t ? q(t, "", { label: "CloudDrive2" }) : "";
-	}, oe = (e) => ka(e) ? q("errors.downloads.targetIsRoot", "") : "", se = () => p.trim() ? /^[+-]?\d+$/.test(p.trim()) ? Number(p) < 1 || Number(p) > e.max_wait_hours ? q("errors.downloads.waitHoursOutOfRange", "", { max: e.max_wait_hours }) : "" : q("errors.downloads.waitHoursNotNumber", "") : "";
+	}, se = (e) => ka(e) ? q("errors.downloads.targetIsRoot", "") : "", ce = () => p.trim() ? /^[+-]?\d+$/.test(p.trim()) ? Number(p) < 1 || Number(p) > e.max_wait_hours ? q("errors.downloads.waitHoursOutOfRange", "", { max: e.max_wait_hours }) : "" : q("errors.downloads.waitHoursNotNumber", "") : "";
 	return (0, Z.useEffect)(() => {
 		if (!i || ee.current || (ee.current = !0, !e.available || !e.config.clouddrive_address || !e.token_set)) return;
 		let t = {
@@ -1345,18 +1338,18 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 			target: !e.config.targets[115],
 			root: !e.config.pikpak_root
 		};
-		w.run("auto", (e) => Mt(La, e), (e) => ie(e, t), (e) => C(K(e)));
-	}, [i]), /* @__PURE__ */ (0, $.jsxs)(L, {
+		w.run("auto", (e) => H(La, e), (e) => ae(e, t), (e) => C(K(e)));
+	}, [i]), /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "download",
 		title: J("settings:cloudDownload.title"),
 		onSubmit: (e) => {
 			if (e.preventDefault(), C(""), !T.check(e.currentTarget, {
-				address: ae(c.clouddrive_address),
-				target115: te ? oe(k("115")) || (re ? J("settings:cloudDownload.createOrPick") : "") : "",
-				targetPikPak: O ? oe(k("pikpak")) : "",
-				hours: se()
+				address: oe(c.clouddrive_address),
+				target115: te ? se(O("115")) || (ie ? J("settings:cloudDownload.createOrPick") : "") : "",
+				targetPikPak: ne ? se(O("pikpak")) : "",
+				hours: ce()
 			})) return;
-			let i = !k("115").trim(), a = {
+			let i = !O("115").trim(), a = {
 				...c,
 				wait_hours: p.trim(),
 				token: d,
@@ -1364,7 +1357,7 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 			};
 			w.run("save", (e) => U(Ia, a, "POST", e), (e) => {
 				let { report: r, ...a } = e;
-				t(a), l(a.config), h(String(a.config.wait_hours)), f(""), r ? ie(r, {
+				t(a), l(a.config), h(String(a.config.wait_hours)), f(""), r ? ae(r, {
 					address: !a.config.clouddrive_address,
 					target: i,
 					root: !a.config.pikpak_root
@@ -1372,13 +1365,13 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 			}, (e) => C(K(e)));
 		},
 		children: [
-			e.problems?.length ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(F, {
+			e.problems?.length ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "error",
 				title: J("settings:cloudDownload.needsAttention"),
 				children: Ga(e).join("\n")
 			}) }) : null,
-			/* @__PURE__ */ (0, $.jsxs)(V, { children: [
-				/* @__PURE__ */ (0, $.jsx)(P, {
+			/* @__PURE__ */ (0, $.jsxs)(B, { children: [
+				/* @__PURE__ */ (0, $.jsx)(N, {
 					label: J("settings:cloudDownload.cloudDriveUrl"),
 					placeholder: J("settings:cloudDownload.addressPlaceholder"),
 					autoComplete: "off",
@@ -1389,7 +1382,7 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 					hint: E.address || J("settings:cloudDownload.cloudDriveUrlHelp"),
 					value: c.clouddrive_address,
 					isDisabled: !e.available,
-					onBlur: () => T.update("address", ae(c.clouddrive_address)),
+					onBlur: () => T.update("address", oe(c.clouddrive_address)),
 					onChange: (e) => {
 						l({
 							...c,
@@ -1397,7 +1390,7 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 						}), T.update("address");
 					}
 				}),
-				/* @__PURE__ */ (0, $.jsx)(P, {
+				/* @__PURE__ */ (0, $.jsx)(N, {
 					label: J("settings:cloudDownload.apiToken"),
 					type: "password",
 					autoComplete: "off",
@@ -1413,8 +1406,8 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 						f(e), T.update("token");
 					}
 				}),
-				te ? /* @__PURE__ */ (0, $.jsx)(P, {
-					label: /* @__PURE__ */ (0, $.jsx)(_t, {
+				te ? /* @__PURE__ */ (0, $.jsx)(N, {
+					label: /* @__PURE__ */ (0, $.jsx)(vt, {
 						source: "115",
 						label: J("settings:cloudDownload.target115")
 					}),
@@ -1423,17 +1416,17 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 					maxLength: 300,
 					"data-settings-field": "target115",
 					validationBehavior: "aria",
-					isInvalid: !!(E.target115 || re),
-					hint: E.target115 || J(re ? "settings:cloudDownload.directoryMissing" : "settings:cloudDownload.target115Help"),
-					onBlur: () => T.update("target115", oe(k("115"))),
-					value: k("115"),
+					isInvalid: !!(E.target115 || ie),
+					hint: E.target115 || J(ie ? "settings:cloudDownload.directoryMissing" : "settings:cloudDownload.target115Help"),
+					onBlur: () => T.update("target115", se(O("115"))),
+					value: O("115"),
 					isDisabled: !e.available,
 					onChange: (e) => {
-						ne("115", e), T.update("target115");
+						re("115", e), T.update("target115");
 					}
 				}) : null,
-				O ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(P, {
-					label: /* @__PURE__ */ (0, $.jsx)(_t, {
+				ne ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(N, {
+					label: /* @__PURE__ */ (0, $.jsx)(vt, {
 						source: "pikpak",
 						label: J("settings:cloudDownload.targetPikpak")
 					}),
@@ -1444,18 +1437,18 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 					validationBehavior: "aria",
 					isInvalid: !!E.targetPikPak,
 					hint: E.targetPikPak || J("settings:cloudDownload.targetPikpakHelp"),
-					onBlur: () => T.update("targetPikPak", oe(k("pikpak"))),
-					value: k("pikpak"),
+					onBlur: () => T.update("targetPikPak", se(O("pikpak"))),
+					value: O("pikpak"),
 					isDisabled: !e.available,
 					onChange: (e) => {
-						ne("pikpak", e), T.update("targetPikPak");
+						re("pikpak", e), T.update("targetPikPak");
 					}
 				}), /* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex flex-col gap-1",
-					children: [/* @__PURE__ */ (0, $.jsx)(xe, { children: /* @__PURE__ */ (0, $.jsx)(_t, {
+					children: [/* @__PURE__ */ (0, $.jsx)(Se, { children: /* @__PURE__ */ (0, $.jsx)(vt, {
 						source: "pikpak",
 						label: J("settings:cloudDownload.pikpakRootDirectory")
-					}) }), e.pikpak_roots.length ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(R, {
+					}) }), e.pikpak_roots.length ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(L, {
 						"aria-label": J("settings:cloudDownload.pikpakRootDirectory"),
 						selectedKey: c.pikpak_root || null,
 						isDisabled: !e.available || !r,
@@ -1464,13 +1457,13 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 							...c,
 							pikpak_root: e === null ? "" : String(e)
 						}),
-						children: e.pikpak_roots.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+						children: e.pikpak_roots.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 							id: e,
 							children: e
 						}, e))
-					}), /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:cloudDownload.pikpakRootDirectoryHelp") })] }) : /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:cloudDownload.addPikpakMount") })]
+					}), /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:cloudDownload.pikpakRootDirectoryHelp") })] }) : /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:cloudDownload.addPikpakMount") })]
 				})] }) : null,
-				/* @__PURE__ */ (0, $.jsx)(P, {
+				/* @__PURE__ */ (0, $.jsx)(N, {
 					label: J("settings:cloudDownload.maxWait"),
 					inputMode: "numeric",
 					autoComplete: "off",
@@ -1478,7 +1471,7 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 					validationBehavior: "aria",
 					isInvalid: !!E.hours,
 					hint: E.hours || J("settings:cloudDownload.waitHint", { max: e.max_wait_hours }),
-					onBlur: () => T.update("hours", se()),
+					onBlur: () => T.update("hours", ce()),
 					value: p,
 					isDisabled: !e.available,
 					onChange: (e) => {
@@ -1494,7 +1487,7 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 					}))
 				})
 			] }),
-			w.busy === "auto" ? /* @__PURE__ */ (0, $.jsx)(V, {
+			w.busy === "auto" ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
 				children: /* @__PURE__ */ (0, $.jsx)(u, {
 					kind: "radar",
@@ -1525,36 +1518,36 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 				} : void 0,
 				creating: w.busy === "folder"
 			}) : null,
-			S || w.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			S || w.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(A, { children: S || w.error })
+				children: /* @__PURE__ */ (0, $.jsx)(k, { children: S || w.error })
 			}) : null,
-			/* @__PURE__ */ (0, $.jsxs)(M, {
+			/* @__PURE__ */ (0, $.jsxs)(j, {
 				status: e.available ? void 0 : J("settings:cloudDownload.primaryOnly"),
 				children: [/* @__PURE__ */ (0, $.jsx)(m, {
 					variant: "secondary",
 					onClick: (t) => {
 						if (C(""), !T.check(t.currentTarget.form, {
-							address: ae(c.clouddrive_address),
+							address: oe(c.clouddrive_address),
 							token: Ea(c.clouddrive_address) && !e.token_set && !d.trim() ? q("errors.downloadsClouddrive.tokenMissing", "") : "",
-							target115: te ? oe(k("115")) : ""
+							target115: te ? se(O("115")) : ""
 						})) {
 							_(null);
 							return;
 						}
 						let n = {
 							address: !Ea(c.clouddrive_address),
-							target: !k("115").trim(),
+							target: !O("115").trim(),
 							root: !c.pikpak_root
 						}, i = {
 							clouddrive_address: c.clouddrive_address,
 							token: d,
-							target: k("115"),
+							target: O("115"),
 							pikpak_root: c.pikpak_root,
 							pikpak_account: r
 						};
 						w.run("check", (e) => U(La, i, "POST", e), (e) => {
-							ie(e, n), e.ok ? a(J("settings:connectionCheck.passed", { service: "CloudDrive2" })) : o(s, Ga(e)[0] || J("settings:connectionCheck.details"));
+							ae(e, n), e.ok ? a(J("settings:connectionCheck.passed", { service: "CloudDrive2" })) : o(s, Ga(e)[0] || J("settings:connectionCheck.details"));
 						}, (e) => {
 							let t = K(e);
 							C(t), o(s, t);
@@ -1573,7 +1566,7 @@ function Ya({ state: e, settle: t, receipt: n, pikpakAccount: r, active: i }) {
 		]
 	});
 }
-var Xa = Object.keys(ue);
+var Xa = Object.keys(de);
 function Za({ values: e, disabled: t, onChange: n }) {
 	let r = J("settings:cloudDownload.editionPreferences"), i = [...e, ...Xa.filter((t) => !e.includes(t))], a = Object.fromEntries(Xa.map((e) => [e, Zt(e)])), o = {
 		label: r,
@@ -1588,15 +1581,15 @@ function Za({ values: e, disabled: t, onChange: n }) {
 		children: [
 			/* @__PURE__ */ (0, $.jsxs)("div", {
 				className: "flex flex-col gap-1",
-				children: [/* @__PURE__ */ (0, $.jsx)(xe, { children: r }), /* @__PURE__ */ (0, $.jsx)(N, { children: J(e.length ? "settings:cloudDownload.editionPreferencesHelp" : "settings:cloudDownload.editionPreferencesDefault") })]
+				children: [/* @__PURE__ */ (0, $.jsx)(Se, { children: r }), /* @__PURE__ */ (0, $.jsx)(M, { children: J(e.length ? "settings:cloudDownload.editionPreferencesHelp" : "settings:cloudDownload.editionPreferencesDefault") })]
 			}),
-			/* @__PURE__ */ (0, $.jsx)(Le, {
+			/* @__PURE__ */ (0, $.jsx)(Re, {
 				order: o,
 				labels: a,
 				fixed: t ? i : [],
 				reset: !1,
 				render: (e) => /* @__PURE__ */ (0, $.jsx)("small", {
-					className: `javedition ${ue[e]}`,
+					className: `javedition ${de[e]}`,
 					children: a[e]
 				})
 			}),
@@ -1619,7 +1612,7 @@ var Qa = {
 };
 function $a({ report: e, detected: t, suggested: n, create: r, creating: i }) {
 	let a = n.target, o = !!(t || a || n.root || e.permissions.length || e.folder || e.quota);
-	return !o && !e.problems.length ? null : /* @__PURE__ */ (0, $.jsxs)(V, {
+	return !o && !e.problems.length ? null : /* @__PURE__ */ (0, $.jsxs)(B, {
 		divided: !0,
 		children: [
 			/* @__PURE__ */ (0, $.jsx)("h4", {
@@ -1627,20 +1620,20 @@ function $a({ report: e, detected: t, suggested: n, create: r, creating: i }) {
 				"data-copy-key": "settings.connectionCheck.results",
 				children: J("settings:connectionCheck.results")
 			}),
-			o ? /* @__PURE__ */ (0, $.jsxs)(be, { children: [
-				t ? /* @__PURE__ */ (0, $.jsx)(j, {
+			o ? /* @__PURE__ */ (0, $.jsxs)(xe, { children: [
+				t ? /* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:cloudDownload.cloudDriveUrl"),
 					children: J("settings:cloudDownload.detectedAddress", { address: t })
 				}) : null,
-				a?.exists ? /* @__PURE__ */ (0, $.jsx)(j, {
-					term: /* @__PURE__ */ (0, $.jsx)(_t, {
+				a?.exists ? /* @__PURE__ */ (0, $.jsx)(A, {
+					term: /* @__PURE__ */ (0, $.jsx)(vt, {
 						source: "115",
 						label: J("settings:cloudDownload.target115")
 					}),
 					children: n.saved ? J("settings:cloudDownload.filledSaved", { path: a.path }) : J("settings:cloudDownload.filledPending", { path: a.path })
 				}) : null,
-				a && !a.exists ? /* @__PURE__ */ (0, $.jsxs)(j, {
-					term: /* @__PURE__ */ (0, $.jsx)(_t, {
+				a && !a.exists ? /* @__PURE__ */ (0, $.jsxs)(A, {
+					term: /* @__PURE__ */ (0, $.jsx)(vt, {
 						source: "115",
 						label: J("settings:cloudDownload.target115")
 					}),
@@ -1652,31 +1645,31 @@ function $a({ report: e, detected: t, suggested: n, create: r, creating: i }) {
 						children: J("settings:cloudDownload.createDirectory")
 					}) : null]
 				}) : null,
-				n.root ? /* @__PURE__ */ (0, $.jsx)(j, {
-					term: /* @__PURE__ */ (0, $.jsx)(_t, {
+				n.root ? /* @__PURE__ */ (0, $.jsx)(A, {
+					term: /* @__PURE__ */ (0, $.jsx)(vt, {
 						source: "pikpak",
 						label: J("settings:cloudDownload.pikpakRoot")
 					}),
 					children: J("settings:cloudDownload.filledPending", { path: n.root })
 				}) : null,
-				e.permissions.length ? /* @__PURE__ */ (0, $.jsx)(j, {
+				e.permissions.length ? /* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:cloudDownload.offlinePermissions"),
-					children: e.missing.length ? Ka(e).map((e) => /* @__PURE__ */ (0, $.jsx)(k, {
+					children: e.missing.length ? Ka(e).map((e) => /* @__PURE__ */ (0, $.jsx)(O, {
 						variant: "caption",
 						color: "yellow",
 						children: J("settings:cloudDownload.missingPermission", { permission: e })
-					}, e)) : /* @__PURE__ */ (0, $.jsx)(k, {
+					}, e)) : /* @__PURE__ */ (0, $.jsx)(O, {
 						variant: "caption",
 						color: "lime",
 						children: J("settings:cloudDownload.permissionsComplete")
 					})
 				}) : null,
-				e.folder ? /* @__PURE__ */ (0, $.jsx)(j, {
+				e.folder ? /* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:cloudDownload.targetDirectory"),
 					children: e.folder.can_offline ? J("settings:cloudDownload.offlineSupported", { path: e.folder.path }) : J("settings:cloudDownload.offlineUnsupported", { path: e.folder.path })
 				}) : null,
-				e.quota ? /* @__PURE__ */ (0, $.jsx)(j, {
-					term: /* @__PURE__ */ (0, $.jsx)(_t, {
+				e.quota ? /* @__PURE__ */ (0, $.jsx)(A, {
+					term: /* @__PURE__ */ (0, $.jsx)(vt, {
 						source: "115",
 						label: J("settings:cloudDownload.quota115")
 					}),
@@ -1686,7 +1679,7 @@ function $a({ report: e, detected: t, suggested: n, create: r, creating: i }) {
 					})
 				}) : null
 			] }) : null,
-			Ga(e).map((e) => /* @__PURE__ */ (0, $.jsx)(A, { children: e }, e))
+			Ga(e).map((e) => /* @__PURE__ */ (0, $.jsx)(k, { children: e }, e))
 		]
 	});
 }
@@ -1699,7 +1692,7 @@ function eo({ state: e, settle: t, receipt: n, username: r, setUsername: i }) {
 			signal: e.signal,
 			everyMs: Ha,
 			limitMs: Ua,
-			read: (e) => Mt(Va, e),
+			read: (e) => H(Va, e),
 			apply: (e) => {
 				t(e), e.pikpak_browser.state === "done" ? n(J("settings:pikpakAccount.signedInReceipt")) : e.pikpak_browser.state !== "waiting" && _(jn(e.pikpak_browser));
 			},
@@ -1733,7 +1726,7 @@ function eo({ state: e, settle: t, receipt: n, username: r, setUsername: i }) {
 			t(e), h(""), n(J("settings:pikpakAccount.signedOutReceipt"));
 		}, (e) => h(K(e)));
 	}, E = /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-		/* @__PURE__ */ (0, $.jsx)(P, {
+		/* @__PURE__ */ (0, $.jsx)(N, {
 			label: J("settings:shared.account"),
 			placeholder: J("settings:pikpakAccount.usernamePlaceholder"),
 			autoComplete: "username",
@@ -1748,7 +1741,7 @@ function eo({ state: e, settle: t, receipt: n, username: r, setUsername: i }) {
 				i(e), s.update("username");
 			}
 		}),
-		/* @__PURE__ */ (0, $.jsx)(P, {
+		/* @__PURE__ */ (0, $.jsx)(N, {
 			label: J("settings:shared.password"),
 			type: "password",
 			autoComplete: "current-password",
@@ -1763,18 +1756,18 @@ function eo({ state: e, settle: t, receipt: n, username: r, setUsername: i }) {
 				o(e), s.update("password");
 			}
 		}),
-		/* @__PURE__ */ (0, $.jsx)(O, {
+		/* @__PURE__ */ (0, $.jsx)(ne, {
 			isSelected: c,
 			isDisabled: !e.available,
 			onChange: l,
 			children: J("settings:pikpakAccount.rememberPassword")
 		}),
-		d ? /* @__PURE__ */ (0, $.jsx)(F, {
+		d ? /* @__PURE__ */ (0, $.jsx)(P, {
 			tone: "warning",
 			title: J("settings:pikpakAccount.captchaTitle"),
 			extra: /* @__PURE__ */ (0, $.jsx)("div", {
 				className: "pt-2",
-				children: /* @__PURE__ */ (0, $.jsx)(ge, {
+				children: /* @__PURE__ */ (0, $.jsx)(_e, {
 					href: d,
 					children: J("settings:pikpakAccount.openCaptcha")
 				})
@@ -1788,42 +1781,34 @@ function eo({ state: e, settle: t, receipt: n, username: r, setUsername: i }) {
 		...W(v.busy === "login"),
 		children: J("settings:shared.signIn")
 	}), D = b.state === "timeout" || b.state === "failed";
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "pikpak",
 		title: J("settings:pikpakAccount.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		icon: /* @__PURE__ */ (0, $.jsx)(Ia, {}),
-		onSubmit: C,
-		aside: /* @__PURE__ */ (0, $.jsx)(yt, {
-			tone: v.logged_in ? "success" : b ? "progress" : ee ? "error" : "neutral",
-			children: v.logged_in ? J("settings:pikpakAccount.signedIn") : J(b ? "settings:pikpakAccount.waiting" : ee ? "settings:pikpakAccount.incomplete" : "settings:pikpakAccount.notSignedIn")
-========
 		icon: /* @__PURE__ */ (0, $.jsx)(Wa, {}),
 		onSubmit: w,
-		aside: /* @__PURE__ */ (0, $.jsx)(yt, {
+		aside: /* @__PURE__ */ (0, $.jsx)(bt, {
 			tone: y.logged_in ? "success" : x ? "progress" : D ? "error" : "neutral",
 			children: y.logged_in ? J("settings:pikpakAccount.signedIn") : J(x ? "settings:pikpakAccount.waiting" : D ? "settings:pikpakAccount.incomplete" : "settings:pikpakAccount.notSignedIn")
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		}),
 		children: [
-			y.logged_in ? /* @__PURE__ */ (0, $.jsxs)(be, { children: [/* @__PURE__ */ (0, $.jsx)(j, {
+			y.logged_in ? /* @__PURE__ */ (0, $.jsxs)(xe, { children: [/* @__PURE__ */ (0, $.jsx)(A, {
 				term: J("settings:shared.account"),
 				children: y.username || J("settings:pikpakAccount.signedIn")
-			}), y.method === "browser" ? /* @__PURE__ */ (0, $.jsx)(j, {
+			}), y.method === "browser" ? /* @__PURE__ */ (0, $.jsx)(A, {
 				term: J("settings:pikpakAccount.method"),
 				children: J("settings:pikpakAccount.browserMethod")
-			}) : /* @__PURE__ */ (0, $.jsx)(j, {
+			}) : /* @__PURE__ */ (0, $.jsx)(A, {
 				term: J("settings:shared.password"),
 				children: y.remember ? J("settings:pikpakAccount.passwordSaved") : J("settings:pikpakAccount.passwordNotSaved")
-			})] }) : /* @__PURE__ */ (0, $.jsxs)(V, { children: [g ? D ? /* @__PURE__ */ (0, $.jsx)(A, { children: g }) : /* @__PURE__ */ (0, $.jsx)(N, {
+			})] }) : /* @__PURE__ */ (0, $.jsxs)(B, { children: [g ? D ? /* @__PURE__ */ (0, $.jsx)(k, { children: g }) : /* @__PURE__ */ (0, $.jsx)(M, {
 				role: "status",
 				children: g
 			}) : null, E] }),
-			p || v.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			p || v.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(A, { children: p || v.error })
+				children: /* @__PURE__ */ (0, $.jsx)(k, { children: p || v.error })
 			}) : null,
-			/* @__PURE__ */ (0, $.jsx)(M, {
+			/* @__PURE__ */ (0, $.jsx)(j, {
 				status: !y.logged_in && x ? /* @__PURE__ */ (0, $.jsx)(u, {
 					kind: "clock",
 					label: jn(b) || J("settings:pikpakAccount.waitingBrowser")
@@ -1857,17 +1842,17 @@ var to = "/api/configuration/startup";
 function no({ active: e, initial: t, receipt: n }) {
 	let r = X({
 		queryKey: ["configuration", "startup"],
-		queryFn: ({ signal: e }) => Mt(to, e),
+		queryFn: ({ signal: e }) => H(to, e),
 		enabled: e,
 		initialData: t
 	});
 	return r.data ? /* @__PURE__ */ (0, $.jsx)(ro, {
 		startup: r.data,
 		receipt: n
-	}) : e ? /* @__PURE__ */ (0, $.jsx)(L, {
+	}) : e ? /* @__PURE__ */ (0, $.jsx)(I, {
 		guide: "startup",
 		title: J("settings:startup.title"),
-		children: r.isError ? /* @__PURE__ */ (0, $.jsx)(F, {
+		children: r.isError ? /* @__PURE__ */ (0, $.jsx)(P, {
 			tone: "error",
 			action: /* @__PURE__ */ (0, $.jsx)(m, {
 				variant: "secondary",
@@ -1887,7 +1872,7 @@ function no({ active: e, initial: t, receipt: n }) {
 }
 function ro({ startup: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(e.enabled), [i, a] = (0, Z.useState)(e.silent), [o, s] = (0, Z.useState)(e.desktop), c = Y(), l = e.available && !e.desktop_message, u = G(e, "desktop_message"), d = G(e, "message");
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "startup",
 		title: J("settings:startup.title"),
 		onSubmit: (r) => {
@@ -1898,31 +1883,31 @@ function ro({ startup: e, receipt: t }) {
 			}, "POST", e), () => t(J("settings:shared.settingsSaved")));
 		},
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(I, { children: [
-				/* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsxs)(F, { children: [
+				/* @__PURE__ */ (0, $.jsx)(z, {
 					label: J("settings:startup.launchAtStartup"),
 					description: J("settings:startup.launchAtStartupHelp"),
-					children: /* @__PURE__ */ (0, $.jsx)(H, {
+					children: /* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": J("settings:startup.launchAtStartup"),
 						isSelected: n,
 						isDisabled: !e.available,
 						onChange: r
 					})
 				}),
-				/* @__PURE__ */ (0, $.jsx)(B, {
+				/* @__PURE__ */ (0, $.jsx)(z, {
 					label: J("settings:startup.trayOnly"),
 					description: J("settings:startup.trayOnlyHelp"),
-					children: /* @__PURE__ */ (0, $.jsx)(H, {
+					children: /* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": J("settings:startup.trayOnly"),
 						isSelected: i,
 						isDisabled: !e.available || !n,
 						onChange: a
 					})
 				}),
-				/* @__PURE__ */ (0, $.jsx)(B, {
+				/* @__PURE__ */ (0, $.jsx)(z, {
 					label: J("settings:startup.desktopShortcut"),
 					description: u || void 0,
-					children: /* @__PURE__ */ (0, $.jsx)(H, {
+					children: /* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": J("settings:startup.desktopShortcut"),
 						isSelected: o,
 						isDisabled: !l,
@@ -1930,11 +1915,11 @@ function ro({ startup: e, receipt: t }) {
 					})
 				})
 			] }),
-			d || c.error ? /* @__PURE__ */ (0, $.jsxs)(V, {
+			d || c.error ? /* @__PURE__ */ (0, $.jsxs)(B, {
 				divided: !0,
-				children: [d ? /* @__PURE__ */ (0, $.jsx)(N, { children: d }) : null, c.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: c.error }) : null]
+				children: [d ? /* @__PURE__ */ (0, $.jsx)(M, { children: d }) : null, c.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: c.error }) : null]
 			}) : null,
-			/* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
+			/* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(m, {
 				type: "submit",
 				disabled: !e.available,
 				...W(c.busy === "save"),
@@ -1952,13 +1937,13 @@ function lo({ job: e, task: t, label: n }) {
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		"aria-live": "polite",
 		className: "flex flex-col gap-2",
-		children: [/* @__PURE__ */ (0, $.jsx)(Ct, {
+		children: [/* @__PURE__ */ (0, $.jsx)(wt, {
 			embedded: !0,
-			kind: At(t, e.stage_code),
+			kind: jt(t, e.stage_code),
 			label: [n, _r(e)].filter(Boolean).join(" · "),
 			value: e.done || 0,
 			total: e.total
-		}), /* @__PURE__ */ (0, $.jsx)(St, {})]
+		}), /* @__PURE__ */ (0, $.jsx)(Ct, {})]
 	});
 }
 function uo({ receipt: e }) {
@@ -1968,7 +1953,7 @@ function uo({ receipt: e }) {
 	});
 	if ((0, Z.useEffect)(() => {
 		let e = new AbortController();
-		return Mt(io, e.signal).then(n, (t) => {
+		return H(io, e.signal).then(n, (t) => {
 			e.signal.aborted || i(String(t?.message || t));
 		}), () => e.abort();
 	}, []), (0, Z.useEffect)(() => {
@@ -1978,7 +1963,7 @@ function uo({ receipt: e }) {
 			signal: e.signal,
 			everyMs: ao,
 			limitMs: oo,
-			read: (e) => Mt(io, e),
+			read: (e) => H(io, e),
 			apply: n,
 			done: (e) => e.backup.status !== "running" && e.restore.status !== "running"
 		}), () => e.abort();
@@ -1987,15 +1972,15 @@ function uo({ receipt: e }) {
 			let r = t[n];
 			r.status === "running" ? l.current[n] = !0 : l.current[n] && (l.current[n] = !1, r.status === "complete" && e(n === "backup" ? J("settings:databaseBackups.backedUp", { name: r.name }) : J("settings:databaseBackups.restored", { name: r.saved })));
 		}
-	}, [t]), !t && !r) return /* @__PURE__ */ (0, $.jsx)(at, {
+	}, [t]), !t && !r) return /* @__PURE__ */ (0, $.jsx)(ot, {
 		label: J("settings:databaseBackups.loading"),
 		html: Pn
 	});
-	if (!t) return /* @__PURE__ */ (0, $.jsx)(L, {
+	if (!t) return /* @__PURE__ */ (0, $.jsx)(I, {
 		id: "ledgerBackups",
 		guide: "ledger-backups",
 		title: J("settings:databaseBackups.title"),
-		children: /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(A, { children: r }) })
+		children: /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(k, { children: r }) })
 	});
 	let u = () => void a.run("backup", (e) => U(`${io}/backup`, {}, "POST", e), n), d = (e) => void Wt({
 		title: J("settings:databaseBackups.restoreTitle"),
@@ -2012,14 +1997,14 @@ function uo({ receipt: e }) {
 			}));
 		}
 	}), f = [t.backup, t.restore].find((e) => e.status === "failed"), p = t.last_restore, h = o ? J("settings:databaseBackups.backingUp") : s ? J("settings:databaseBackups.restoring") : t.backups.length ? J("settings:databaseBackups.count", { count: t.backups.length }) : J("settings:databaseBackups.empty");
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "ledgerBackups",
 		guide: "ledger-backups",
 		title: J("settings:databaseBackups.title"),
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(V, { children: [
-				/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:databaseBackups.help") }),
-				t.writer ? null : /* @__PURE__ */ (0, $.jsxs)(N, { children: [J("settings:databaseBackups.notPrimary"), G(t, "writer_reason")] }),
+			/* @__PURE__ */ (0, $.jsxs)(B, { children: [
+				/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:databaseBackups.help") }),
+				t.writer ? null : /* @__PURE__ */ (0, $.jsxs)(M, { children: [J("settings:databaseBackups.notPrimary"), G(t, "writer_reason")] }),
 				o ? /* @__PURE__ */ (0, $.jsx)(lo, {
 					job: t.backup,
 					task: "ledger-backup",
@@ -2030,14 +2015,14 @@ function uo({ receipt: e }) {
 					task: "ledger-restore",
 					label: J("settings:databaseBackups.restoreProgress")
 				}) : null,
-				f ? /* @__PURE__ */ (0, $.jsx)(A, { children: jn(f, "error") || J("settings:databaseBackups.jobIncomplete") }) : null,
-				p ? p.outcome === "kept" || p.outcome === "completed" ? /* @__PURE__ */ (0, $.jsx)(N, { children: G(p, "message") }) : /* @__PURE__ */ (0, $.jsx)(A, { children: G(p, "message") }) : null,
-				a.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: a.error }) : null
+				f ? /* @__PURE__ */ (0, $.jsx)(k, { children: jn(f, "error") || J("settings:databaseBackups.jobIncomplete") }) : null,
+				p ? p.outcome === "kept" || p.outcome === "completed" ? /* @__PURE__ */ (0, $.jsx)(M, { children: G(p, "message") }) : /* @__PURE__ */ (0, $.jsx)(k, { children: G(p, "message") }) : null,
+				a.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: a.error }) : null
 			] }),
 			t.backups.length ? /* @__PURE__ */ (0, $.jsx)("div", {
 				className: "border-t border-separator-border",
 				"data-ledger-backups": "",
-				children: /* @__PURE__ */ (0, $.jsx)(I, { children: t.backups.map((e) => /* @__PURE__ */ (0, $.jsx)(B, {
+				children: /* @__PURE__ */ (0, $.jsx)(F, { children: t.backups.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
 					label: so(e),
 					description: co(e),
 					children: /* @__PURE__ */ (0, $.jsx)(m, {
@@ -2048,7 +2033,7 @@ function uo({ receipt: e }) {
 					})
 				}, e.id)) })
 			}) : null,
-			/* @__PURE__ */ (0, $.jsx)(M, {
+			/* @__PURE__ */ (0, $.jsx)(j, {
 				status: /* @__PURE__ */ (0, $.jsx)("p", { children: h }),
 				children: /* @__PURE__ */ (0, $.jsx)(m, {
 					disabled: c,
@@ -2061,64 +2046,55 @@ function uo({ receipt: e }) {
 	});
 }
 // src/react/settings/background-work-settings.tsx
-var ro = "/api/configuration/background-work", io = ["background-work-settings"];
-function ao({ receipt: e }) {
+var fo = "/api/configuration/background-work", po = ["background-work-settings"];
+function mo({ receipt: e }) {
 	let t = X({
-		queryKey: io,
-		queryFn: ({ signal: e }) => U(ro, e)
+		queryKey: po,
+		queryFn: ({ signal: e }) => H(fo, e)
 	}), n = Y();
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "backgroundWork",
 		title: J("settings:backgroundWork.title"),
 		children: [
-			/* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:backgroundWork.precompute"),
 				description: J("settings:backgroundWork.precomputeHelp"),
-				children: /* @__PURE__ */ (0, $.jsx)(H, {
+				children: /* @__PURE__ */ (0, $.jsx)(V, {
 					"aria-label": J("settings:backgroundWork.precompute"),
 					isSelected: t.data?.precompute ?? !1,
 					isDisabled: !t.data || !!n.busy,
-					onChange: (t) => void n.run("save", (e) => W(ro, { precompute: t }, "POST", e), (t) => {
-						qn.setQueryData(io, t), e(J("settings:shared.settingsSaved"));
+					onChange: (t) => void n.run("save", (e) => U(fo, { precompute: t }, "POST", e), (t) => {
+						Jn.setQueryData(po, t), e(J("settings:shared.settingsSaved"));
 					})
 				})
 			}) }),
-			t.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			t.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(Je, {
+				children: /* @__PURE__ */ (0, $.jsx)(Ye, {
 					titleKey: "settings:backgroundWork.loadFailed",
 					query: t
 				})
 			}) : null,
-			n.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			n.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(A, { children: n.error })
+				children: /* @__PURE__ */ (0, $.jsx)(k, { children: n.error })
 			}) : null
 		]
 	});
 }
 // src/react/settings/docker-update.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var oo = 3e3, so = 9e5;
-async function co(e, t, n) {
-========
-var fo = 3e3, po = 9e5;
-async function mo(e, t, n) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var ho = 3e3, go = 9e5;
+async function _o(e, t, n) {
 	let r = "";
 	return await Wn({
-		read: n.read || ((e) => Mt("/api/client-updates", e)),
+		read: n.read || ((e) => H("/api/client-updates", e)),
 		apply: (t) => {
 			let n = t.runtime?.version;
 			n && n !== e && (r = n);
 		},
 		done: () => !!r,
 		signal: t,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		everyMs: oo,
-========
-		everyMs: fo,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		everyMs: ho,
 		limitMs: Math.max(1, n.limitMs),
 		pause: n.pause
 	}), t.aborted ? null : r ? {
@@ -2126,20 +2102,12 @@ async function mo(e, t, n) {
 		version: r
 	} : { state: "timeout" };
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function lo(e) {
-========
-function ho(e) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function vo(e) {
 	let [t, n] = (0, Z.useState)({ state: "idle" }), r = Y(), i = (0, Z.useRef)(0);
 	return (0, Z.useEffect)(() => {
 		if (t.state !== "updating") return;
 		let r = new AbortController();
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		return co(e, r.signal, { limitMs: so - (Date.now() - i.current) }).then((e) => {
-========
-		return mo(e, r.signal, { limitMs: po - (Date.now() - i.current) }).then((e) => {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		return _o(e, r.signal, { limitMs: go - (Date.now() - i.current) }).then((e) => {
 			e && n(e);
 		}), () => r.abort();
 	}, [t.state, e]), {
@@ -2151,19 +2119,15 @@ function ho(e) {
 		error: r.error
 	};
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function uo({ job: e }) {
-========
-function go({ job: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return e.state === "updating" ? /* @__PURE__ */ (0, $.jsx)(Ct, {
+function yo({ job: e }) {
+	return e.state === "updating" ? /* @__PURE__ */ (0, $.jsx)(wt, {
 		embedded: !0,
 		kind: "clock",
 		label: J("settings:dockerUpdate.updating")
-	}) : e.state === "done" ? /* @__PURE__ */ (0, $.jsx)(N, {
+	}) : e.state === "done" ? /* @__PURE__ */ (0, $.jsx)(M, {
 		role: "status",
 		children: J("settings:dockerUpdate.done", { version: e.version })
-	}) : e.state === "timeout" ? /* @__PURE__ */ (0, $.jsxs)(V, { children: [/* @__PURE__ */ (0, $.jsx)(A, { children: J("settings:dockerUpdate.timeout") }), /* @__PURE__ */ (0, $.jsx)(ne, {
+	}) : e.state === "timeout" ? /* @__PURE__ */ (0, $.jsxs)(B, { children: [/* @__PURE__ */ (0, $.jsx)(k, { children: J("settings:dockerUpdate.timeout") }), /* @__PURE__ */ (0, $.jsx)(re, {
 		label: J("settings:dockerUpdate.logsLabel"),
 		steps: [{
 			text: J("settings:dockerUpdate.watchtowerLog"),
@@ -2175,58 +2139,34 @@ function go({ job: e }) {
 	})] }) : null;
 }
 // src/react/settings/release-updates.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var fo = /* @__PURE__ */ new Set([
-========
-var _o = /* @__PURE__ */ new Set([
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var bo = /* @__PURE__ */ new Set([
 	"downloading",
 	"verifying",
 	"extracting",
 	"preparing",
 	"restarting",
 	"installing"
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-]), po = [
+]), xo = [
 	65,
 	75,
 	90
-], mo = 7, ho = "https://github.com/peach-mitao/peach/releases", go = /((?:[\w.-]+\/[\w.-]+)?#\d+)/;
-function _o(e) {
+], So = 7, Co = "https://github.com/peach-mitao/peach/releases", wo = /((?:[\w.-]+\/[\w.-]+)?#\d+)/;
+function To(e) {
 	let [t, n] = e.split("#");
 	return `https://github.com/${t || "peach-mitao/peach"}/issues/${n}`;
 }
-function vo({ text: e }) {
-	return /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: e.split("`").map((e, t) => t % 2 ? /* @__PURE__ */ (0, $.jsx)("code", { children: e }, t) : e.split(go).map((e, n) => n % 2 ? /* @__PURE__ */ (0, $.jsx)("a", {
-		href: _o(e),
-========
-]), vo = [
-	65,
-	75,
-	90
-], yo = 7, bo = "https://github.com/peach-mitao/peach/releases", xo = /((?:[\w.-]+\/[\w.-]+)?#\d+)/;
-function So(e) {
-	let [t, n] = e.split("#");
-	return `https://github.com/${t || "peach-mitao/peach"}/issues/${n}`;
-}
-function Co({ text: e }) {
-	return /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: e.split("`").map((e, t) => t % 2 ? /* @__PURE__ */ (0, $.jsx)("code", { children: e }, t) : e.split(xo).map((e, n) => n % 2 ? /* @__PURE__ */ (0, $.jsx)("a", {
-		href: So(e),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Eo({ text: e }) {
+	return /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: e.split("`").map((e, t) => t % 2 ? /* @__PURE__ */ (0, $.jsx)("code", { children: e }, t) : e.split(wo).map((e, n) => n % 2 ? /* @__PURE__ */ (0, $.jsx)("a", {
+		href: To(e),
 		target: "_blank",
 		rel: "noopener noreferrer",
 		className: "text-accent-600 hover:underline",
 		children: e
 	}, `${t}-${n}`) : e)) });
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function yo({ notes: e }) {
-	let t = wn === "zh-CN" ? "zh-CN" : "en";
-========
-function wo({ notes: e }) {
+function Do({ notes: e }) {
 	let t = Tn === "zh-CN" ? "zh-CN" : "en";
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsx)(le, {
+	return /* @__PURE__ */ (0, $.jsx)(ue, {
 		summary: J("settings:releaseUpdates.changelogTitle", { versions: Mn(e.map((e) => e.version)) }),
 		children: /* @__PURE__ */ (0, $.jsx)("div", {
 			className: "flex flex-col gap-5 pt-3",
@@ -2237,7 +2177,7 @@ function wo({ notes: e }) {
 					children: [/* @__PURE__ */ (0, $.jsx)("h3", {
 						className: "text-body-2-medium text-text-primary",
 						children: e.version
-					}), /* @__PURE__ */ (0, $.jsx)(ge, {
+					}), /* @__PURE__ */ (0, $.jsx)(_e, {
 						href: e.url,
 						children: J("settings:releaseUpdates.releasePage")
 					})]
@@ -2246,29 +2186,17 @@ function wo({ notes: e }) {
 					children: e[t].map((e, t) => /* @__PURE__ */ (0, $.jsxs)("li", { children: [e.title ? /* @__PURE__ */ (0, $.jsx)("span", {
 						className: "text-body-2-medium",
 						children: J("settings:releaseUpdates.highlightTitle", { title: e.title })
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					}) : null, /* @__PURE__ */ (0, $.jsx)(vo, { text: e.text })] }, t))
-========
-					}) : null, /* @__PURE__ */ (0, $.jsx)(Co, { text: e.text })] }, t))
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					}) : null, /* @__PURE__ */ (0, $.jsx)(Eo, { text: e.text })] }, t))
 				})]
 			}, e.version))
 		})
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function bo({ initial: e, initialJob: t }) {
+function Oo({ initial: e, initialJob: t }) {
 	let [n, r] = (0, Z.useState)(e), [i, a] = (0, Z.useState)(t || {
 		state: "idle",
 		progress: 0
-	}), { snapshot: o, failures: s } = Tr(), c = (0, Z.useRef)(o), l = Y(), { checked: u, checkFailed: d } = Wr(), p = (0, Z.useRef)(!1), g = (0, Z.useRef)(!0), _ = fo.has(i.state), v = lo(e.current_version), y = n.state === "available" && !!n.one_click?.available, b = v.job.state === "updating", x = n.installation_code === "standalone", S = () => void Ut({
-========
-function To({ initial: e, initialJob: t }) {
-	let [n, r] = (0, Z.useState)(e), [i, a] = (0, Z.useState)(t || {
-		state: "idle",
-		progress: 0
-	}), { snapshot: o, failures: s } = Tr(), c = (0, Z.useRef)(o), l = Y(), { checked: u, checkFailed: d } = Wr(), p = (0, Z.useRef)(!1), g = (0, Z.useRef)(!0), _ = _o.has(i.state), v = ho(e.current_version), y = n.state === "available" && !!n.one_click?.available, b = v.job.state === "updating", x = n.installation_code === "standalone", S = () => void Wt({
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	}), { snapshot: o, failures: s } = Tr(), c = (0, Z.useRef)(o), l = Y(), { checked: u, checkFailed: d } = Wr(), p = (0, Z.useRef)(!1), g = (0, Z.useRef)(!0), _ = bo.has(i.state), v = vo(e.current_version), y = n.state === "available" && !!n.one_click?.available, b = v.job.state === "updating", x = n.installation_code === "standalone", S = () => void Wt({
 		title: J("settings:releaseUpdates.oneClickUpdate"),
 		body: J("settings:releaseUpdates.dockerUpdateBody", { version: n.latest_version || "" }),
 		confirmLabel: J("settings:releaseUpdates.startUpdate"),
@@ -2304,7 +2232,7 @@ function To({ initial: e, initialJob: t }) {
 		_ || (p.current = !1, l.run("download", (e) => U("/api/configuration/update", {}, "POST", e), (e) => {
 			a(e), zt();
 		}));
-	}, E = () => void l.run("check", (e) => Mt("/api/configuration/updates", e), (e) => {
+	}, E = () => void l.run("check", (e) => H("/api/configuration/updates", e), (e) => {
 		r(e);
 		let t = dr(e);
 		e.state === "error" ? d(J("settings:releaseUpdates.check"), t) : u(t || J("settings:releaseUpdates.checkDone"));
@@ -2314,115 +2242,93 @@ function To({ initial: e, initialJob: t }) {
 			...e,
 			state: "error"
 		}), l.setError(n), d(J("settings:releaseUpdates.check"), n);
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	}), ee = s >= mo ? J("settings:releaseUpdates.connectionLost") : "", D = l.error || ee || v.error, te = dr(n), O = n.installation_code === "standalone" && (n.state === "available" || i.state !== "idle") ? n.package_kind : void 0, k = O === "update" ? J("settings:releaseUpdates.updatePackageHelp") : O === "full" ? J("settings:releaseUpdates.includesMediaTools") : O === "installer" ? J("settings:releaseUpdates.installerHelp") : "", re = i.state === "downloading" && i.total ? `${((i.downloaded || 0) / 1048576).toFixed(1)} / ${(i.total / 1048576).toFixed(1)} MB` : `${i.progress}%`;
-========
-	}), ee = s >= yo ? J("settings:releaseUpdates.connectionLost") : "", D = l.error || ee || v.error, te = dr(n), O = n.installation_code === "standalone" && (n.state === "available" || i.state !== "idle") ? n.package_kind : void 0, k = O === "update" ? J("settings:releaseUpdates.updatePackageHelp") : O === "full" ? J("settings:releaseUpdates.includesMediaTools") : O === "installer" ? J("settings:releaseUpdates.installerHelp") : "", re = i.state === "downloading" && i.total ? `${((i.downloaded || 0) / 1048576).toFixed(1)} / ${(i.total / 1048576).toFixed(1)} MB` : `${i.progress}%`;
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	}), ee = s >= So ? J("settings:releaseUpdates.connectionLost") : "", D = l.error || ee || v.error, te = dr(n), ne = n.installation_code === "standalone" && (n.state === "available" || i.state !== "idle") ? n.package_kind : void 0, O = ne === "update" ? J("settings:releaseUpdates.updatePackageHelp") : ne === "full" ? J("settings:releaseUpdates.includesMediaTools") : ne === "installer" ? J("settings:releaseUpdates.installerHelp") : "", ie = i.state === "downloading" && i.total ? `${((i.downloaded || 0) / 1048576).toFixed(1)} / ${(i.total / 1048576).toFixed(1)} MB` : `${i.progress}%`;
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "releaseUpdates",
 		guide: "updates",
 		title: J("settings:releaseUpdates.check"),
-		aside: /* @__PURE__ */ (0, $.jsx)(yt, {
+		aside: /* @__PURE__ */ (0, $.jsx)(bt, {
 			tone: D || n.state === "error" || i.state === "error" || v.job.state === "timeout" ? "error" : _ || b ? "progress" : v.job.state === "done" ? "success" : n.state === "available" ? "warning" : n.state === "unchecked" ? "neutral" : "success",
 			children: D || n.state === "error" || i.state === "error" ? J("settings:releaseUpdates.checkIncomplete") : v.job.state === "timeout" ? J("settings:releaseUpdates.updateIncomplete") : _ ? J("settings:releaseUpdates.preparing") : b ? J("settings:releaseUpdates.updating") : v.job.state === "done" ? J("settings:releaseUpdates.updated") : i.state === "ready" ? J("settings:releaseUpdates.readyToInstall") : n.state === "available" ? J("settings:releaseUpdates.updateAvailable") : n.state === "unchecked" ? J("settings:releaseUpdates.notChecked") : J("settings:releaseUpdates.checkDone")
 		}),
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(be, { children: [
-				/* @__PURE__ */ (0, $.jsx)(j, {
+			/* @__PURE__ */ (0, $.jsxs)(xe, { children: [
+				/* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:releaseUpdates.currentVersion"),
 					children: v.job.state === "done" ? v.job.version : n.current_version
 				}),
-				/* @__PURE__ */ (0, $.jsx)(j, {
+				/* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:releaseUpdates.installation"),
 					children: q(`release.installation.${n.installation_code}`, n.installation)
 				}),
-				/* @__PURE__ */ (0, $.jsx)(j, {
+				/* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:releaseUpdates.channel"),
 					children: q(`release.channel.${n.channel_code}`, n.channel)
 				}),
-				/* @__PURE__ */ (0, $.jsx)(j, {
+				/* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:releaseUpdates.latestVersion"),
 					children: n.latest_version || J("settings:shared.notFound")
 				}),
-				O ? /* @__PURE__ */ (0, $.jsxs)(j, {
+				ne ? /* @__PURE__ */ (0, $.jsxs)(A, {
 					term: J("settings:releaseUpdates.package"),
-					children: [J(O === "update" ? "settings:releaseUpdates.appUpdatePackage" : O === "installer" ? "settings:releaseUpdates.macosDiskImage" : "settings:releaseUpdates.appAndTools"), n.asset_size ? ` · ${(n.asset_size / 1048576).toFixed(1)} MB` : ""]
+					children: [J(ne === "update" ? "settings:releaseUpdates.appUpdatePackage" : ne === "installer" ? "settings:releaseUpdates.macosDiskImage" : "settings:releaseUpdates.appAndTools"), n.asset_size ? ` · ${(n.asset_size / 1048576).toFixed(1)} MB` : ""]
 				}) : null
 			] }),
-			k ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(N, { children: k }) }) : null,
-			n.state === "unchecked" && !n.checked_at && !D && i.state === "idle" ? null : /* @__PURE__ */ (0, $.jsxs)(V, {
+			O ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(M, { children: O }) }) : null,
+			n.state === "unchecked" && !n.checked_at && !D && i.state === "idle" ? null : /* @__PURE__ */ (0, $.jsxs)(B, {
 				divided: !0,
 				children: [
-					n.checked_at ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:releaseUpdates.checkedAt", { time: (/* @__PURE__ */ new Date(n.checked_at * 1e3)).toLocaleString(Tn) }) }) : null,
-					v.job.state === "done" ? null : n.state === "available" && !D ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(F, {
+					n.checked_at ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:releaseUpdates.checkedAt", { time: (/* @__PURE__ */ new Date(n.checked_at * 1e3)).toLocaleString(Tn) }) }) : null,
+					v.job.state === "done" ? null : n.state === "available" && !D ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(P, {
 						tone: "info",
 						title: J("settings:releaseUpdates.updateAvailable"),
 						children: te
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					}), n.notes?.length ? /* @__PURE__ */ (0, $.jsx)(yo, { notes: n.notes }) : null] }) : D || n.state === "error" ? /* @__PURE__ */ (0, $.jsx)(A, { children: D || te }) : n.state === "unchecked" ? null : /* @__PURE__ */ (0, $.jsx)(N, {
-========
-					}), n.notes?.length ? /* @__PURE__ */ (0, $.jsx)(wo, { notes: n.notes }) : null] }) : D || n.state === "error" ? /* @__PURE__ */ (0, $.jsx)(A, { children: D || te }) : n.state === "unchecked" ? null : /* @__PURE__ */ (0, $.jsx)(N, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					}), n.notes?.length ? /* @__PURE__ */ (0, $.jsx)(Do, { notes: n.notes }) : null] }) : D || n.state === "error" ? /* @__PURE__ */ (0, $.jsx)(k, { children: D || te }) : n.state === "unchecked" ? null : /* @__PURE__ */ (0, $.jsx)(M, {
 						role: "status",
 						children: te
 					}),
-					n.state === "available" && !D && !y && v.job.state === "idle" && n.steps?.length ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(ne, {
+					n.state === "available" && !D && !y && v.job.state === "idle" && n.steps?.length ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(re, {
 						label: J("settings:releaseUpdates.updateOnHost"),
 						steps: n.steps.map((e) => ({
 							...e,
 							text: q(`release.dockerStep.${e.id}`, e.text)
 						}))
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					}), /* @__PURE__ */ (0, $.jsx)(N, { children: (n.one_click?.reason ? K(n.one_click, "reason") : "") || J("settings:releaseUpdates.watchtowerHint") })] }) : null,
-					/* @__PURE__ */ (0, $.jsx)(uo, { job: v.job }),
-					i.state === "error" ? /* @__PURE__ */ (0, $.jsx)(A, { children: An(i) }) : null,
-========
-					}), /* @__PURE__ */ (0, $.jsx)(N, { children: (n.one_click?.reason ? G(n.one_click, "reason") : "") || J("settings:releaseUpdates.watchtowerHint") })] }) : null,
-					/* @__PURE__ */ (0, $.jsx)(go, { job: v.job }),
-					i.state === "error" ? /* @__PURE__ */ (0, $.jsx)(A, { children: jn(i) }) : null,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					}), /* @__PURE__ */ (0, $.jsx)(M, { children: (n.one_click?.reason ? G(n.one_click, "reason") : "") || J("settings:releaseUpdates.watchtowerHint") })] }) : null,
+					/* @__PURE__ */ (0, $.jsx)(yo, { job: v.job }),
+					i.state === "error" ? /* @__PURE__ */ (0, $.jsx)(k, { children: jn(i) }) : null,
 					i.state !== "idle" && i.state !== "error" ? /* @__PURE__ */ (0, $.jsxs)("div", {
 						"aria-live": "polite",
 						className: "flex flex-col gap-2",
 						children: [
-							/* @__PURE__ */ (0, $.jsx)(qe, {
+							/* @__PURE__ */ (0, $.jsx)(Je, {
 								label: J("settings:releaseUpdates.progressLabel"),
 								value: i.progress,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-								stops: po
-========
-								stops: vo
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+								stops: xo
 							}),
-							/* @__PURE__ */ (0, $.jsxs)(N, { children: [
+							/* @__PURE__ */ (0, $.jsxs)(M, { children: [
 								J("settings:releaseUpdates.progressSteps"),
 								" ",
 								jn(i)
 							] }),
-							/* @__PURE__ */ (0, $.jsx)(N, { children: /* @__PURE__ */ (0, $.jsx)(f, { value: re }) })
+							/* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(f, { value: ie }) })
 						]
 					}) : null
 				]
 			}),
-			/* @__PURE__ */ (0, $.jsxs)(M, {
+			/* @__PURE__ */ (0, $.jsxs)(j, {
 				status: /* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex flex-wrap items-center gap-3",
 					children: [
-						/* @__PURE__ */ (0, $.jsx)(ge, {
+						/* @__PURE__ */ (0, $.jsx)(_e, {
 							href: "https://peach.video/#download",
 							children: J("settings:shared.officialSite")
 						}),
-						/* @__PURE__ */ (0, $.jsx)(ge, {
+						/* @__PURE__ */ (0, $.jsx)(_e, {
 							href: "https://github.com/peach-mitao/peach",
 							children: "GitHub"
 						}),
-						/* @__PURE__ */ (0, $.jsx)(ge, {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							href: n.release_url || ho,
-========
-							href: n.release_url || bo,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						/* @__PURE__ */ (0, $.jsx)(_e, {
+							href: n.release_url || Co,
 							children: J("settings:releaseUpdates.releasePage")
 						})
 					]
@@ -2430,7 +2336,7 @@ function To({ initial: e, initialJob: t }) {
 				children: [
 					/* @__PURE__ */ (0, $.jsx)(m, {
 						variant: "ghost",
-						onClick: () => document.dispatchEvent(new Event(Ye)),
+						onClick: () => document.dispatchEvent(new Event(Xe)),
 						children: J("settings:releaseUpdates.whatsNew")
 					}),
 					/* @__PURE__ */ (0, $.jsx)(m, {
@@ -2471,124 +2377,88 @@ function To({ initial: e, initialJob: t }) {
 	});
 }
 // src/react/settings/retention-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var xo = "/api/configuration/retention", So = ["retention-settings"], Co = [
-========
-var Eo = "/api/configuration/retention", Do = ["retention-settings"], Oo = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var ko = "/api/configuration/retention", Ao = ["retention-settings"], jo = [
 	2,
 	5,
 	10,
 	20
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-], wo = [
-========
-], ko = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+], Mo = [
 	30,
 	90,
 	183,
 	365
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-], To = (e) => e === 183 ? J("settings:retention.halfYear") : e === 365 ? J("settings:retention.oneYear") : J("settings:retention.days", { count: e });
-function Eo({ receipt: e }) {
+], No = (e) => e === 183 ? J("settings:retention.halfYear") : e === 365 ? J("settings:retention.oneYear") : J("settings:retention.days", { count: e });
+function Po({ receipt: e }) {
 	let t = X({
-		queryKey: So,
-		queryFn: ({ signal: e }) => U(xo, e)
-	}), n = Y(), r = !t.data || !!n.busy, i = (t) => void n.run("save", (e) => W(xo, t, "POST", e), (t) => {
-		qn.setQueryData(So, t), e(J("settings:shared.settingsSaved"));
-========
-], Ao = (e) => e === 183 ? J("settings:retention.halfYear") : e === 365 ? J("settings:retention.oneYear") : J("settings:retention.days", { count: e });
-function jo({ receipt: e }) {
-	let t = X({
-		queryKey: Do,
-		queryFn: ({ signal: e }) => Mt(Eo, e)
-	}), n = Y(), r = !t.data || !!n.busy, i = (t) => void n.run("save", (e) => U(Eo, t, "POST", e), (t) => {
-		Jn.setQueryData(Do, t), e(J("settings:shared.settingsSaved"));
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		queryKey: Ao,
+		queryFn: ({ signal: e }) => H(ko, e)
+	}), n = Y(), r = !t.data || !!n.busy, i = (t) => void n.run("save", (e) => U(ko, t, "POST", e), (t) => {
+		Jn.setQueryData(Ao, t), e(J("settings:shared.settingsSaved"));
 	});
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		title: J("settings:retention.title"),
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(I, { children: [/* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsxs)(F, { children: [/* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:retention.backups"),
 				description: J("settings:retention.backupsHelp"),
 				children: /* @__PURE__ */ (0, $.jsx)("div", {
 					id: "backupKeepSetting",
 					className: "shrink-0",
-					children: /* @__PURE__ */ (0, $.jsx)(R, {
+					children: /* @__PURE__ */ (0, $.jsx)(L, {
 						"aria-label": J("settings:retention.backups"),
 						selectedKey: String(t.data?.backup_keep ?? 5),
 						isDisabled: r,
 						onSelectionChange: (e) => {
 							e !== null && i({ backup_keep: Number(e) });
 						},
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-						children: Co.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
-========
-						children: Oo.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						children: jo.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 							id: String(e),
 							children: J("settings:retention.copies", { count: e })
 						}, e))
 					})
 				})
-			}), /* @__PURE__ */ (0, $.jsx)(B, {
+			}), /* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:retention.logs"),
 				description: J("settings:retention.logsHelp"),
 				children: /* @__PURE__ */ (0, $.jsx)("div", {
 					id: "logDaysSetting",
 					className: "shrink-0",
-					children: /* @__PURE__ */ (0, $.jsx)(R, {
+					children: /* @__PURE__ */ (0, $.jsx)(L, {
 						"aria-label": J("settings:retention.logs"),
 						selectedKey: String(t.data?.log_days ?? 183),
 						isDisabled: r,
 						onSelectionChange: (e) => {
 							e !== null && i({ log_days: Number(e) });
 						},
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-						children: wo.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+						children: Mo.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 							id: String(e),
-							children: To(e)
-========
-						children: ko.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
-							id: String(e),
-							children: Ao(e)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+							children: No(e)
 						}, e))
 					})
 				})
 			})] }),
-			t.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			t.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(Je, {
+				children: /* @__PURE__ */ (0, $.jsx)(Ye, {
 					titleKey: "settings:retention.loadFailed",
 					query: t
 				})
 			}) : null,
-			n.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			n.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(A, { children: n.error })
+				children: /* @__PURE__ */ (0, $.jsx)(k, { children: n.error })
 			}) : null
 		]
 	});
 }
 // src/react/settings/library-sharing-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Do({ value: e }) {
-========
-function Mo({ value: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Fo({ value: e }) {
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)("ul", {
 		className: "list-disc space-y-2 pl-5",
-		children: ur(e.fields, e.field_codes).map((e) => /* @__PURE__ */ (0, $.jsx)("li", { children: /* @__PURE__ */ (0, $.jsx)(N, { children: e }) }, e))
-	}), /* @__PURE__ */ (0, $.jsx)(N, { children: G(e, "notice") })] });
+		children: ur(e.fields, e.field_codes).map((e) => /* @__PURE__ */ (0, $.jsx)("li", { children: /* @__PURE__ */ (0, $.jsx)(M, { children: e }) }, e))
+	}), /* @__PURE__ */ (0, $.jsx)(M, { children: G(e, "notice") })] });
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Oo({ value: e }) {
-========
-function No({ value: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Io({ value: e }) {
 	let t = e.participation, n = {
 		"not-attempted": J("settings:librarySharing.notSent"),
 		queued: J("settings:librarySharing.waiting"),
@@ -2604,84 +2474,80 @@ function No({ value: e }) {
 		blocked: "warning"
 	};
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-		e.consent_state === "needs-consent" ? /* @__PURE__ */ (0, $.jsxs)(V, {
+		e.consent_state === "needs-consent" ? /* @__PURE__ */ (0, $.jsxs)(B, {
 			divided: !0,
 			children: [/* @__PURE__ */ (0, $.jsx)("span", {
 				className: "self-start",
-				children: /* @__PURE__ */ (0, $.jsx)(yt, {
+				children: /* @__PURE__ */ (0, $.jsx)(bt, {
 					tone: "warning",
 					children: J("settings:librarySharing.needsConsent")
 				})
-			}), /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.fieldsChanged") })]
+			}), /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.fieldsChanged") })]
 		}) : null,
-		t ? /* @__PURE__ */ (0, $.jsxs)(V, {
+		t ? /* @__PURE__ */ (0, $.jsxs)(B, {
 			divided: !0,
-			children: [/* @__PURE__ */ (0, $.jsx)(be, { children: /* @__PURE__ */ (0, $.jsx)(j, {
+			children: [/* @__PURE__ */ (0, $.jsx)(xe, { children: /* @__PURE__ */ (0, $.jsx)(A, {
 				term: J("settings:librarySharing.participation"),
-				children: /* @__PURE__ */ (0, $.jsx)(yt, {
+				children: /* @__PURE__ */ (0, $.jsx)(bt, {
 					"aria-label": J("settings:librarySharing.participation"),
 					tone: t.pending_state ? "progress" : r[t.status] || "neutral",
 					children: t.pending_state ? t.pending_state === "disabled" ? J("settings:librarySharing.pendingOff") : J("settings:librarySharing.pendingOn") : n[t.status] || J("settings:librarySharing.resultUnknown")
 				})
-			}) }), e.last_sent_at ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.lastSentAt", { date: new Date(e.last_sent_at).toLocaleDateString(Tn) }) }) : null]
+			}) }), e.last_sent_at ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.lastSentAt", { date: new Date(e.last_sent_at).toLocaleDateString(Tn) }) }) : null]
 		}) : null,
-		e.enabled && e.last_attempt?.snapshot_id ? /* @__PURE__ */ (0, $.jsxs)(V, {
+		e.enabled && e.last_attempt?.snapshot_id ? /* @__PURE__ */ (0, $.jsxs)(B, {
 			divided: !0,
 			children: [
-				/* @__PURE__ */ (0, $.jsxs)(be, { children: [/* @__PURE__ */ (0, $.jsx)(j, {
+				/* @__PURE__ */ (0, $.jsxs)(xe, { children: [/* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:librarySharing.snapshot"),
-					children: /* @__PURE__ */ (0, $.jsx)(yt, {
+					children: /* @__PURE__ */ (0, $.jsx)(bt, {
 						tone: r[e.last_attempt.status || ""] || "neutral",
 						children: n[e.last_attempt.status || ""] || J("settings:librarySharing.waitingData")
 					})
-				}), /* @__PURE__ */ (0, $.jsx)(j, {
+				}), /* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:librarySharing.snapshotId"),
 					children: e.last_attempt.snapshot_id
 				})] }),
-				e.last_attempt.raw_bytes !== void 0 && e.last_attempt.compressed_bytes !== void 0 ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.snapshotSizes", {
+				e.last_attempt.raw_bytes !== void 0 && e.last_attempt.compressed_bytes !== void 0 ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.snapshotSizes", {
 					raw: (e.last_attempt.raw_bytes / 1024).toFixed(1),
 					compressed: (e.last_attempt.compressed_bytes / 1024).toFixed(1)
 				}) }) : null,
-				e.last_attempt.status === "accepted" ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.acceptedHelp") }) : null
+				e.last_attempt.status === "accepted" ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.acceptedHelp") }) : null
 			]
 		}) : null,
-		e.enabled && e.last_attempt?.status === "failed" ? /* @__PURE__ */ (0, $.jsxs)(V, {
+		e.enabled && e.last_attempt?.status === "failed" ? /* @__PURE__ */ (0, $.jsxs)(B, {
 			divided: !0,
 			children: [/* @__PURE__ */ (0, $.jsx)("span", {
 				className: "self-start",
-				children: /* @__PURE__ */ (0, $.jsx)(yt, {
+				children: /* @__PURE__ */ (0, $.jsx)(bt, {
 					tone: e.last_attempt.attempted ? "error" : "warning",
 					children: e.last_attempt.attempted ? J("settings:librarySharing.uploadFailed") : J("settings:librarySharing.retryPending")
 				})
-			}), /* @__PURE__ */ (0, $.jsx)(A, { children: e.last_attempt.attempted ? J("settings:librarySharing.failedThisWeek") : J("settings:librarySharing.incomplete") })]
+			}), /* @__PURE__ */ (0, $.jsx)(k, { children: e.last_attempt.attempted ? J("settings:librarySharing.failedThisWeek") : J("settings:librarySharing.incomplete") })]
 		}) : null,
-		e.enabled && e.last_attempt?.status === "waiting-data" ? /* @__PURE__ */ (0, $.jsxs)(V, {
+		e.enabled && e.last_attempt?.status === "waiting-data" ? /* @__PURE__ */ (0, $.jsxs)(B, {
 			divided: !0,
 			children: [/* @__PURE__ */ (0, $.jsx)("span", {
 				className: "self-start",
-				children: /* @__PURE__ */ (0, $.jsx)(yt, { children: J("settings:librarySharing.waitingData") })
-			}), /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.waitingDataHelp") })]
+				children: /* @__PURE__ */ (0, $.jsx)(bt, { children: J("settings:librarySharing.waitingData") })
+			}), /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.waitingDataHelp") })]
 		}) : null,
-		e.enabled && e.last_attempt?.status === "unknown" ? /* @__PURE__ */ (0, $.jsxs)(V, {
+		e.enabled && e.last_attempt?.status === "unknown" ? /* @__PURE__ */ (0, $.jsxs)(B, {
 			divided: !0,
 			children: [/* @__PURE__ */ (0, $.jsx)("span", {
 				className: "self-start",
-				children: /* @__PURE__ */ (0, $.jsx)(yt, {
+				children: /* @__PURE__ */ (0, $.jsx)(bt, {
 					tone: "warning",
 					children: J("settings:librarySharing.resultUnknown")
 				})
-			}), /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.resultUnknownHelp") })]
+			}), /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.resultUnknownHelp") })]
 		}) : null
 	] });
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function ko({ preview: e }) {
-========
-function Po({ preview: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Lo({ preview: e }) {
 	let t = JSON.stringify(e.data, null, 2);
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-		/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.snapshotSizes", {
+		/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.snapshotSizes", {
 			raw: (e.bytes / 1024).toFixed(1),
 			compressed: (e.compressed_bytes / 1024).toFixed(1)
 		}) }),
@@ -2691,15 +2557,11 @@ function Po({ preview: e }) {
 			label: J("settings:librarySharing.previewLabel"),
 			maxCharacters: 24e3
 		}),
-		t.length > 24e3 ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.truncated") }) : null
+		t.length > 24e3 ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.truncated") }) : null
 	] });
 }
 // src/react/settings/seed-sharing-details.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Ao() {
-========
-function Fo() {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Ro() {
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
 		/* @__PURE__ */ (0, $.jsx)("ul", {
 			className: "list-disc space-y-2 pl-5",
@@ -2709,98 +2571,72 @@ function Fo() {
 				"decisions",
 				"images",
 				"sources"
-			].map((e) => /* @__PURE__ */ (0, $.jsx)("li", { children: /* @__PURE__ */ (0, $.jsx)(N, { children: J(`settings:seedSharing.${e}`) }) }, e))
+			].map((e) => /* @__PURE__ */ (0, $.jsx)("li", { children: /* @__PURE__ */ (0, $.jsx)(M, { children: J(`settings:seedSharing.${e}`) }) }, e))
 		}),
-		/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:seedSharing.excluded") }),
-		/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:seedSharing.independent") }),
-		/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:seedSharing.notice") })
+		/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:seedSharing.excluded") }),
+		/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:seedSharing.independent") }),
+		/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:seedSharing.notice") })
 	] });
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function jo({ value: e }) {
-========
-function Io({ value: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function zo({ value: e }) {
 	let t = e.last_attempt.status;
-	return /* @__PURE__ */ (0, $.jsxs)(V, {
+	return /* @__PURE__ */ (0, $.jsxs)(B, {
 		divided: !0,
 		children: [
-			/* @__PURE__ */ (0, $.jsx)(yt, {
+			/* @__PURE__ */ (0, $.jsx)(bt, {
 				className: "self-start",
 				tone: t === "failed" ? "error" : t === "accepted" ? "success" : "neutral",
 				children: J(t ? `settings:seedSharing.status.${t}` : "settings:librarySharing.notSent")
 			}),
-			t === "accepted" ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:seedSharing.acceptedHelp") }) : null,
-			e.name_candidates && Object.values(e.name_candidates).some(Boolean) ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:seedSharing.names", { ...e.name_candidates }) }) : null
+			t === "accepted" ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:seedSharing.acceptedHelp") }) : null,
+			e.name_candidates && Object.values(e.name_candidates).some(Boolean) ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:seedSharing.names", { ...e.name_candidates }) }) : null
 		]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Mo({ preview: e }) {
-========
-function Lo({ preview: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Bo({ preview: e }) {
 	let t = JSON.stringify(e.data, null, 2);
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(Kr, {
 		code: t,
 		language: "json",
 		label: J("settings:seedSharing.previewData"),
 		maxCharacters: 24e3
-	}), t.length > 24e3 ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.truncated") }) : null] });
+	}), t.length > 24e3 ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.truncated") }) : null] });
 }
 // src/react/settings/sharing-choice.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function No({ label: e, description: t, selected: n, available: r, disabled: i, busy: a = !1, onChange: o }) {
-========
-function Ro({ label: e, description: t, selected: n, available: r, disabled: i, busy: a = !1, onChange: o }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+function Vo({ label: e, description: t, selected: n, available: r, disabled: i, busy: a = !1, onChange: o }) {
+	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 		label: e,
 		description: t,
-		children: /* @__PURE__ */ (0, $.jsx)(H, {
+		children: /* @__PURE__ */ (0, $.jsx)(V, {
 			"aria-label": e,
 			isSelected: n,
 			isDisabled: i,
 			onChange: o,
 			...W(a)
 		})
-	}) }), r === !1 ? /* @__PURE__ */ (0, $.jsx)(V, {
+	}) }), r === !1 ? /* @__PURE__ */ (0, $.jsx)(B, {
 		divided: !0,
-		children: /* @__PURE__ */ (0, $.jsx)(yt, {
+		children: /* @__PURE__ */ (0, $.jsx)(bt, {
 			className: "self-start",
 			children: J("settings:librarySharing.unavailable")
 		})
 	}) : null] });
 }
 // src/react/settings/community-sharing-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Po = "/api/configuration/community-sharing", Fo = ["community-sharing"];
-async function Io(e) {
-	let t = await U(Po, e);
+var Ho = "/api/configuration/community-sharing", Uo = ["community-sharing"];
+async function Wo(e) {
+	let t = await H(Ho, e);
 	if (!t?.library || !t.metadata) throw Error(J("settings:communitySharing.readFailed"));
 	return t;
 }
-function Lo(e) {
-========
-var zo = "/api/configuration/community-sharing", Bo = ["community-sharing"];
-async function Vo(e) {
-	let t = await Mt(zo, e);
-	if (!t?.library || !t.metadata) throw Error(J("settings:communitySharing.readFailed"));
-	return t;
-}
-function Ho(e) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Go(e) {
 	let t = JSON.stringify({
 		library: e.library.data,
 		public_metadata: e.metadata.data
 	}, null, 2), n = URL.createObjectURL(new Blob([t], { type: "application/json" })), r = document.createElement("a");
 	r.href = n, r.download = "peach-community-sharing-preview.json", r.click(), setTimeout(() => URL.revokeObjectURL(n), 1e3);
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Ro({ title: e, children: t }) {
-========
-function Uo({ title: e, children: t }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Ko({ title: e, children: t }) {
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		className: "flex min-w-0 flex-col gap-2",
 		children: [/* @__PURE__ */ (0, $.jsx)("p", {
@@ -2809,39 +2645,22 @@ function Uo({ title: e, children: t }) {
 		}), t]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function zo({ active: e, receipt: t }) {
+function qo({ active: e, receipt: t }) {
 	let n = Fr(), r = X({
-		queryKey: Fo,
+		queryKey: Uo,
 		enabled: e,
-		queryFn: ({ signal: e }) => Io(e)
-========
-function Wo({ active: e, receipt: t }) {
-	let n = Fr(), r = X({
-		queryKey: Bo,
-		enabled: e,
-		queryFn: ({ signal: e }) => Vo(e)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		queryFn: ({ signal: e }) => Wo(e)
 	}), [i, a] = (0, Z.useState)(null), o = (0, Z.useRef)(null);
 	(0, Z.useEffect)(() => {
 		i && o.current?.focus();
 	}, [i]);
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	let s = Y(), c = r.data, l = c?.library.enabled === !0, u = c?.metadata.enabled === !0, d = l && u, f = c ? c.library.available && c.metadata.available : void 0, p = l !== u, h = c?.library.participation, g = !!(c && (c.library.consent_state === "needs-consent" || c.library.last_sent_at || c.library.last_attempt?.status || h?.pending_state || h?.status && h.status !== "not-attempted" || c.metadata.last_attempt.status || Object.values(c.metadata.name_candidates ?? {}).some(Boolean))), _ = (e) => n.setQueryData(Fo, e), v = () => void s.run("refresh", Io, _), y = () => void s.run("preview", async (e) => {
-		let [t, n] = await Promise.all([U("/api/configuration/library-sharing/preview", e), U("/api/configuration/seed-sharing/preview", e)]);
-========
-	let s = Y(), c = r.data, l = c?.library.enabled === !0, u = c?.metadata.enabled === !0, d = l && u, f = c ? c.library.available && c.metadata.available : void 0, p = l !== u, h = c?.library.participation, g = !!(c && (c.library.consent_state === "needs-consent" || c.library.last_sent_at || c.library.last_attempt?.status || h?.pending_state || h?.status && h.status !== "not-attempted" || c.metadata.last_attempt.status || Object.values(c.metadata.name_candidates ?? {}).some(Boolean))), _ = (e) => n.setQueryData(Bo, e), v = () => void s.run("refresh", Vo, _), y = () => void s.run("preview", async (e) => {
-		let [t, n] = await Promise.all([Mt("/api/configuration/library-sharing/preview", e), Mt("/api/configuration/seed-sharing/preview", e)]);
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	let s = Y(), c = r.data, l = c?.library.enabled === !0, u = c?.metadata.enabled === !0, d = l && u, f = c ? c.library.available && c.metadata.available : void 0, p = l !== u, h = c?.library.participation, g = !!(c && (c.library.consent_state === "needs-consent" || c.library.last_sent_at || c.library.last_attempt?.status || h?.pending_state || h?.status && h.status !== "not-attempted" || c.metadata.last_attempt.status || Object.values(c.metadata.name_candidates ?? {}).some(Boolean))), _ = (e) => n.setQueryData(Uo, e), v = () => void s.run("refresh", Wo, _), y = () => void s.run("preview", async (e) => {
+		let [t, n] = await Promise.all([H("/api/configuration/library-sharing/preview", e), H("/api/configuration/seed-sharing/preview", e)]);
 		return {
 			library: t,
 			metadata: n
 		};
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	}, a), b = (e) => void s.run("save", (t) => W(Po, {
-========
-	}, a), b = (e) => void s.run("save", (t) => U(zo, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	}, a), b = (e) => void s.run("save", (t) => U(Ho, {
 		enabled: e,
 		...e && i ? {
 			consent: !0,
@@ -2860,11 +2679,7 @@ function Wo({ active: e, receipt: t }) {
 		s.setError(K(e)), r.refetch();
 	});
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		/* @__PURE__ */ (0, $.jsx)(No, {
-========
-		/* @__PURE__ */ (0, $.jsx)(Ro, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		/* @__PURE__ */ (0, $.jsx)(Vo, {
 			label: J("settings:communitySharing.enable"),
 			description: J("settings:communitySharing.description"),
 			selected: l || u,
@@ -2873,9 +2688,9 @@ function Wo({ active: e, receipt: t }) {
 			busy: !!s.busy,
 			onChange: (e) => e ? y() : b(!1)
 		}),
-		p ? /* @__PURE__ */ (0, $.jsx)(V, {
+		p ? /* @__PURE__ */ (0, $.jsx)(B, {
 			divided: !0,
-			children: /* @__PURE__ */ (0, $.jsx)(yt, {
+			children: /* @__PURE__ */ (0, $.jsx)(bt, {
 				className: "self-start",
 				tone: "warning",
 				children: J(l ? "settings:communitySharing.onlyStudy" : "settings:communitySharing.onlyMetadata")
@@ -2883,7 +2698,7 @@ function Wo({ active: e, receipt: t }) {
 		}) : null,
 		c && i ? /* @__PURE__ */ (0, $.jsx)("section", {
 			"aria-labelledby": "community-sharing-preview",
-			children: /* @__PURE__ */ (0, $.jsxs)(V, {
+			children: /* @__PURE__ */ (0, $.jsxs)(B, {
 				divided: !0,
 				children: [
 					/* @__PURE__ */ (0, $.jsx)("h4", {
@@ -2893,74 +2708,56 @@ function Wo({ active: e, receipt: t }) {
 						className: "text-body-semibold text-text-primary",
 						children: J("settings:communitySharing.previewTitle")
 					}),
-					/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.previewSummary", {
+					/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.previewSummary", {
 						count: i.library.data.library.length,
 						uncoded: i.library.data.coverage.uncoded_items,
 						size: (i.library.bytes / 1024).toFixed(1)
 					}) }),
-					/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:seedSharing.summary", {
+					/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:seedSharing.summary", {
 						count: i.metadata.data.claims.length,
 						omitted: i.metadata.data.omitted,
 						size: (i.metadata.bytes / 1024).toFixed(1)
 					}) }),
-					/* @__PURE__ */ (0, $.jsx)(le, {
+					/* @__PURE__ */ (0, $.jsx)(ue, {
 						summary: J("settings:communitySharing.previewDetails"),
 						children: /* @__PURE__ */ (0, $.jsxs)("div", {
 							className: "flex min-w-0 flex-col gap-6",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							children: [/* @__PURE__ */ (0, $.jsxs)(Ro, {
+							children: [/* @__PURE__ */ (0, $.jsxs)(Ko, {
 								title: J("settings:communitySharing.study"),
-								children: [/* @__PURE__ */ (0, $.jsx)(Do, { value: c.library }), /* @__PURE__ */ (0, $.jsx)(ko, { preview: i.library })]
-							}), /* @__PURE__ */ (0, $.jsxs)(Ro, {
+								children: [/* @__PURE__ */ (0, $.jsx)(Fo, { value: c.library }), /* @__PURE__ */ (0, $.jsx)(Lo, { preview: i.library })]
+							}), /* @__PURE__ */ (0, $.jsxs)(Ko, {
 								title: J("settings:seedSharing.title"),
-								children: [/* @__PURE__ */ (0, $.jsx)(Ao, {}), /* @__PURE__ */ (0, $.jsx)(Mo, { preview: i.metadata })]
-========
-							children: [/* @__PURE__ */ (0, $.jsxs)(Uo, {
-								title: J("settings:communitySharing.study"),
-								children: [/* @__PURE__ */ (0, $.jsx)(Mo, { value: c.library }), /* @__PURE__ */ (0, $.jsx)(Po, { preview: i.library })]
-							}), /* @__PURE__ */ (0, $.jsxs)(Uo, {
-								title: J("settings:seedSharing.title"),
-								children: [/* @__PURE__ */ (0, $.jsx)(Fo, {}), /* @__PURE__ */ (0, $.jsx)(Lo, { preview: i.metadata })]
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+								children: [/* @__PURE__ */ (0, $.jsx)(Ro, {}), /* @__PURE__ */ (0, $.jsx)(Bo, { preview: i.metadata })]
 							})]
 						})
 					})
 				]
 			})
 		}) : null,
-		c?.failed?.length || r.isError || s.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+		c?.failed?.length || r.isError || s.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 			divided: !0,
-			children: /* @__PURE__ */ (0, $.jsx)(A, { children: s.error || (c?.failed?.length ? J("settings:communitySharing.saveFailed") : J("settings:communitySharing.readFailed")) })
+			children: /* @__PURE__ */ (0, $.jsx)(k, { children: s.error || (c?.failed?.length ? J("settings:communitySharing.saveFailed") : J("settings:communitySharing.readFailed")) })
 		}) : null,
 		c && !i && g ? /* @__PURE__ */ (0, $.jsx)("div", {
 			id: "seedSharing",
-			children: /* @__PURE__ */ (0, $.jsx)(V, {
+			children: /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsxs)(le, {
+				children: /* @__PURE__ */ (0, $.jsxs)(ue, {
 					summary: J("settings:communitySharing.deliveryStatus"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: [/* @__PURE__ */ (0, $.jsx)(Ro, {
+					children: [/* @__PURE__ */ (0, $.jsx)(Ko, {
 						title: J("settings:communitySharing.study"),
-						children: /* @__PURE__ */ (0, $.jsx)(Oo, { value: c.library })
-					}), /* @__PURE__ */ (0, $.jsx)(Ro, {
+						children: /* @__PURE__ */ (0, $.jsx)(Io, { value: c.library })
+					}), /* @__PURE__ */ (0, $.jsx)(Ko, {
 						title: J("settings:seedSharing.title"),
-						children: /* @__PURE__ */ (0, $.jsx)(jo, { value: c.metadata })
-========
-					children: [/* @__PURE__ */ (0, $.jsx)(Uo, {
-						title: J("settings:communitySharing.study"),
-						children: /* @__PURE__ */ (0, $.jsx)(No, { value: c.library })
-					}), /* @__PURE__ */ (0, $.jsx)(Uo, {
-						title: J("settings:seedSharing.title"),
-						children: /* @__PURE__ */ (0, $.jsx)(Io, { value: c.metadata })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						children: /* @__PURE__ */ (0, $.jsx)(zo, { value: c.metadata })
 					})]
 				})
 			})
 		}) : null,
-		/* @__PURE__ */ (0, $.jsx)(M, {
+		/* @__PURE__ */ (0, $.jsx)(j, {
 			status: c && !i && !g ? /* @__PURE__ */ (0, $.jsx)("span", {
 				id: "seedSharing",
-				children: /* @__PURE__ */ (0, $.jsx)(yt, {
+				children: /* @__PURE__ */ (0, $.jsx)(bt, {
 					"aria-label": J("settings:communitySharing.deliveryStatus"),
 					children: J("settings:librarySharing.notSent")
 				})
@@ -2973,11 +2770,7 @@ function Wo({ active: e, receipt: t }) {
 				}),
 				/* @__PURE__ */ (0, $.jsx)(m, {
 					variant: "secondary",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					onClick: () => Lo(i),
-========
-					onClick: () => Ho(i),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					onClick: () => Go(i),
 					children: J("settings:librarySharing.downloadPreview")
 				}),
 				d ? null : /* @__PURE__ */ (0, $.jsx)(m, {
@@ -3003,13 +2796,8 @@ function Wo({ active: e, receipt: t }) {
 	] });
 }
 // src/react/settings/remote-reporting-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Bo({ value: e, onChange: t, busy: n = !1 }) {
-	return /* @__PURE__ */ (0, $.jsx)(No, {
-========
-function Go({ value: e, onChange: t, busy: n = !1 }) {
-	return /* @__PURE__ */ (0, $.jsx)(Ro, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Jo({ value: e, onChange: t, busy: n = !1 }) {
+	return /* @__PURE__ */ (0, $.jsx)(Vo, {
 		label: J("settings:dataSharing.reportErrors"),
 		description: J("settings:dataSharing.reportErrorsHelp"),
 		selected: e.usage && e.errors,
@@ -3022,17 +2810,10 @@ function Go({ value: e, onChange: t, busy: n = !1 }) {
 		})
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Vo({ initial: e, receipt: t }) {
+function Yo({ initial: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(e), i = Y(), a = Object.values(n.delivery ?? {}).flatMap((e) => e.last_sent_at ? [Date.parse(e.last_sent_at)] : []).filter(Number.isFinite), o = a.length ? Math.max(...a) : null;
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-		/* @__PURE__ */ (0, $.jsx)(Bo, {
-========
-function Ko({ initial: e, receipt: t }) {
-	let [n, r] = (0, Z.useState)(e), i = Y(), a = Object.values(n.delivery ?? {}).flatMap((e) => e.last_sent_at ? [Date.parse(e.last_sent_at)] : []).filter(Number.isFinite), o = a.length ? Math.max(...a) : null;
-	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-		/* @__PURE__ */ (0, $.jsx)(Go, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		/* @__PURE__ */ (0, $.jsx)(Jo, {
 			value: n,
 			busy: i.busy === "save",
 			onChange: (e) => {
@@ -3044,41 +2825,31 @@ function Ko({ initial: e, receipt: t }) {
 				});
 			}
 		}),
-		/* @__PURE__ */ (0, $.jsxs)(V, {
+		/* @__PURE__ */ (0, $.jsxs)(B, {
 			divided: !0,
-			children: [/* @__PURE__ */ (0, $.jsxs)(le, {
+			children: [/* @__PURE__ */ (0, $.jsxs)(ue, {
 				summary: J("settings:diagnosticsReporting.fieldsAndRules"),
 				children: [
-					/* @__PURE__ */ (0, $.jsx)(N, { children: q(n.field_codes?.usage ?? "", n.fields.usage) }),
-					/* @__PURE__ */ (0, $.jsx)(N, { children: q(n.field_codes?.errors ?? "", n.fields.errors) }),
-					/* @__PURE__ */ (0, $.jsx)(N, { children: G(n, "notice") })
+					/* @__PURE__ */ (0, $.jsx)(M, { children: q(n.field_codes?.usage ?? "", n.fields.usage) }),
+					/* @__PURE__ */ (0, $.jsx)(M, { children: q(n.field_codes?.errors ?? "", n.fields.errors) }),
+					/* @__PURE__ */ (0, $.jsx)(M, { children: G(n, "notice") })
 				]
-			}), o === null ? null : /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:librarySharing.lastSentAt", { date: new Date(o).toLocaleDateString(Tn) }) })]
+			}), o === null ? null : /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:librarySharing.lastSentAt", { date: new Date(o).toLocaleDateString(Tn) }) })]
 		}),
-		i.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+		i.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 			divided: !0,
-			children: /* @__PURE__ */ (0, $.jsx)(A, { children: i.error })
+			children: /* @__PURE__ */ (0, $.jsx)(k, { children: i.error })
 		}) : null
 	] });
 }
 // src/react/evilcharts/registry/charts/recharts-pie-chart.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Ho = 5, Uo = 2e3, Wo = 0, Go = "80%", Ko = 0, qo = 0, Jo = 0, Yo = 360, Xo = [], Zo = (0, Z.createContext)(null);
-function Qo() {
-	let e = (0, Z.use)(Zo);
+var Xo = 5, Zo = 2e3, Qo = 0, $o = "80%", es = 0, ts = 0, ns = 0, rs = 360, is = [], as = (0, Z.createContext)(null);
+function os() {
+	let e = (0, Z.use)(as);
 	if (!e) throw Error("Pie chart parts (<Pie />, <Tooltip />, …) must be used within <EvilPieChart />");
 	return e;
 }
-function $o({ config: e, data: t, dataKey: n, nameKey: r, children: i, className: a, chartProps: o, defaultSelectedSector: s = null, onSelectionChange: c, isLoading: l = !1 }) {
-========
-var qo = 5, Jo = 2e3, Yo = 0, Xo = "80%", Zo = 0, Qo = 0, $o = 0, es = 360, ts = [], ns = (0, Z.createContext)(null);
-function rs() {
-	let e = (0, Z.use)(ns);
-	if (!e) throw Error("Pie chart parts (<Pie />, <Tooltip />, …) must be used within <EvilPieChart />");
-	return e;
-}
-function is({ config: e, data: t, dataKey: n, nameKey: r, children: i, className: a, chartProps: o, defaultSelectedSector: s = null, onSelectionChange: c, isLoading: l = !1 }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function ss({ config: e, data: t, dataKey: n, nameKey: r, children: i, className: a, chartProps: o, defaultSelectedSector: s = null, onSelectionChange: c, isLoading: l = !1 }) {
 	let [u, d] = (0, Z.useState)(s), f = (0, Z.useCallback)((e) => {
 		if (d(e), e === null) {
 			c?.(null);
@@ -3111,16 +2882,12 @@ function is({ config: e, data: t, dataKey: n, nameKey: r, children: i, className
 		u,
 		f
 	]);
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	return /* @__PURE__ */ (0, $.jsx)(Zo, {
-========
-	return /* @__PURE__ */ (0, $.jsx)(ns, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	return /* @__PURE__ */ (0, $.jsx)(as, {
 		value: p,
 		children: /* @__PURE__ */ (0, $.jsxs)(w, {
 			className: a,
 			config: e,
-			children: [/* @__PURE__ */ (0, $.jsx)(je, { isLoading: l }), /* @__PURE__ */ (0, $.jsx)(ga, {
+			children: [/* @__PURE__ */ (0, $.jsx)(Me, { isLoading: l }), /* @__PURE__ */ (0, $.jsx)(ga, {
 				id: "evil-charts-pie-chart",
 				accessibilityLayer: !0,
 				...o,
@@ -3129,19 +2896,12 @@ function is({ config: e, data: t, dataKey: n, nameKey: r, children: i, className
 		})
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var es = () => null, ts = (e, t) => {
+var cs = () => null, ls = (e, t) => {
 	let n = null;
 	return Z.Children.forEach(e, (e) => {
-		if (!(0, Z.isValidElement)(e) || e.type !== es) return;
-========
-var as = () => null, os = (e, t) => {
-	let n = null;
-	return Z.Children.forEach(e, (e) => {
-		if (!(0, Z.isValidElement)(e) || e.type !== as) return;
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		if (!(0, Z.isValidElement)(e) || e.type !== cs) return;
 		let { dataKey: r, labelListProps: i } = e.props;
-		n = /* @__PURE__ */ (0, $.jsx)(De, {
+		n = /* @__PURE__ */ (0, $.jsx)(Oe, {
 			dataKey: r ?? t,
 			stroke: "none",
 			fontSize: 12,
@@ -3151,13 +2911,8 @@ var as = () => null, os = (e, t) => {
 			...i
 		});
 	}), n;
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}, ns = ({ id: e, config: t }) => /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: Object.entries(t).map(([t, n]) => {
-	let r = fn(n);
-========
-}, ss = ({ id: e, config: t }) => /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: Object.entries(t).map(([t, n]) => {
+}, us = ({ id: e, config: t }) => /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: Object.entries(t).map(([t, n]) => {
 	let r = pn(n);
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 	return /* @__PURE__ */ (0, $.jsx)("linearGradient", {
 		id: `${e}-colors-${t}`,
 		x1: "0",
@@ -3178,11 +2933,7 @@ var as = () => null, os = (e, t) => {
 			}, i);
 		})
 	}, `${e}-colors-${t}`);
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}) }), rs = ({ id: e, glowingSectors: t }) => /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: t.map((t) => /* @__PURE__ */ (0, $.jsxs)("filter", {
-========
-}) }), cs = ({ id: e, glowingSectors: t }) => /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: t.map((t) => /* @__PURE__ */ (0, $.jsxs)("filter", {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+}) }), ds = ({ id: e, glowingSectors: t }) => /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: t.map((t) => /* @__PURE__ */ (0, $.jsxs)("filter", {
 	id: `${e}-glow-${t}`,
 	x: "-100%",
 	y: "-100%",
@@ -3202,21 +2953,12 @@ var as = () => null, os = (e, t) => {
 		}),
 		/* @__PURE__ */ (0, $.jsxs)("feMerge", { children: [/* @__PURE__ */ (0, $.jsx)("feMergeNode", { in: "glow" }), /* @__PURE__ */ (0, $.jsx)("feMergeNode", { in: "SourceGraphic" })] })
 	]
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}, `${e}-glow-${t}`)) }), is = Array.from({ length: Ho }, (e, t) => ({
+}, `${e}-glow-${t}`)) }), fs = Array.from({ length: Xo }, (e, t) => ({
 	name: `loading${t}`,
-	value: 100 / Ho
-})), as = (e) => {
-	let { index: t = 0, ...n } = e, r = t / Ho * (Uo / 1e3);
-	return /* @__PURE__ */ (0, $.jsx)(Rn.g, {
-========
-}, `${e}-glow-${t}`)) }), ls = Array.from({ length: qo }, (e, t) => ({
-	name: `loading${t}`,
-	value: 100 / qo
-})), us = (e) => {
-	let { index: t = 0, ...n } = e, r = t / qo * (Jo / 1e3);
+	value: 100 / Xo
+})), ps = (e) => {
+	let { index: t = 0, ...n } = e, r = t / Xo * (Zo / 1e3);
 	return /* @__PURE__ */ (0, $.jsx)(zn.g, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		initial: { opacity: .15 },
 		animate: { opacity: [
 			.15,
@@ -3224,32 +2966,21 @@ var as = () => null, os = (e, t) => {
 			.15
 		] },
 		transition: {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			duration: Uo / 1e3,
-========
-			duration: Jo / 1e3,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			duration: Zo / 1e3,
 			delay: r,
 			repeat: 1e400,
 			ease: "easeInOut"
 		},
-		children: /* @__PURE__ */ (0, $.jsx)(st, {
+		children: /* @__PURE__ */ (0, $.jsx)(ct, {
 			...n,
 			fill: "currentColor"
 		})
 	});
 };
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-$o.Pie = function({ variant: e = "gradient", innerRadius: t = Wo, outerRadius: n = Go, cornerRadius: r = Ko, paddingAngle: i = qo, startAngle: a = Jo, endAngle: o = Yo, isClickable: s = !1, glowingSectors: c = Xo, children: l, pieProps: u }) {
-	let { config: d, data: f, dataKey: p, nameKey: m, isLoading: h, selectedSector: g, selectSector: _ } = Qo(), v = (0, Z.useId)().replace(/:/g, "");
+ss.Pie = function({ variant: e = "gradient", innerRadius: t = Qo, outerRadius: n = $o, cornerRadius: r = es, paddingAngle: i = ts, startAngle: a = ns, endAngle: o = rs, isClickable: s = !1, glowingSectors: c = is, children: l, pieProps: u }) {
+	let { config: d, data: f, dataKey: p, nameKey: m, isLoading: h, selectedSector: g, selectSector: _ } = os(), v = (0, Z.useId)().replace(/:/g, "");
 	if (h) return /* @__PURE__ */ (0, $.jsx)(ca, {
-		data: is,
-========
-is.Pie = function({ variant: e = "gradient", innerRadius: t = Yo, outerRadius: n = Xo, cornerRadius: r = Zo, paddingAngle: i = Qo, startAngle: a = $o, endAngle: o = es, isClickable: s = !1, glowingSectors: c = ts, children: l, pieProps: u }) {
-	let { config: d, data: f, dataKey: p, nameKey: m, isLoading: h, selectedSector: g, selectSector: _ } = rs(), v = (0, Z.useId)().replace(/:/g, "");
-	if (h) return /* @__PURE__ */ (0, $.jsx)(ca, {
-		data: ls,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		data: fs,
 		dataKey: "value",
 		nameKey: "name",
 		innerRadius: t,
@@ -3260,15 +2991,9 @@ is.Pie = function({ variant: e = "gradient", innerRadius: t = Yo, outerRadius: n
 		endAngle: o,
 		strokeWidth: 0,
 		isAnimationActive: !1,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		shape: (e) => /* @__PURE__ */ (0, $.jsx)(as, { ...e })
+		shape: (e) => /* @__PURE__ */ (0, $.jsx)(ps, { ...e })
 	});
-	let y = ts(l, p), b = f.map((e) => ({
-========
-		shape: (e) => /* @__PURE__ */ (0, $.jsx)(us, { ...e })
-	});
-	let y = os(l, p), b = f.map((e) => ({
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	let y = ls(l, p), b = f.map((e) => ({
 		...e,
 		fill: `url(#${v}-colors-${e[m]})`
 	}));
@@ -3292,7 +3017,7 @@ is.Pie = function({ variant: e = "gradient", innerRadius: t = Yo, outerRadius: n
 		},
 		shape: (e) => {
 			let t = f[e.index ?? 0]?.[m], n = c.includes(t), r = s && g !== null && g !== t;
-			return /* @__PURE__ */ (0, $.jsx)(st, {
+			return /* @__PURE__ */ (0, $.jsx)(ct, {
 				...e,
 				fill: `url(#${v}-colors-${t})`,
 				filter: n ? `url(#${v}-glow-${t})` : void 0,
@@ -3304,29 +3029,16 @@ is.Pie = function({ variant: e = "gradient", innerRadius: t = Yo, outerRadius: n
 		},
 		...u,
 		children: y
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	}), /* @__PURE__ */ (0, $.jsxs)("defs", { children: [/* @__PURE__ */ (0, $.jsx)(ns, {
+	}), /* @__PURE__ */ (0, $.jsxs)("defs", { children: [/* @__PURE__ */ (0, $.jsx)(us, {
 		id: v,
 		config: d,
 		variant: e
-	}), c.length > 0 && /* @__PURE__ */ (0, $.jsx)(rs, {
+	}), c.length > 0 && /* @__PURE__ */ (0, $.jsx)(ds, {
 		id: v,
 		glowingSectors: c
 	})] })] });
-}, $o.Label = es, $o.Tooltip = function({ variant: e, roundness: t, defaultIndex: n }) {
-	let { isLoading: r, nameKey: i } = Qo();
-========
-	}), /* @__PURE__ */ (0, $.jsxs)("defs", { children: [/* @__PURE__ */ (0, $.jsx)(ss, {
-		id: v,
-		config: d,
-		variant: e
-	}), c.length > 0 && /* @__PURE__ */ (0, $.jsx)(cs, {
-		id: v,
-		glowingSectors: c
-	})] })] });
-}, is.Label = as, is.Tooltip = function({ variant: e, roundness: t, defaultIndex: n }) {
-	let { isLoading: r, nameKey: i } = rs();
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+}, ss.Label = cs, ss.Tooltip = function({ variant: e, roundness: t, defaultIndex: n }) {
+	let { isLoading: r, nameKey: i } = os();
 	return r ? null : /* @__PURE__ */ (0, $.jsx)(D, {
 		defaultIndex: n,
 		content: /* @__PURE__ */ (0, $.jsx)(te, {
@@ -3336,13 +3048,8 @@ is.Pie = function({ variant: e = "gradient", innerRadius: t = Yo, outerRadius: n
 			variant: e
 		})
 	});
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}, $o.Legend = function({ variant: e, align: t = "center", verticalAlign: n = "bottom", isClickable: r = !1 }) {
-	let { nameKey: i, selectedSector: a, selectSector: o } = Qo();
-========
-}, is.Legend = function({ variant: e, align: t = "center", verticalAlign: n = "bottom", isClickable: r = !1 }) {
-	let { nameKey: i, selectedSector: a, selectSector: o } = rs();
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+}, ss.Legend = function({ variant: e, align: t = "center", verticalAlign: n = "bottom", isClickable: r = !1 }) {
+	let { nameKey: i, selectedSector: a, selectSector: o } = os();
 	return /* @__PURE__ */ (0, $.jsx)(T, {
 		verticalAlign: n,
 		align: t,
@@ -3354,19 +3061,11 @@ is.Pie = function({ variant: e = "gradient", innerRadius: t = Yo, outerRadius: n
 			variant: e
 		})
 	});
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}, $o.Background = function({ variant: e = "dots" }) {
+}, ss.Background = function({ variant: e = "dots" }) {
 	return /* @__PURE__ */ (0, $.jsx)(C, { variant: e });
 };
 // src/react/settings/storage-charts.tsx
-var os = {
-========
-}, is.Background = function({ variant: e = "dots" }) {
-	return /* @__PURE__ */ (0, $.jsx)(C, { variant: e });
-};
-// src/react/settings/storage-charts.tsx
-var ds = {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var ms = {
 	database: "var(--color-chart-1)",
 	backups: "var(--color-chart-2)",
 	playback: "var(--color-chart-3)",
@@ -3376,11 +3075,7 @@ var ds = {
 	follow_snapshots: "var(--color-chart-7)",
 	records: "var(--color-chart-8)",
 	project_archives: "var(--color-chart-9)"
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}, ss = "var(--color-text-tertiary)", cs = {
-========
-}, fs = "var(--color-text-tertiary)", ps = {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+}, hs = "var(--color-text-tertiary)", gs = {
 	database: "bg-chart-1",
 	backups: "bg-chart-2",
 	playback: "bg-chart-3",
@@ -3390,42 +3085,23 @@ var ds = {
 	follow_snapshots: "bg-chart-7",
 	records: "bg-chart-8",
 	project_archives: "bg-chart-9"
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}, ls = (e) => sn(e);
-function us(e) {
-	let t = e.filter((e) => os[e.key] && e.bytes > 0).map((e) => ({
+}, _s = (e) => cn(e);
+function vs(e) {
+	let t = e.filter((e) => ms[e.key] && e.bytes > 0).map((e) => ({
 		key: e.key,
 		label: e.label,
 		bytes: e.bytes,
-		color: os[e.key]
-	})), n = e.filter((e) => !os[e.key]).reduce((e, t) => e + t.bytes, 0);
-========
-}, ms = (e) => cn(e);
-function hs(e) {
-	let t = e.filter((e) => ds[e.key] && e.bytes > 0).map((e) => ({
-		key: e.key,
-		label: e.label,
-		bytes: e.bytes,
-		color: ds[e.key]
-	})), n = e.filter((e) => !ds[e.key]).reduce((e, t) => e + t.bytes, 0);
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		color: ms[e.key]
+	})), n = e.filter((e) => !ms[e.key]).reduce((e, t) => e + t.bytes, 0);
 	return n > 0 ? [...t, {
 		key: "rest",
 		label: J("settings:storageCharts.rest"),
 		bytes: n,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		color: ss
+		color: hs
 	}] : t;
 }
-function ds({ storage: e }) {
-	let t = e.usage, n = us(t.categories), r = Object.fromEntries(n.map((e) => [e.key, {
-========
-		color: fs
-	}] : t;
-}
-function gs({ storage: e }) {
-	let t = e.usage, n = hs(t.categories), r = Object.fromEntries(n.map((e) => [e.key, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function ys({ storage: e }) {
+	let t = e.usage, n = vs(t.categories), r = Object.fromEntries(n.map((e) => [e.key, {
 		label: e.label,
 		colors: br(e.color)
 	}])), i = n.map((e) => ({
@@ -3437,23 +3113,14 @@ function gs({ storage: e }) {
 		children: [/* @__PURE__ */ (0, $.jsxs)("div", {
 			className: "relative mx-auto size-48 flex-none",
 			role: "img",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			"aria-label": J("settings:storageCharts.categoryShare", { size: ls(t.total_bytes) }),
-			children: [/* @__PURE__ */ (0, $.jsxs)($o, {
-========
-			"aria-label": J("settings:storageCharts.categoryShare", { size: ms(t.total_bytes) }),
-			children: [/* @__PURE__ */ (0, $.jsxs)(is, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			"aria-label": J("settings:storageCharts.categoryShare", { size: _s(t.total_bytes) }),
+			children: [/* @__PURE__ */ (0, $.jsxs)(ss, {
 				data: i,
 				dataKey: "value",
 				nameKey: "slice",
 				config: r,
 				className: "aspect-square size-48 flex-none",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				children: [/* @__PURE__ */ (0, $.jsx)($o.Pie, {
-========
-				children: [/* @__PURE__ */ (0, $.jsx)(is.Pie, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				children: [/* @__PURE__ */ (0, $.jsx)(ss.Pie, {
 					innerRadius: "68%",
 					outerRadius: "100%",
 					paddingAngle: 1,
@@ -3461,21 +3128,13 @@ function gs({ storage: e }) {
 				}), /* @__PURE__ */ (0, $.jsx)(ee, {
 					nameKey: "slice",
 					hideLabel: !0,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					format: ls
-========
-					format: ms
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					format: _s
 				})]
 			}), /* @__PURE__ */ (0, $.jsxs)("div", {
 				className: "pointer-events-none absolute inset-0 flex flex-col items-center justify-center",
 				children: [/* @__PURE__ */ (0, $.jsx)("b", {
 					className: "text-title-2-medium tabular-nums text-text-primary",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: ls(t.total_bytes)
-========
-					children: ms(t.total_bytes)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					children: _s(t.total_bytes)
 				}), /* @__PURE__ */ (0, $.jsx)("small", {
 					className: "text-caption-1-regular tabular-nums text-text-secondary",
 					children: J("settings:storageCharts.fileCount", { count: t.total_files })
@@ -3491,36 +3150,20 @@ function gs({ storage: e }) {
 					children: [
 						/* @__PURE__ */ (0, $.jsx)("i", {
 							"aria-hidden": !0,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							className: `${xt} ${cs[e.key] || "bg-text-tertiary"}`
-========
-							className: `${xt} ${ps[e.key] || "bg-text-tertiary"}`
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+							className: `${St} ${gs[e.key] || "bg-text-tertiary"}`
 						}),
 						e.label,
 						/* @__PURE__ */ (0, $.jsx)("span", {
 							className: "tabular-nums text-text-primary",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							children: ls(e.bytes)
+							children: _s(e.bytes)
 						})
 					]
 				}, e.key))
-			}), /* @__PURE__ */ (0, $.jsx)(fs, { storage: e })]
+			}), /* @__PURE__ */ (0, $.jsx)(bs, { storage: e })]
 		})]
 	});
 }
-function fs({ storage: e }) {
-========
-							children: ms(e.bytes)
-						})
-					]
-				}, e.key))
-			}), /* @__PURE__ */ (0, $.jsx)(_s, { storage: e })]
-		})]
-	});
-}
-function _s({ storage: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function bs({ storage: e }) {
 	if (e.total_bytes === null || e.free_bytes === null || !e.usage) return null;
 	let t = Math.min(e.usage.total_bytes, e.total_bytes), n = e.free_bytes, r = Math.max(0, e.total_bytes - n - t), i = {
 		peach: {
@@ -3529,11 +3172,7 @@ function _s({ storage: e }) {
 		},
 		others: {
 			label: J("settings:storageCharts.otherFiles"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			colors: br(ss)
-========
-			colors: br(fs)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			colors: br(hs)
 		},
 		free: {
 			label: J("settings:storageCharts.free"),
@@ -3545,23 +3184,15 @@ function _s({ storage: e }) {
 		children: [/* @__PURE__ */ (0, $.jsx)("p", {
 			className: "text-caption-1-regular text-text-secondary",
 			children: J("settings:storageCharts.diskSummary", {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				total: ls(e.total_bytes),
-========
-				total: ms(e.total_bytes),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				total: _s(e.total_bytes),
 				systemDrive: e.system_drive ? J("settings:storageCharts.systemDrive") : "",
 				share: ((t) => {
 					let n = t / e.total_bytes * 100;
 					return n < .1 ? J("settings:storageCharts.underTenthPercent") : `${n.toFixed(+(n < 10))}%`;
 				})(t),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				free: ls(n)
-========
-				free: ms(n)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				free: _s(n)
 			})
-		}), /* @__PURE__ */ (0, $.jsxs)(he, {
+		}), /* @__PURE__ */ (0, $.jsxs)(ge, {
 			data: [{
 				disk: J("settings:libraryIcons.hardDrive"),
 				peach: t,
@@ -3580,53 +3211,45 @@ function _s({ storage: e }) {
 			} },
 			className: "aspect-auto h-6 flex-none",
 			children: [
-				/* @__PURE__ */ (0, $.jsx)(he.YAxis, {
+				/* @__PURE__ */ (0, $.jsx)(ge.YAxis, {
 					dataKey: "disk",
 					hide: !0
 				}),
-				/* @__PURE__ */ (0, $.jsx)(he.XAxis, { hide: !0 }),
-				/* @__PURE__ */ (0, $.jsx)(he.Bar, { dataKey: "peach" }),
-				/* @__PURE__ */ (0, $.jsx)(he.Bar, { dataKey: "others" }),
-				/* @__PURE__ */ (0, $.jsx)(he.Bar, { dataKey: "free" }),
+				/* @__PURE__ */ (0, $.jsx)(ge.XAxis, { hide: !0 }),
+				/* @__PURE__ */ (0, $.jsx)(ge.Bar, { dataKey: "peach" }),
+				/* @__PURE__ */ (0, $.jsx)(ge.Bar, { dataKey: "others" }),
+				/* @__PURE__ */ (0, $.jsx)(ge.Bar, { dataKey: "free" }),
 				/* @__PURE__ */ (0, $.jsx)(ee, {
 					hideLabel: !0,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					format: ls
-========
-					format: ms
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					format: _s
 				})
 			]
 		})]
 	});
 }
 // src/react/components/configuration-fields.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function ps({ id: e, label: t, value: n, onChange: r, options: i, isDisabled: a, isInvalid: s, children: c }) {
-========
-function vs({ id: e, label: t, value: n, onChange: r, options: i, isDisabled: a, isInvalid: s, children: c }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function xs({ id: e, label: t, value: n, onChange: r, options: i, isDisabled: a, isInvalid: s, children: c }) {
 	let l = `${e}-label`;
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		className: "flex flex-col gap-1.5",
 		children: [
-			/* @__PURE__ */ (0, $.jsx)(Ee, {
+			/* @__PURE__ */ (0, $.jsx)(De, {
 				id: l,
 				elementType: "span",
 				children: t
 			}),
-			/* @__PURE__ */ (0, $.jsx)(ct, {
+			/* @__PURE__ */ (0, $.jsx)(lt, {
 				id: e,
 				"aria-labelledby": l,
 				orientation: "horizontal",
-				className: nt,
+				className: rt,
 				value: n,
 				onChange: r,
 				isDisabled: a,
 				isInvalid: s,
 				children: i.map((e) => /* @__PURE__ */ (0, $.jsx)(o, {
 					value: e.value,
-					className: tt,
+					className: nt,
 					children: e.label
 				}, e.value))
 			}),
@@ -3634,11 +3257,7 @@ function vs({ id: e, label: t, value: n, onChange: r, options: i, isDisabled: a,
 		]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function ms({ prefix: e, suffix: t, unit: n, fieldClassName: r, ...i }) {
-========
-function ys({ prefix: e, suffix: t, unit: n, fieldClassName: r, ...i }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Ss({ prefix: e, suffix: t, unit: n, fieldClassName: r, ...i }) {
 	let a = () => /* @__PURE__ */ (0, $.jsx)("span", {
 		"aria-hidden": n ? !0 : void 0,
 		className: Jt("shrink-0 text-body-regular text-text-secondary", n ? "w-10" : "pr-1"),
@@ -3647,7 +3266,7 @@ function ys({ prefix: e, suffix: t, unit: n, fieldClassName: r, ...i }) {
 			children: n
 		}) : t
 	});
-	return /* @__PURE__ */ (0, $.jsx)(P, {
+	return /* @__PURE__ */ (0, $.jsx)(N, {
 		...i,
 		fieldClassName: r,
 		leadingAddon: e ? /* @__PURE__ */ (0, $.jsx)("span", {
@@ -3658,11 +3277,7 @@ function ys({ prefix: e, suffix: t, unit: n, fieldClassName: r, ...i }) {
 	});
 }
 // src/react/settings/storage-budget-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var hs = [
-========
-var bs = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Cs = [
 	[
 		"minimum_free_gib",
 		J("settings:storageLimits.reservedSpace"),
@@ -3678,19 +3293,13 @@ var bs = [
 		J("settings:storageLimits.cacheLimit"),
 		J("settings:storageLimits.cacheLimitHelp")
 	]
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-], gs = (e) => ur(e.reasons, e.reason_codes?.map((e) => e?.code ?? null), e.reason_codes?.map((e) => e?.params ?? null));
-function _s({ initial: e, after: t, receipt: n }) {
-	let [r, i] = (0, Z.useState)(e.policy), a = Y(K(e, "error")), [o, s] = (0, Z.useState)("");
-========
-], xs = (e) => !e.trim() || /^\d+$/.test(e.trim()) && Number(e) <= 1048576 ? "" : J("settings:storageLimits.invalidLimit"), Ss = (e) => ur(e.reasons, e.reason_codes?.map((e) => e?.code ?? null), e.reason_codes?.map((e) => e?.params ?? null));
-function Cs({ initial: e, after: t, receipt: n }) {
+], ws = (e) => !e.trim() || /^\d+$/.test(e.trim()) && Number(e) <= 1048576 ? "" : J("settings:storageLimits.invalidLimit"), Ts = (e) => ur(e.reasons, e.reason_codes?.map((e) => e?.code ?? null), e.reason_codes?.map((e) => e?.params ?? null));
+function Es({ initial: e, after: t, receipt: n }) {
 	let [r, i] = (0, Z.useState)(e.policy), a = Y(G(e, "error")), [o, s] = (0, Z.useState)(""), [c, l] = (0, Z.useState)({}), u = Ta();
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 	(0, Z.useEffect)(() => {
 		if (!r?.enabled || e.policy?.external_cache_path) return;
 		let t = new AbortController();
-		return s(J("settings:storageLimits.readingCloudDrive")), Mt("/api/configuration/storage/external-cache", t.signal).then((e) => {
+		return s(J("settings:storageLimits.readingCloudDrive")), H("/api/configuration/storage/external-cache", t.signal).then((e) => {
 			if (t.signal.aborted) return;
 			let n = e.path;
 			n ? (i((e) => e && !e.external_cache_path ? {
@@ -3705,9 +3314,9 @@ function Cs({ initial: e, after: t, receipt: n }) {
 		...n,
 		[e]: t
 	}), f = e.last_check;
-	if (!r) return /* @__PURE__ */ (0, $.jsx)(L, {
+	if (!r) return /* @__PURE__ */ (0, $.jsx)(I, {
 		title: J("settings:storageLimits.title"),
-		children: /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(A, { children: a.error || J("settings:storageLimits.loadFailed") }) })
+		children: /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(k, { children: a.error || J("settings:storageLimits.loadFailed") }) })
 	});
 	let p = (e) => {
 		let t = c[e] ?? (r[e] ? String(r[e]) : "");
@@ -3717,7 +3326,7 @@ function Cs({ initial: e, after: t, receipt: n }) {
 			validationBehavior: "aria",
 			isInvalid: !!u.errors[e],
 			hint: u.errors[e],
-			onBlur: () => u.update(e, xs(t)),
+			onBlur: () => u.update(e, ws(t)),
 			onChange: (t) => {
 				l((n) => ({
 					...n,
@@ -3726,14 +3335,14 @@ function Cs({ initial: e, after: t, receipt: n }) {
 			}
 		};
 	};
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "storageBudgetSettings",
 		title: J("settings:storageLimits.title"),
 		onSubmit: (e) => {
 			e.preventDefault();
-			let o = r.enabled ? bs.map(([e]) => e) : [];
+			let o = r.enabled ? Cs.map(([e]) => e) : [];
 			r.enabled && r.external_cache_path && o.push("external_cache_max_gib");
-			let c = Object.fromEntries(o.map((e) => [e, xs(p(e).value)]));
+			let c = Object.fromEntries(o.map((e) => [e, ws(p(e).value)]));
 			if (!u.check(e.currentTarget, c)) return;
 			let d = {
 				...r,
@@ -3744,26 +3353,19 @@ function Cs({ initial: e, after: t, receipt: n }) {
 			});
 		},
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(I, { children: [/* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsxs)(F, { children: [/* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:storageLimits.enable"),
 				description: J("settings:storageLimits.enableHelp"),
-				children: /* @__PURE__ */ (0, $.jsx)(H, {
+				children: /* @__PURE__ */ (0, $.jsx)(V, {
 					"aria-label": J("settings:storageLimits.enable"),
 					isSelected: r.enabled,
 					isDisabled: !!a.busy,
 					onChange: (e) => d("enabled", e)
 				})
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			}), r.enabled ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [hs.map(([e, t, n]) => /* @__PURE__ */ (0, $.jsx)(B, {
+			}), r.enabled ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [Cs.map(([e, t, n]) => /* @__PURE__ */ (0, $.jsx)(z, {
 				label: t,
 				description: n,
-				children: /* @__PURE__ */ (0, $.jsx)(ms, {
-========
-			}), r.enabled ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [bs.map(([e, t, n]) => /* @__PURE__ */ (0, $.jsx)(B, {
-				label: t,
-				description: n,
-				children: /* @__PURE__ */ (0, $.jsx)(ys, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				children: /* @__PURE__ */ (0, $.jsx)(Ss, {
 					"aria-label": J("settings:storageLimits.limitGib", { label: t }),
 					unit: "GiB",
 					inputMode: "numeric",
@@ -3774,56 +3376,20 @@ function Cs({ initial: e, after: t, receipt: n }) {
 					...p(e),
 					isDisabled: !!a.busy
 				})
-			}, e)), /* @__PURE__ */ (0, $.jsx)(B, {
+			}, e)), /* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:storageLimits.autoClean"),
 				description: J("settings:storageLimits.autoCleanHelp"),
-				children: /* @__PURE__ */ (0, $.jsx)(H, {
+				children: /* @__PURE__ */ (0, $.jsx)(V, {
 					"aria-label": J("settings:storageLimits.autoClean"),
 					isSelected: r.auto_clean,
 					isDisabled: !!a.busy,
 					onChange: (e) => d("auto_clean", e)
 				})
 			})] }) : null] }),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			r.enabled ? /* @__PURE__ */ (0, $.jsx)(V, {
-				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(P, {
-					label: J("settings:storageLimits.externalCache"),
-					hint: o || J("settings:storageLimits.externalCacheHelp"),
-					value: r.external_cache_path,
-					size: "small",
-					className: "w-full",
-					placeholder: J("settings:shared.notSet"),
-					onChange: (e) => c("external_cache_path", e),
-					isDisabled: !!a.busy
-				})
-			}) : null,
-			r.enabled && r.external_cache_path ? /* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
-				label: J("settings:storageLimits.externalCacheLimit"),
-				description: J("settings:storageLimits.externalCacheLimitHelp"),
-				children: /* @__PURE__ */ (0, $.jsx)(ms, {
-					"aria-label": J("settings:storageLimits.externalCacheLimitGib"),
-					unit: "GiB",
-					size: "small",
-					className: "w-32 shrink-0",
-					placeholder: J("settings:shared.noLimit"),
-					inputMode: "numeric",
-					pattern: "[0-9]*",
-					value: r.external_cache_max_gib ? String(r.external_cache_max_gib) : "",
-					onChange: (e) => c("external_cache_max_gib", Number(e)),
-					isDisabled: !!a.busy
-				})
-			}) }) : null,
-			/* @__PURE__ */ (0, $.jsxs)(V, {
+			r.enabled ? /* @__PURE__ */ (0, $.jsxs)(B, {
 				divided: !0,
 				children: [
-					r.enabled ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:storageLimits.limitsHelp") }) : null,
-					r.enabled && l?.paused ? /* @__PURE__ */ (0, $.jsx)(A, { children: J("settings:storageLimits.pausedWithReasons", { reasons: gs(l).join(J("shell:format.semicolonSeparator")) }) }) : null,
-========
-			r.enabled ? /* @__PURE__ */ (0, $.jsxs)(V, {
-				divided: !0,
-				children: [
-					/* @__PURE__ */ (0, $.jsx)(P, {
+					/* @__PURE__ */ (0, $.jsx)(N, {
 						label: J("settings:storageLimits.externalCache"),
 						hint: o || J("settings:storageLimits.externalCacheHelp"),
 						value: r.external_cache_path,
@@ -3833,10 +3399,10 @@ function Cs({ initial: e, after: t, receipt: n }) {
 						onChange: (e) => d("external_cache_path", e),
 						isDisabled: !!a.busy
 					}),
-					r.external_cache_path ? /* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+					r.external_cache_path ? /* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 						label: J("settings:storageLimits.externalCacheLimit"),
 						description: J("settings:storageLimits.externalCacheLimitHelp"),
-						children: /* @__PURE__ */ (0, $.jsx)(ys, {
+						children: /* @__PURE__ */ (0, $.jsx)(Ss, {
 							"aria-label": J("settings:storageLimits.externalCacheLimitGib"),
 							unit: "GiB",
 							size: "small",
@@ -3848,13 +3414,12 @@ function Cs({ initial: e, after: t, receipt: n }) {
 							isDisabled: !!a.busy
 						})
 					}) }) : null,
-					/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:storageLimits.limitsHelp") }),
-					f?.paused ? /* @__PURE__ */ (0, $.jsx)(A, { children: J("settings:storageLimits.pausedWithReasons", { reasons: Ss(f).join(J("shell:format.semicolonSeparator")) }) }) : null,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-					a.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: a.error }) : null
+					/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:storageLimits.limitsHelp") }),
+					f?.paused ? /* @__PURE__ */ (0, $.jsx)(k, { children: J("settings:storageLimits.pausedWithReasons", { reasons: Ts(f).join(J("shell:format.semicolonSeparator")) }) }) : null,
+					a.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: a.error }) : null
 				]
-			}) : a.error ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(A, { children: a.error }) }) : null,
-			/* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
+			}) : a.error ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(k, { children: a.error }) }) : null,
+			/* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(m, {
 				type: "submit",
 				...W(a.busy === "save"),
 				children: J("settings:shared.saveSettings")
@@ -3863,13 +3428,8 @@ function Cs({ initial: e, after: t, receipt: n }) {
 	});
 }
 // src/react/settings/storage-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var vs = "/api/configuration/storage", ys = 1500, bs = 36e5, xs = 864e5, Ss = (e) => e instanceof p && Ft(e.body)?.target || q(e);
-function Cs(e) {
-========
-var ws = "/api/configuration/storage", Ts = 1500, Es = 36e5, Ds = 864e5, Os = (e) => e instanceof p && It(e.body)?.target || K(e);
-function ks(e) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Ds = "/api/configuration/storage", Os = 1500, ks = 36e5, As = 864e5, js = (e) => e instanceof p && It(e.body)?.target || K(e);
+function Ms(e) {
 	if (e.free_bytes === null || e.total_bytes === null) return J("settings:shared.notFound");
 	let t = J("settings:storageSpace.diskFreeOfTotal", {
 		free: cn(e.free_bytes),
@@ -3877,29 +3437,16 @@ function ks(e) {
 	});
 	return e.system_drive ? J("settings:storageSpace.systemDriveSuffix", { summary: t }) : t;
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var ws = (e) => e.cleanable && e.reclaimable > 0, Ts = (e) => ({
-	...e,
-	label: lr(`storage.category.${e.key}.label`, e.label),
-	description: lr(`storage.category.${e.key}.description`, e.description),
-	note: lr(`storage.category.${e.key}.note`, e.note)
-}), Es = (e) => [K(e, "message"), ...(e.notes ?? []).map((t, n) => lr(e.note_codes?.[n]?.code ?? "", t, e.note_codes?.[n]?.params))], Ds = (e) => ({
-	text: K(e, "text"),
-	command: K(e, "command")
-});
-function Os({ job: e }) {
-========
-var As = (e) => e.cleanable && e.reclaimable > 0, js = (e) => ({
+var Ns = (e) => e.cleanable && e.reclaimable > 0, Ps = (e) => ({
 	...e,
 	label: q(`storage.category.${e.key}.label`, e.label),
 	description: q(`storage.category.${e.key}.description`, e.description),
 	note: q(`storage.category.${e.key}.note`, e.note)
-}), Ms = (e) => [G(e, "message"), ...(e.notes ?? []).map((t, n) => q(e.note_codes?.[n]?.code ?? "", t, e.note_codes?.[n]?.params))], Ns = (e) => ({
+}), Fs = (e) => [G(e, "message"), ...(e.notes ?? []).map((t, n) => q(e.note_codes?.[n]?.code ?? "", t, e.note_codes?.[n]?.params))], Is = (e) => ({
 	text: G(e, "text"),
 	command: G(e, "command")
 });
-function Ps({ job: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Ls({ job: e }) {
 	let t = e.files || 0, n = e.expected_files || 0, r = {
 		files: /* @__PURE__ */ (0, $.jsx)(f, { value: t }),
 		size: /* @__PURE__ */ (0, $.jsx)(f, {
@@ -3910,40 +3457,31 @@ function Ps({ job: e }) {
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		"aria-live": "polite",
 		className: "flex flex-col gap-2",
-		children: [n ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(qe, {
+		children: [n ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(Je, {
 			label: J("settings:storageSpace.measureProgress"),
 			value: Math.min(t, n * .99),
 			max: n
-		}), /* @__PURE__ */ (0, $.jsx)(N, { children: xr("settings:storageSpace.measuringOfLast", {
+		}), /* @__PURE__ */ (0, $.jsx)(M, { children: xr("settings:storageSpace.measuringOfLast", {
 			count: t,
 			expected: n
 		}, r) })] }) : /* @__PURE__ */ (0, $.jsx)(u, {
 			kind: "radar",
 			label: J("settings:storageSpace.measuringLabel")
-		}), n ? null : /* @__PURE__ */ (0, $.jsx)(N, { children: xr("settings:storageSpace.measuring", { count: t }, r) })]
+		}), n ? null : /* @__PURE__ */ (0, $.jsx)(M, { children: xr("settings:storageSpace.measuring", { count: t }, r) })]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var ks = /* @__PURE__ */ new Set([
-========
-var Fs = /* @__PURE__ */ new Set([
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Rs = /* @__PURE__ */ new Set([
 	"follow_snapshots",
 	"source_snapshots",
 	"project_archives"
 ]);
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function As({ category: e, selected: t, disabled: n, onToggle: r }) {
-	let i = ws(e), a = e.key === "follow_snapshots", o = a || e.key === "project_archives", s = e.cleanable ? e.reclaimable > 0 ? J("settings:storageSpace.afterCleanup", { effect: e.note }) : J("settings:storageSpace.nothingToClean") : o ? e.note : J("settings:storageSpace.cannotClean", { reason: e.note });
-========
-function Is({ category: e, selected: t, disabled: n, onToggle: r }) {
-	let i = As(e), a = e.key === "follow_snapshots", o = a || e.key === "project_archives", s = e.cleanable ? e.reclaimable > 0 ? J("settings:storageSpace.afterCleanup", { effect: e.note }) : J("settings:storageSpace.nothingToClean") : o ? e.note : J("settings:storageSpace.cannotClean", { reason: e.note });
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function zs({ category: e, selected: t, disabled: n, onToggle: r }) {
+	let i = Ns(e), a = e.key === "follow_snapshots", o = a || e.key === "project_archives", s = e.cleanable ? e.reclaimable > 0 ? J("settings:storageSpace.afterCleanup", { effect: e.note }) : J("settings:storageSpace.nothingToClean") : o ? e.note : J("settings:storageSpace.cannotClean", { reason: e.note });
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		"data-category": e.key,
 		className: "flex min-h-13 w-full items-start gap-3 border-b border-separator-border py-2.5 pr-3 last:border-b-0",
 		children: [
-			e.cleanable ? /* @__PURE__ */ (0, $.jsx)(O, {
+			e.cleanable ? /* @__PURE__ */ (0, $.jsx)(ne, {
 				"aria-label": J("settings:storageSpace.cleanCategory", { category: e.label }),
 				isSelected: t,
 				isDisabled: !i || n,
@@ -3960,11 +3498,7 @@ function Is({ category: e, selected: t, disabled: n, onToggle: r }) {
 						className: "flex items-center gap-2 text-body-regular text-text-primary",
 						children: [/* @__PURE__ */ (0, $.jsx)("i", {
 							"aria-hidden": !0,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							className: `size-2.5 shrink-0 rounded-xs ${cs[e.key] || "bg-text-tertiary"}`
-========
-							className: `size-2.5 shrink-0 rounded-xs ${ps[e.key] || "bg-text-tertiary"}`
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+							className: `size-2.5 shrink-0 rounded-xs ${gs[e.key] || "bg-text-tertiary"}`
 						}), /* @__PURE__ */ (0, $.jsx)("span", {
 							"data-copy-key": `storage.category.${e.key}.label`,
 							children: e.label
@@ -3980,8 +3514,8 @@ function Is({ category: e, selected: t, disabled: n, onToggle: r }) {
 						className: "text-caption-1-regular text-text-tertiary",
 						children: s
 					}),
-					a ? /* @__PURE__ */ (0, $.jsx)(Ae, {
-						href: `${Xe}#repair-item-follow-evidence`,
+					a ? /* @__PURE__ */ (0, $.jsx)(je, {
+						href: `${Ze}#repair-item-follow-evidence`,
 						size: "xs",
 						trailingIcon: Cn,
 						className: "mt-1 self-start whitespace-normal",
@@ -4010,17 +3544,10 @@ function Is({ category: e, selected: t, disabled: n, onToggle: r }) {
 		]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function js({ initial: e, receipt: t, active: n = !0 }) {
+function Bs({ initial: e, receipt: t, active: n = !0 }) {
 	let [r, i] = (0, Z.useState)(e), [a, o] = (0, Z.useState)(""), [s, c] = (0, Z.useState)(/* @__PURE__ */ new Set()), l = Y(), u = r.job.state !== "idle", d = (0, Z.useRef)(u), f = (0, Z.useRef)(!1);
 	(0, Z.useEffect)(() => {
-		n && !f.current && (f.current = !0, e.usage || e.job.state !== "idle" || document.body.classList.contains("peach-guiding") || l.run("measure", (e) => W(`${vs}/measure`, {}, "POST", e), i));
-========
-function Ls({ initial: e, receipt: t, active: n = !0 }) {
-	let [r, i] = (0, Z.useState)(e), [a, o] = (0, Z.useState)(""), [s, c] = (0, Z.useState)(/* @__PURE__ */ new Set()), l = Y(), u = r.job.state !== "idle", d = (0, Z.useRef)(u), f = (0, Z.useRef)(!1);
-	(0, Z.useEffect)(() => {
-		n && !f.current && (f.current = !0, e.usage || e.job.state !== "idle" || document.body.classList.contains("peach-guiding") || l.run("measure", (e) => U(`${ws}/measure`, {}, "POST", e), i));
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		n && !f.current && (f.current = !0, e.usage || e.job.state !== "idle" || document.body.classList.contains("peach-guiding") || l.run("measure", (e) => U(`${Ds}/measure`, {}, "POST", e), i));
 	}, [
 		n,
 		e,
@@ -4030,32 +3557,19 @@ function Ls({ initial: e, receipt: t, active: n = !0 }) {
 		let e = new AbortController();
 		return Wn({
 			signal: e.signal,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			everyMs: ys,
-			limitMs: bs,
-			read: (e) => U(vs, e),
-========
-			everyMs: Ts,
-			limitMs: Es,
-			read: (e) => Mt(ws, e),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			everyMs: Os,
+			limitMs: ks,
+			read: (e) => H(Ds, e),
 			apply: i,
 			done: (e) => e.job.state === "idle"
 		}), () => e.abort();
 	}, [u]), (0, Z.useEffect)(() => {
 		u ? d.current = !0 : d.current && (d.current = !1, c(/* @__PURE__ */ new Set()), r.job.error || t(G(r.job, "message") || J("settings:storageSpace.measured")));
 	}, [u]);
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	let p = () => void l.run("measure", (e) => W(`${vs}/measure`, {}, "POST", e), i), h = r.usage && {
+	let p = () => void l.run("measure", (e) => U(`${Ds}/measure`, {}, "POST", e), i), h = r.usage && {
 		...r.usage,
-		categories: r.usage.categories.map(Ts)
-	}, g = h?.categories.filter(ws) ?? [], _ = g.filter((e) => s.has(e.key)), v = (e, t) => {
-========
-	let p = () => void l.run("measure", (e) => U(`${ws}/measure`, {}, "POST", e), i), h = r.usage && {
-		...r.usage,
-		categories: r.usage.categories.map(js)
-	}, g = h?.categories.filter(As) ?? [], _ = g.filter((e) => s.has(e.key)), v = (e, t) => {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		categories: r.usage.categories.map(Ps)
+	}, g = h?.categories.filter(Ns) ?? [], _ = g.filter((e) => s.has(e.key)), v = (e, t) => {
 		if (!e.length) return;
 		let n = e.reduce((e, t) => e + t.reclaimable, 0);
 		Wt({
@@ -4071,14 +3585,10 @@ function Ls({ initial: e, receipt: t, active: n = !0 }) {
 			confirmLabel: J("settings:storageSpace.cleanSize", { size: cn(n) }),
 			holdToConfirm: !0,
 			danger: e.some((e) => e.key === "backups"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			onConfirm: async () => i(await W(`${vs}/clean`, { categories: e.map((e) => e.key) }))
-========
-			onConfirm: async () => i(await U(`${ws}/clean`, { categories: e.map((e) => e.key) }))
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			onConfirm: async () => i(await U(`${Ds}/clean`, { categories: e.map((e) => e.key) }))
 		});
 	}, y = () => void l.run("relocate", async (e) => {
-		let t = await Hn(r.data_root, (t) => U(Re, t, "POST", e), "data");
+		let t = await Hn(r.data_root, (t) => U(ze, t, "POST", e), "data");
 		if (!t) return;
 		let n = r.usage ? cn(r.usage.total_bytes) : "";
 		await Wt({
@@ -4091,59 +3601,41 @@ function Ls({ initial: e, receipt: t, active: n = !0 }) {
 			confirmLabel: J("settings:storageSpace.moveDataDirectory"),
 			onConfirm: async () => {
 				try {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					o(dr(await W(`${vs}/relocate`, { target: t })));
+					o(dr(await U(`${Ds}/relocate`, { target: t })));
 				} catch (e) {
-					throw Error(Ss(e));
+					throw Error(js(e));
 				}
 			}
 		});
-	}, () => void 0), b = r.relocation.last, x = b && (b.state === "error" || (b.notes?.length ?? 0) > 0 || Date.now() - b.finished_at * 1e3 < xs), S = h?.categories.find((e) => e.key === r.job.category)?.label, C = a || (r.job.state === "cleaning" ? J("settings:storageSpace.cleaningCategory", { category: S || "" }) : r.job.state === "measuring" ? J("settings:storageSpace.measuringStatus") : _.length ? J("settings:storageSpace.selectedSummary", {
-========
-					o(dr(await U(`${ws}/relocate`, { target: t })));
-				} catch (e) {
-					throw Error(Os(e));
-				}
-			}
-		});
-	}, () => void 0), b = r.relocation.last, x = b && (b.state === "error" || (b.notes?.length ?? 0) > 0 || Date.now() - b.finished_at * 1e3 < Ds), S = h?.categories.find((e) => e.key === r.job.category)?.label, C = a || (r.job.state === "cleaning" ? J("settings:storageSpace.cleaningCategory", { category: S || "" }) : r.job.state === "measuring" ? J("settings:storageSpace.measuringStatus") : _.length ? J("settings:storageSpace.selectedSummary", {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	}, () => void 0), b = r.relocation.last, x = b && (b.state === "error" || (b.notes?.length ?? 0) > 0 || Date.now() - b.finished_at * 1e3 < As), S = h?.categories.find((e) => e.key === r.job.category)?.label, C = a || (r.job.state === "cleaning" ? J("settings:storageSpace.cleaningCategory", { category: S || "" }) : r.job.state === "measuring" ? J("settings:storageSpace.measuringStatus") : _.length ? J("settings:storageSpace.selectedSummary", {
 		count: _.length,
 		size: cn(_.reduce((e, t) => e + t.reclaimable, 0))
 	}) : h ? J("settings:storageSpace.measuredAt", { time: (/* @__PURE__ */ new Date(h.measured_at * 1e3)).toLocaleString(Tn) }) : ""), w = u || !!a, T = (e) => (t) => c((n) => {
 		let r = new Set(n);
 		return t ? r.add(e) : r.delete(e), r;
 	});
-	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "storageSettings",
 		guide: "storage",
 		title: J("settings:diskUsage.title"),
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(be, { children: [/* @__PURE__ */ (0, $.jsx)(j, {
+			/* @__PURE__ */ (0, $.jsxs)(xe, { children: [/* @__PURE__ */ (0, $.jsx)(A, {
 				term: J("settings:shared.dataDirectory"),
-				children: /* @__PURE__ */ (0, $.jsx)(Ue, {
+				children: /* @__PURE__ */ (0, $.jsx)(We, {
 					path: r.data_root,
 					className: "text-body-regular text-text-primary",
 					onRevealed: t
 				})
-			}), /* @__PURE__ */ (0, $.jsx)(j, {
+			}), /* @__PURE__ */ (0, $.jsx)(A, {
 				term: J("settings:diskUsage.disk"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				children: Cs(r)
-========
-				children: ks(r)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				children: Ms(r)
 			})] }),
-			/* @__PURE__ */ (0, $.jsxs)(V, {
+			/* @__PURE__ */ (0, $.jsxs)(B, {
 				divided: !0,
 				children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					r.job.state === "measuring" ? /* @__PURE__ */ (0, $.jsx)(Os, { job: r.job }) : null,
-========
-					r.job.state === "measuring" ? /* @__PURE__ */ (0, $.jsx)(Ps, { job: r.job }) : null,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-					h?.capacity_error ? /* @__PURE__ */ (0, $.jsxs)(A, { children: [J("settings:storageSpace.capacityIncomplete"), h.capacity_error] }) : null,
-					h?.allocated_bytes == null ? null : /* @__PURE__ */ (0, $.jsxs)(N, { children: [
+					r.job.state === "measuring" ? /* @__PURE__ */ (0, $.jsx)(Ls, { job: r.job }) : null,
+					h?.capacity_error ? /* @__PURE__ */ (0, $.jsxs)(k, { children: [J("settings:storageSpace.capacityIncomplete"), h.capacity_error] }) : null,
+					h?.allocated_bytes == null ? null : /* @__PURE__ */ (0, $.jsxs)(M, { children: [
 						J("settings:storageSpace.allocatedOnDisk"),
 						" ",
 						cn(h.allocated_bytes)
@@ -4157,47 +3649,31 @@ function Ls({ initial: e, receipt: t, active: n = !0 }) {
 						}),
 						children: [/* @__PURE__ */ (0, $.jsx)("div", {
 							className: "border-b border-separator-border p-4",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							children: /* @__PURE__ */ (0, $.jsx)(ds, { storage: h ? {
-========
-							children: /* @__PURE__ */ (0, $.jsx)(gs, { storage: h ? {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+							children: /* @__PURE__ */ (0, $.jsx)(ys, { storage: h ? {
 								...r,
 								usage: h
 							} : r })
 						}), /* @__PURE__ */ (0, $.jsx)("div", {
 							className: "flex flex-col pl-4",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							children: h.categories.filter((e) => e.files > 0 || !ks.has(e.key)).map((e) => /* @__PURE__ */ (0, $.jsx)(As, {
-========
-							children: h.categories.filter((e) => e.files > 0 || !Fs.has(e.key)).map((e) => /* @__PURE__ */ (0, $.jsx)(Is, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+							children: h.categories.filter((e) => e.files > 0 || !Rs.has(e.key)).map((e) => /* @__PURE__ */ (0, $.jsx)(zs, {
 								category: e,
 								selected: s.has(e.key),
 								disabled: w,
 								onToggle: T(e.key)
 							}, e.key))
 						})]
-					}) : r.job.state === "measuring" ? null : /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:diskUsage.emptyHelp") }),
-					r.relocation.available ? null : /* @__PURE__ */ (0, $.jsx)(N, { children: G(r.relocation, "message") }),
-					!r.relocation.available && r.relocation.steps?.length ? /* @__PURE__ */ (0, $.jsx)(ne, {
+					}) : r.job.state === "measuring" ? null : /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:diskUsage.emptyHelp") }),
+					r.relocation.available ? null : /* @__PURE__ */ (0, $.jsx)(M, { children: G(r.relocation, "message") }),
+					!r.relocation.available && r.relocation.steps?.length ? /* @__PURE__ */ (0, $.jsx)(re, {
 						label: J("settings:storageSpace.moveOnHost"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-						steps: r.relocation.steps.map(Ds)
-========
-						steps: r.relocation.steps.map(Ns)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						steps: r.relocation.steps.map(Is)
 					}) : null,
-					r.job.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: G(r.job, "message") }) : null,
-					l.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: l.error }) : null,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					x && b ? b.state === "error" ? /* @__PURE__ */ (0, $.jsx)(A, { children: Es(b).join(J("shell:format.semicolonSeparator")) }) : /* @__PURE__ */ (0, $.jsx)(N, { children: Es(b).join(J("shell:format.semicolonSeparator")) }) : null
-========
-					x && b ? b.state === "error" ? /* @__PURE__ */ (0, $.jsx)(A, { children: Ms(b).join(J("shell:format.semicolonSeparator")) }) : /* @__PURE__ */ (0, $.jsx)(N, { children: Ms(b).join(J("shell:format.semicolonSeparator")) }) : null
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					r.job.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: G(r.job, "message") }) : null,
+					l.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: l.error }) : null,
+					x && b ? b.state === "error" ? /* @__PURE__ */ (0, $.jsx)(k, { children: Fs(b).join(J("shell:format.semicolonSeparator")) }) : /* @__PURE__ */ (0, $.jsx)(M, { children: Fs(b).join(J("shell:format.semicolonSeparator")) }) : null
 				]
 			}),
-			/* @__PURE__ */ (0, $.jsxs)(M, {
+			/* @__PURE__ */ (0, $.jsxs)(j, {
 				status: C ? /* @__PURE__ */ (0, $.jsx)("p", {
 					role: a ? "status" : void 0,
 					children: C
@@ -4231,22 +3707,14 @@ function Ls({ initial: e, receipt: t, active: n = !0 }) {
 				]
 			})
 		]
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	}), r.budget ? /* @__PURE__ */ (0, $.jsx)(_s, {
-========
-	}), r.budget ? /* @__PURE__ */ (0, $.jsx)(Cs, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	}), r.budget ? /* @__PURE__ */ (0, $.jsx)(Es, {
 		initial: r.budget,
 		after: i,
 		receipt: t
 	}) : null] });
 }
 // src/react/settings/upgrade-repairs.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Ms = {
-========
-var Rs = {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Vs = {
 	pending: J("settings:upgradeRepairs.pending"),
 	running: J("settings:upgradeRepairs.repairing"),
 	failed: J("settings:repairCenter.needsRetry"),
@@ -4254,75 +3722,50 @@ var Rs = {
 	review: J("settings:upgradeRepairs.needsReview"),
 	complete: J("settings:shared.completed"),
 	unavailable: J("settings:upgradeRepairs.unavailable")
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}, Ns = (e) => xr("settings:upgradeRepairs.itemCount", { count: e }, { value: /* @__PURE__ */ (0, $.jsx)(f, { value: e }) });
-function Ps({ lastCapacityCheckPassed: e = !1 } = {}) {
-========
-}, zs = (e) => xr("settings:upgradeRepairs.itemCount", { count: e }, { value: /* @__PURE__ */ (0, $.jsx)(f, { value: e }) });
-function Bs({ lastCapacityCheckPassed: e = !1 } = {}) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+}, Hs = (e) => xr("settings:upgradeRepairs.itemCount", { count: e }, { value: /* @__PURE__ */ (0, $.jsx)(f, { value: e }) });
+function Us({ lastCapacityCheckPassed: e = !1 } = {}) {
 	let { snapshot: t } = Tr(), [n, r] = (0, Z.useState)(null), i = Y();
 	(0, Z.useEffect)(() => r(null), [t]);
 	let a = n ?? t?.repairs, o = a?.state || "pending", s = a?.message_code === "labels.upgradeRepairs.mediaPaused" && e, c = a?.items.reduce((e, t) => e + (t.pending || 0), 0) || 0, l = a?.items.reduce((e, t) => e + (t.failed || 0), 0) || 0, u = a?.items.reduce((e, t) => e + (t.deferred || 0), 0) || 0, d = a?.items.reduce((e, t) => e + (t.review_count || 0), 0) || 0;
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "upgradeRepairs",
 		title: J("settings:upgradeRepairs.title"),
-		aside: /* @__PURE__ */ (0, $.jsx)(yt, {
+		aside: /* @__PURE__ */ (0, $.jsx)(bt, {
 			tone: o === "failed" ? "error" : o === "running" ? "progress" : o === "review" ? "warning" : o === "complete" ? "success" : "neutral",
 			children: /* @__PURE__ */ (0, $.jsx)("span", {
 				"data-copy-key": `upgradeRepairs.${o}.status`,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				children: Ms[o] || J("settings:shared.notFound")
-========
-				children: Rs[o] || J("settings:shared.notFound")
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				children: Vs[o] || J("settings:shared.notFound")
 			}, o)
 		}),
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(be, { children: [
-				/* @__PURE__ */ (0, $.jsx)(j, {
+			/* @__PURE__ */ (0, $.jsxs)(xe, { children: [
+				/* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:upgradeRepairs.toDo"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: /* @__PURE__ */ (0, $.jsx)("span", { children: Ns(c) })
+					children: /* @__PURE__ */ (0, $.jsx)("span", { children: Hs(c) })
 				}),
-				/* @__PURE__ */ (0, $.jsx)(j, {
+				/* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:shared.failed"),
-					children: /* @__PURE__ */ (0, $.jsx)("span", { children: Ns(l) })
+					children: /* @__PURE__ */ (0, $.jsx)("span", { children: Hs(l) })
 				}),
-				u ? /* @__PURE__ */ (0, $.jsx)(j, {
+				u ? /* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:upgradeRepairs.deferred"),
-					children: /* @__PURE__ */ (0, $.jsx)("span", { children: Ns(u) })
+					children: /* @__PURE__ */ (0, $.jsx)("span", { children: Hs(u) })
 				}) : null,
-				/* @__PURE__ */ (0, $.jsx)(j, {
+				/* @__PURE__ */ (0, $.jsx)(A, {
 					term: J("settings:upgradeRepairs.toReview"),
-					children: /* @__PURE__ */ (0, $.jsx)("span", { children: Ns(d) })
-========
-					children: /* @__PURE__ */ (0, $.jsx)("span", { children: zs(c) })
-				}),
-				/* @__PURE__ */ (0, $.jsx)(j, {
-					term: J("settings:shared.failed"),
-					children: /* @__PURE__ */ (0, $.jsx)("span", { children: zs(l) })
-				}),
-				u ? /* @__PURE__ */ (0, $.jsx)(j, {
-					term: J("settings:upgradeRepairs.deferred"),
-					children: /* @__PURE__ */ (0, $.jsx)("span", { children: zs(u) })
-				}) : null,
-				/* @__PURE__ */ (0, $.jsx)(j, {
-					term: J("settings:upgradeRepairs.toReview"),
-					children: /* @__PURE__ */ (0, $.jsx)("span", { children: zs(d) })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					children: /* @__PURE__ */ (0, $.jsx)("span", { children: Hs(d) })
 				})
 			] }),
-			s && !i.error ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:upgradeRepairs.capacityReady") }) }) : a?.message || i.error ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(A, { children: i.error || G(a, "message") }) }) : null,
-			o === "running" ? /* @__PURE__ */ (0, $.jsxs)(V, { children: [/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:upgradeRepairs.runningHelp") }), /* @__PURE__ */ (0, $.jsx)(St, {})] }) : null,
-			o === "deferred" ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:upgradeRepairs.deferredHelp") }) }) : null,
-			/* @__PURE__ */ (0, $.jsxs)(M, {
-				status: d ? /* @__PURE__ */ (0, $.jsx)(ge, {
+			s && !i.error ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:upgradeRepairs.capacityReady") }) }) : a?.message || i.error ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(k, { children: i.error || G(a, "message") }) }) : null,
+			o === "running" ? /* @__PURE__ */ (0, $.jsxs)(B, { children: [/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:upgradeRepairs.runningHelp") }), /* @__PURE__ */ (0, $.jsx)(Ct, {})] }) : null,
+			o === "deferred" ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:upgradeRepairs.deferredHelp") }) }) : null,
+			/* @__PURE__ */ (0, $.jsxs)(j, {
+				status: d ? /* @__PURE__ */ (0, $.jsx)(_e, {
 					href: "/api/configuration/upgrade-repairs/review",
 					children: J("settings:upgradeRepairs.downloadReviewLog")
 				}) : null,
-				children: [/* @__PURE__ */ (0, $.jsx)(Ae, {
-					href: Xe,
+				children: [/* @__PURE__ */ (0, $.jsx)(je, {
+					href: Ze,
 					size: "small",
 					trailingIcon: Cn,
 					children: J("settings:upgradeRepairs.repairCenterLink")
@@ -4340,20 +3783,12 @@ function Bs({ lastCapacityCheckPassed: e = !1 } = {}) {
 	});
 }
 // src/react/settings/maintenance-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Fs = [
-========
-var Vs = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Ws = [
 	["6", J("settings:automaticUpdates.every6Hours")],
 	["24", J("settings:automaticUpdates.daily")],
 	["168", J("settings:automaticUpdates.weekly")]
 ];
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Is({ entry: e, children: t }) {
-========
-function Hs({ entry: e, children: t }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Gs({ entry: e, children: t }) {
 	return /* @__PURE__ */ (0, $.jsxs)("section", {
 		id: e.id,
 		"aria-labelledby": `${e.id}-title`,
@@ -4368,11 +3803,7 @@ function Hs({ entry: e, children: t }) {
 		})]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Ls({ data: e, receipt: t, reopenTutorial: n, active: r }) {
-========
-function Us({ data: e, receipt: t, reopenTutorial: n, active: r }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Ks({ data: e, receipt: t, reopenTutorial: n, active: r }) {
 	let i = {
 		id: "maintenance-updates",
 		label: J("settings:maintenanceGroups.updates")
@@ -4395,44 +3826,26 @@ function Us({ data: e, receipt: t, reopenTutorial: n, active: r }) {
 			label: J("settings:uninstall.title")
 		}] : []
 	];
-	return /* @__PURE__ */ (0, $.jsxs)(ot, {
+	return /* @__PURE__ */ (0, $.jsxs)(st, {
 		inline: !0,
 		label: J("settings:configurationPage.contents"),
 		entries: c,
 		children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			/* @__PURE__ */ (0, $.jsxs)(Is, {
+			/* @__PURE__ */ (0, $.jsxs)(Gs, {
 				entry: i,
 				children: [
-					e.updates ? /* @__PURE__ */ (0, $.jsx)(bo, {
+					e.updates ? /* @__PURE__ */ (0, $.jsx)(Oo, {
 						initial: e.updates,
 						initialJob: e.update_job
 					}) : null,
-					e.automatic_updates ? /* @__PURE__ */ (0, $.jsx)(zs, {
+					e.automatic_updates ? /* @__PURE__ */ (0, $.jsx)(Js, {
 						initial: e.automatic_updates,
 						receipt: t
 					}) : null,
-					/* @__PURE__ */ (0, $.jsx)(Ps, { lastCapacityCheckPassed: e.storage?.budget?.last_check?.paused === !1 })
+					/* @__PURE__ */ (0, $.jsx)(Us, { lastCapacityCheckPassed: e.storage?.budget?.last_check?.paused === !1 })
 				]
 			}),
-			/* @__PURE__ */ (0, $.jsxs)(Is, {
-========
-			/* @__PURE__ */ (0, $.jsxs)(Hs, {
-				entry: i,
-				children: [
-					e.updates ? /* @__PURE__ */ (0, $.jsx)(To, {
-						initial: e.updates,
-						initialJob: e.update_job
-					}) : null,
-					e.automatic_updates ? /* @__PURE__ */ (0, $.jsx)(Gs, {
-						initial: e.automatic_updates,
-						receipt: t
-					}) : null,
-					/* @__PURE__ */ (0, $.jsx)(Bs, { lastCapacityCheckPassed: e.storage?.budget?.last_check?.paused === !1 })
-				]
-			}),
-			/* @__PURE__ */ (0, $.jsxs)(Hs, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			/* @__PURE__ */ (0, $.jsxs)(Gs, {
 				entry: a,
 				children: [
 					/* @__PURE__ */ (0, $.jsx)(no, {
@@ -4440,93 +3853,57 @@ function Us({ data: e, receipt: t, reopenTutorial: n, active: r }) {
 						initial: e.startup,
 						receipt: t
 					}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					e.storage ? /* @__PURE__ */ (0, $.jsx)(ao, { receipt: t }) : null,
-					e.storage ? /* @__PURE__ */ (0, $.jsx)(js, {
-========
-					e.storage ? /* @__PURE__ */ (0, $.jsx)(Ls, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					e.storage ? /* @__PURE__ */ (0, $.jsx)(mo, { receipt: t }) : null,
+					e.storage ? /* @__PURE__ */ (0, $.jsx)(Bs, {
 						initial: e.storage,
 						receipt: t,
 						active: r
 					}) : null,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					/* @__PURE__ */ (0, $.jsx)(Bs, {
+					/* @__PURE__ */ (0, $.jsx)(Ys, {
 						facts: e.facts,
 						receipt: t
 					}),
-					/* @__PURE__ */ (0, $.jsx)(Rs, {
-========
-					/* @__PURE__ */ (0, $.jsx)(Ks, {
-						facts: e.facts,
-						receipt: t
-					}),
-					/* @__PURE__ */ (0, $.jsx)(Ws, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					/* @__PURE__ */ (0, $.jsx)(qs, {
 						receipt: t,
 						reopenTutorial: n
 					})
 				]
 			}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			e.storage ? /* @__PURE__ */ (0, $.jsxs)(Is, {
+			e.storage ? /* @__PURE__ */ (0, $.jsxs)(Gs, {
 				entry: o,
-				children: [/* @__PURE__ */ (0, $.jsx)(no, { receipt: t }), /* @__PURE__ */ (0, $.jsx)(Eo, { receipt: t })]
+				children: [/* @__PURE__ */ (0, $.jsx)(uo, { receipt: t }), /* @__PURE__ */ (0, $.jsx)(Po, { receipt: t })]
 			}) : null,
-			/* @__PURE__ */ (0, $.jsxs)(Is, {
-========
-			e.storage ? /* @__PURE__ */ (0, $.jsxs)(Hs, {
-				entry: o,
-				children: [/* @__PURE__ */ (0, $.jsx)(uo, { receipt: t }), /* @__PURE__ */ (0, $.jsx)(jo, { receipt: t })]
-			}) : null,
-			/* @__PURE__ */ (0, $.jsxs)(Hs, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			/* @__PURE__ */ (0, $.jsxs)(Gs, {
 				entry: s,
-				children: [e.remote_reporting ? /* @__PURE__ */ (0, $.jsx)(L, {
+				children: [e.remote_reporting ? /* @__PURE__ */ (0, $.jsx)(I, {
 					guide: "diagnostics-reporting",
 					title: J("settings:dataSharing.diagnosticsTitle"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: /* @__PURE__ */ (0, $.jsx)(Vo, {
-========
-					children: /* @__PURE__ */ (0, $.jsx)(Ko, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					children: /* @__PURE__ */ (0, $.jsx)(Yo, {
 						initial: e.remote_reporting,
 						receipt: t
 					})
-				}) : null, /* @__PURE__ */ (0, $.jsx)(L, {
+				}) : null, /* @__PURE__ */ (0, $.jsx)(I, {
 					id: "librarySharing",
 					guide: "reporting",
 					title: J("settings:dataSharing.communityTitle"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: /* @__PURE__ */ (0, $.jsx)(zo, {
-========
-					children: /* @__PURE__ */ (0, $.jsx)(Wo, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					children: /* @__PURE__ */ (0, $.jsx)(qo, {
 						active: r,
 						receipt: t
 					})
 				})]
 			}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			e.uninstall ? /* @__PURE__ */ (0, $.jsx)(Vs, {
-========
-			e.uninstall ? /* @__PURE__ */ (0, $.jsx)(qs, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			e.uninstall ? /* @__PURE__ */ (0, $.jsx)(Xs, {
 				uninstall: e.uninstall,
 				receipt: t
 			}) : null
 		]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Rs({ reopenTutorial: e }) {
-========
-function Ws({ reopenTutorial: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function qs({ reopenTutorial: e }) {
 	return /* @__PURE__ */ (0, $.jsx)("section", {
 		"aria-label": J("settings:tour.guidedTour"),
 		className: "w-full",
-		children: /* @__PURE__ */ (0, $.jsx)(pt, { children: /* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+		children: /* @__PURE__ */ (0, $.jsx)(mt, { children: /* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 			label: J("settings:tour.guidedTour"),
 			description: J("settings:tour.reopenDescription"),
 			children: /* @__PURE__ */ (0, $.jsx)(m, {
@@ -4537,72 +3914,62 @@ function Ws({ reopenTutorial: e }) {
 		}) }) })
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function zs({ initial: e, receipt: t }) {
-	let [n, r] = (0, Z.useState)(e.mode), [i, a] = (0, Z.useState)(e.interval_hours), o = Y(e.error ? K(e, "error") : e.error), s = (r) => {
-		r.preventDefault(), e.available && o.run("save", (e) => W("/api/configuration/automatic-updates", {
-========
-function Gs({ initial: e, receipt: t }) {
+function Js({ initial: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(e.mode), [i, a] = (0, Z.useState)(e.interval_hours), o = Y(e.error ? G(e, "error") : e.error), s = (r) => {
 		r.preventDefault(), e.available && o.run("save", (e) => U("/api/configuration/automatic-updates", {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 			mode: n,
 			interval_hours: i
 		}, "POST", e), () => t(J("settings:shared.settingsSaved")));
 	}, c = e.available ? e.download_available ? J("settings:automaticUpdates.confirmInstall") : void 0 : J("settings:automaticUpdates.needsTray");
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "automaticUpdates",
 		guide: "automatic-updates",
 		title: J("settings:autoUpdate.title"),
 		onSubmit: s,
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(I, { children: [
-				/* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsxs)(F, { children: [
+				/* @__PURE__ */ (0, $.jsx)(z, {
 					label: J("settings:autoUpdate.autoCheck"),
 					description: J("settings:autoUpdate.autoCheckHelp"),
-					children: /* @__PURE__ */ (0, $.jsx)(H, {
+					children: /* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": J("settings:autoUpdate.autoCheck"),
 						isSelected: n !== "off",
 						isDisabled: !e.available,
 						onChange: (e) => r(e ? "check" : "off")
 					})
 				}),
-				/* @__PURE__ */ (0, $.jsx)(B, {
+				/* @__PURE__ */ (0, $.jsx)(z, {
 					label: J("settings:autoUpdate.autoDownload"),
 					description: J("settings:autoUpdate.autoDownloadHelp"),
-					children: /* @__PURE__ */ (0, $.jsx)(H, {
+					children: /* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": J("settings:autoUpdate.autoDownload"),
 						isSelected: n === "download",
 						isDisabled: !e.available || !e.download_available || n === "off",
 						onChange: (e) => r(e ? "download" : "check")
 					})
 				}),
-				/* @__PURE__ */ (0, $.jsx)(B, {
+				/* @__PURE__ */ (0, $.jsx)(z, {
 					label: J("settings:autoUpdate.frequency"),
 					description: c,
-					children: /* @__PURE__ */ (0, $.jsx)(R, {
+					children: /* @__PURE__ */ (0, $.jsx)(L, {
 						"aria-label": J("settings:autoUpdate.frequency"),
 						selectedKey: String(i),
 						isDisabled: !e.available || n === "off",
 						onSelectionChange: (e) => {
 							e !== null && a(Number(e));
 						},
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-						children: Fs.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
-========
-						children: Vs.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						children: Ws.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(R, {
 							id: e,
 							children: t
 						}, e))
 					})
 				})
 			] }),
-			o.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			o.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(A, { children: o.error })
+				children: /* @__PURE__ */ (0, $.jsx)(k, { children: o.error })
 			}) : null,
-			/* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
+			/* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(m, {
 				type: "submit",
 				disabled: !e.available,
 				...W(o.busy === "save"),
@@ -4611,20 +3978,14 @@ function Gs({ initial: e, receipt: t }) {
 		]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Bs({ facts: e, receipt: t }) {
-	let [n, r] = (0, Z.useState)(null), i = n ?? e, a = Y(), o = (e) => void a.run(e, (t) => W("/api/configuration/media-tools", { tool: e }, "POST", t), (e) => {
-		r(e.facts.map(Pn)), t(dr(e) || e.message);
-========
-function Ks({ facts: e, receipt: t }) {
+function Ys({ facts: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(null), i = n ?? e, a = Y(), o = (e) => void a.run(e, (t) => U("/api/configuration/media-tools", { tool: e }, "POST", t), (e) => {
 		r(e.facts.map(Fn)), t(dr(e) || e.message);
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 	});
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "facts",
 		title: J("settings:runtimeInfo.title"),
-		children: [/* @__PURE__ */ (0, $.jsx)(be, { children: i.map(({ term: e, value: t, install_tool: n, download_url: r, download_label: i }) => /* @__PURE__ */ (0, $.jsx)(j, {
+		children: [/* @__PURE__ */ (0, $.jsx)(xe, { children: i.map(({ term: e, value: t, install_tool: n, download_url: r, download_label: i }) => /* @__PURE__ */ (0, $.jsx)(A, {
 			term: e,
 			children: n ? /* @__PURE__ */ (0, $.jsxs)("span", {
 				className: "flex min-w-0 items-center gap-3",
@@ -4638,20 +3999,15 @@ function Ks({ facts: e, receipt: t }) {
 					...W(a.busy === n),
 					children: J("settings:shared.install")
 				})]
-			}) : /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [t, r ? /* @__PURE__ */ (0, $.jsx)(ge, {
+			}) : /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [t, r ? /* @__PURE__ */ (0, $.jsx)(_e, {
 				href: r,
 				children: i
 			}) : null] })
-		}, e)) }), a.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: a.error }) : null]
+		}, e)) }), a.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: a.error }) : null]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Vs({ uninstall: e, receipt: t }) {
-	let [n, r] = (0, Z.useState)(!1), [i, a] = (0, Z.useState)(""), o = () => void Ut({
-========
-function qs({ uninstall: e, receipt: t }) {
+function Xs({ uninstall: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(!1), [i, a] = (0, Z.useState)(""), o = () => void Wt({
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		title: J("settings:uninstall.title"),
 		holdToConfirm: !0,
 		danger: !0,
@@ -4665,34 +4021,34 @@ function qs({ uninstall: e, receipt: t }) {
 			a(dr(e) || e.message);
 		}
 	}), s = i || G(e, "message"), c = [.../* @__PURE__ */ new Set([e.data_root, ...e.directories])];
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "uninstallPeach",
 		guide: "uninstall",
 		title: J("settings:uninstall.title"),
 		children: [
-			e.available ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:uninstall.help") }) }) : null,
-			/* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+			e.available ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:uninstall.help") }) }) : null,
+			/* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:uninstall.full"),
 				description: J("settings:uninstall.fullHelp"),
-				children: /* @__PURE__ */ (0, $.jsx)(H, {
+				children: /* @__PURE__ */ (0, $.jsx)(V, {
 					"aria-label": J("settings:uninstall.full"),
 					isSelected: n,
 					isDisabled: !e.full_available || !!i,
 					onChange: r
 				})
 			}) }),
-			/* @__PURE__ */ (0, $.jsx)(V, {
+			/* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(le, {
+				children: /* @__PURE__ */ (0, $.jsx)(ue, {
 					summary: J("settings:shared.dataDirectory"),
-					children: c.map((e) => /* @__PURE__ */ (0, $.jsx)(Ue, {
+					children: c.map((e) => /* @__PURE__ */ (0, $.jsx)(We, {
 						path: e,
 						className: "text-body-2-regular text-text-secondary",
 						onRevealed: t
 					}, e))
 				})
 			}),
-			/* @__PURE__ */ (0, $.jsx)(M, {
+			/* @__PURE__ */ (0, $.jsx)(j, {
 				status: s ? /* @__PURE__ */ (0, $.jsx)("p", {
 					role: i ? "status" : void 0,
 					children: s
@@ -4708,11 +4064,7 @@ function qs({ uninstall: e, receipt: t }) {
 	});
 }
 // src/react/restart-redirect.ts
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Hs = 8e3, Us = [
-========
-var Js = 8e3, Ys = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Zs = 8e3, Qs = [
 	{
 		name: J("settings:cloudDriveGuide.tierHdd"),
 		cache: "10–20 GiB",
@@ -4731,50 +4083,34 @@ var Js = 8e3, Ys = [
 		read: "256 / 128 KB",
 		task: J("settings:cloudDriveGuide.tasksTwoPlus")
 	}
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-], Ws = [
-========
-], Xs = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+], $s = [
 	["cache", J("settings:cloudDriveGuide.cacheLimit")],
 	["read", J("settings:cloudDriveGuide.readLength")],
 	["task", J("settings:cloudDriveGuide.concurrentVideos")]
 ];
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Gs() {
-========
-function Zs() {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function ec() {
 	return /* @__PURE__ */ (0, $.jsx)("div", {
 		className: "@container flex flex-col gap-3",
-		children: /* @__PURE__ */ (0, $.jsxs)(le, {
+		children: /* @__PURE__ */ (0, $.jsxs)(ue, {
 			summary: J("settings:cloudDriveGuide.title"),
 			children: [
-				/* @__PURE__ */ (0, $.jsxs)(N, { children: [J("settings:cloudDriveGuide.mountFirst"), /* @__PURE__ */ (0, $.jsx)(ge, {
+				/* @__PURE__ */ (0, $.jsxs)(M, { children: [J("settings:cloudDriveGuide.mountFirst"), /* @__PURE__ */ (0, $.jsx)(_e, {
 					href: "https://www.clouddrive2.com/help.html",
 					children: J("settings:cloudDriveGuide.mountHelp")
 				})] }),
-				/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:cloudDriveGuide.cacheHelp") }),
-				/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:cloudDriveGuide.writeAccess") }),
+				/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:cloudDriveGuide.cacheHelp") }),
+				/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:cloudDriveGuide.writeAccess") }),
 				/* @__PURE__ */ (0, $.jsx)("ul", {
 					"aria-label": J("settings:cloudDriveGuide.tiersLabel"),
 					className: "flex flex-col gap-2",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: Us.map((e) => /* @__PURE__ */ (0, $.jsxs)("li", {
-========
-					children: Ys.map((e) => /* @__PURE__ */ (0, $.jsxs)("li", {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					children: Qs.map((e) => /* @__PURE__ */ (0, $.jsxs)("li", {
 						className: "flex flex-col gap-2 rounded-2lg border border-separator-border bg-background-primary-default p-3",
 						children: [/* @__PURE__ */ (0, $.jsx)("p", {
 							className: "text-body-medium text-text-primary",
 							children: e.name
 						}), /* @__PURE__ */ (0, $.jsx)("dl", {
 							className: "inline-grid grid-cols-1 gap-2 @md:grid-cols-3",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							children: Ws.map(([t, n]) => /* @__PURE__ */ (0, $.jsxs)("div", {
-========
-							children: Xs.map(([t, n]) => /* @__PURE__ */ (0, $.jsxs)("div", {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+							children: $s.map(([t, n]) => /* @__PURE__ */ (0, $.jsxs)("div", {
 								className: "flex flex-col",
 								children: [/* @__PURE__ */ (0, $.jsx)("dt", {
 									className: "text-caption-1-regular text-text-secondary",
@@ -4795,7 +4131,7 @@ function Zs() {
 						/* @__PURE__ */ (0, $.jsx)("li", { children: J("settings:cloudDriveGuide.cacheTypesTip") })
 					]
 				}),
-				/* @__PURE__ */ (0, $.jsx)(N, { children: /* @__PURE__ */ (0, $.jsx)(ge, {
+				/* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(_e, {
 					href: "https://github.com/peach-mitao/peach/blob/master/docs/CLOUDDRIVE.md",
 					children: J("settings:cloudDriveGuide.fullGuide")
 				}) })
@@ -4804,25 +4140,15 @@ function Zs() {
 	});
 }
 // src/react/settings/cloud-proxy-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Ks = "/api/configuration/cloud-proxies", qs = [
-========
-var Qs = "/api/configuration/cloud-proxies", $s = (e) => e.mode === "http" || e.mode === "socks5", ec = (e) => !e.trim() || e.trim().length > 253 || /[/@?#\s]/.test(e.trim()) ? q("errors.clouddriveProxy.hostOnly", "") : "", tc = (e) => !/^\d+$/.test(e.trim()) || Number(e) < 1 || Number(e) > 65535 ? q("errors.clouddriveProxy.portRange", "") : "", nc = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var tc = "/api/configuration/cloud-proxies", nc = (e) => e.mode === "http" || e.mode === "socks5", rc = (e) => !e.trim() || e.trim().length > 253 || /[/@?#\s]/.test(e.trim()) ? q("errors.clouddriveProxy.hostOnly", "") : "", ic = (e) => !/^\d+$/.test(e.trim()) || Number(e) < 1 || Number(e) > 65535 ? q("errors.clouddriveProxy.portRange", "") : "", ac = [
 	["direct", J("settings:cloudProxy.direct")],
 	["system", J("settings:shared.followSystem")],
 	["http", J("settings:cloudProxy.http")],
 	["socks5", J("settings:cloudProxy.socks5")]
 ];
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Js({ receipt: e }) {
+function oc({ receipt: e }) {
 	let [t, n] = (0, Z.useState)(null), [r, i] = (0, Z.useState)(!0), a = (0, Z.useRef)(/* @__PURE__ */ new Set()), o = (0, Z.useRef)(/* @__PURE__ */ new Set()), [s, c] = (0, Z.useState)(!1), l = (0, Z.useRef)(() => void 0), u = Y(), { checked: d, checkFailed: f } = Wr(), p = (e) => {
-		o.current.size || u.run("refresh", (e) => U(Ks, e), (t) => {
-========
-function rc({ receipt: e }) {
-	let [t, n] = (0, Z.useState)(null), [r, i] = (0, Z.useState)(!0), a = (0, Z.useRef)(/* @__PURE__ */ new Set()), o = (0, Z.useRef)(/* @__PURE__ */ new Set()), [s, c] = (0, Z.useState)(!1), l = (0, Z.useRef)(() => void 0), u = Y(), { checked: d, checkFailed: f } = Wr(), p = (e) => {
-		o.current.size || u.run("refresh", (e) => Mt(Qs, e), (t) => {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		o.current.size || u.run("refresh", (e) => H(tc, e), (t) => {
 			a.current.clear(), n(t), i(!1), e && d(J("settings:cloudProxy.refreshed"));
 		}, (t) => {
 			let n = t instanceof Error ? t.message : J("settings:cloudProxy.loadFailed");
@@ -4843,46 +4169,42 @@ function rc({ receipt: e }) {
 			unlinked: t.unlinked?.length ?? 0,
 			accounts: t.accounts.map((t) => [e(t.data), e(t.api)])
 		});
-	}, [t]), r ? /* @__PURE__ */ (0, $.jsx)(at, {
+	}, [t]), r ? /* @__PURE__ */ (0, $.jsx)(ot, {
 		label: J("settings:cloudProxy.loading"),
 		html: Bt
-	}) : /* @__PURE__ */ (0, $.jsxs)(L, {
+	}) : /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "cloud-proxy",
 		title: J("settings:cloudProxy.title"),
-		children: [/* @__PURE__ */ (0, $.jsxs)(V, { children: [/* @__PURE__ */ (0, $.jsx)(N, { children: _ }), /* @__PURE__ */ (0, $.jsxs)("div", {
+		children: [/* @__PURE__ */ (0, $.jsxs)(B, { children: [/* @__PURE__ */ (0, $.jsx)(M, { children: _ }), /* @__PURE__ */ (0, $.jsxs)("div", {
 			className: "flex min-w-0 flex-col gap-4",
 			children: [
-				u.error ? /* @__PURE__ */ (0, $.jsx)(F, {
+				u.error ? /* @__PURE__ */ (0, $.jsx)(P, {
 					tone: "error",
 					title: J("settings:cloudProxy.readFailedTitle"),
-					action: /* @__PURE__ */ (0, $.jsx)(Ae, {
+					action: /* @__PURE__ */ (0, $.jsx)(je, {
 						href: "/settings/downloads",
 						size: "small",
 						children: J("settings:cloudProxy.downloadSettingsLink")
 					}),
 					children: u.error
 				}) : null,
-				t?.configured === !1 ? /* @__PURE__ */ (0, $.jsx)(F, {
+				t?.configured === !1 ? /* @__PURE__ */ (0, $.jsx)(P, {
 					tone: "neutral",
-					action: /* @__PURE__ */ (0, $.jsx)(Ae, {
+					action: /* @__PURE__ */ (0, $.jsx)(je, {
 						href: "/settings/downloads",
 						size: "small",
 						children: J("settings:cloudProxy.downloadSettingsLink")
 					}),
 					children: J("settings:cloudProxy.notConfigured")
-				}) : t?.accounts.length === 0 && !t.unlinked?.length ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:cloudProxy.noLibraries") }) : null,
+				}) : t?.accounts.length === 0 && !t.unlinked?.length ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:cloudProxy.noLibraries") }) : null,
 				t?.unlinked?.map((e) => /* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex min-w-0 flex-col gap-1",
-					children: [/* @__PURE__ */ (0, $.jsx)(xe, { children: /* @__PURE__ */ (0, $.jsxs)("span", {
+					children: [/* @__PURE__ */ (0, $.jsx)(Se, { children: /* @__PURE__ */ (0, $.jsxs)("span", {
 						className: "inline-flex items-center gap-2",
-						children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: ii(e.location) }), e.name]
-					}) }), /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:cloudProxy.unmatched") })]
+						children: [/* @__PURE__ */ (0, $.jsx)(yt, { mark: ii(e.location) }), e.name]
+					}) }), /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:cloudProxy.unmatched") })]
 				}, e.root)),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				t?.accounts.map((t) => /* @__PURE__ */ (0, $.jsx)(Ys, {
-========
-				t?.accounts.map((t) => /* @__PURE__ */ (0, $.jsx)(ic, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				t?.accounts.map((t) => /* @__PURE__ */ (0, $.jsx)(sc, {
 					initial: t,
 					receipt: e,
 					onDirty: () => a.current.add(t.id),
@@ -4897,7 +4219,7 @@ function rc({ receipt: e }) {
 					}
 				}, t.id + t.revision))
 			]
-		})] }), /* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
+		})] }), /* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(m, {
 			variant: "secondary",
 			disabled: s,
 			onClick: () => p(!0),
@@ -4906,13 +4228,8 @@ function rc({ receipt: e }) {
 		}) })]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Ys({ initial: e, receipt: t, onDirty: n, onSaved: r, onSaving: i }) {
-	let [a, o] = (0, Z.useState)(e), [s, c] = (0, Z.useState)([]), l = jn(a.libraries?.map((e) => e.name) ?? []) || a.name, u = Y(), d = (e, t) => {
-========
-function ic({ initial: e, receipt: t, onDirty: n, onSaved: r, onSaving: i }) {
+function sc({ initial: e, receipt: t, onDirty: n, onSaved: r, onSaving: i }) {
 	let [a, o] = (0, Z.useState)(e), [s, c] = (0, Z.useState)([]), [l, u] = (0, Z.useState)({}), d = Ta(), f = Mn(a.libraries?.map((e) => e.name) ?? []) || a.name, p = Y(), h = (e, t) => {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		o((n) => ({
 			...n,
 			[e]: t
@@ -4921,20 +4238,16 @@ function ic({ initial: e, receipt: t, onDirty: n, onSaved: r, onSaving: i }) {
 	return /* @__PURE__ */ (0, $.jsxs)("form", {
 		"aria-label": J("settings:cloudProxy.accountForm", { name: f }),
 		onSubmit: (e) => {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			e.preventDefault(), i(!0), u.run("save", (e) => W(Ks, {
-========
 			e.preventDefault();
 			let n = {}, l = {};
 			for (let e of s) {
 				let t = a[e];
-				$s(t) && (n[`${e}-host`] = ec(t.host), n[`${e}-port`] = tc(g(e))), l[e] = {
+				nc(t) && (n[`${e}-host`] = rc(t.host), n[`${e}-port`] = ic(g(e))), l[e] = {
 					...t,
-					port: $s(t) ? Number(g(e)) : t.port
+					port: nc(t) ? Number(g(e)) : t.port
 				};
 			}
-			d.check(e.currentTarget, n) && (i(!0), p.run("save", (e) => U(Qs, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			d.check(e.currentTarget, n) && (i(!0), p.run("save", (e) => U(tc, {
 				id: a.id,
 				revision: a.revision,
 				...l
@@ -4944,30 +4257,16 @@ function ic({ initial: e, receipt: t, onDirty: n, onSaved: r, onSaving: i }) {
 		},
 		className: "flex min-w-0 flex-col gap-4 border-t border-separator-border pt-4",
 		children: [
-			/* @__PURE__ */ (0, $.jsx)(xe, { children: /* @__PURE__ */ (0, $.jsxs)("span", {
+			/* @__PURE__ */ (0, $.jsx)(Se, { children: /* @__PURE__ */ (0, $.jsxs)("span", {
 				className: "inline-flex items-center gap-2",
-				children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: ii(a.libraries?.[0]?.location || (a.cloud === "115open" ? "115" : a.cloud.toLowerCase())) }), f]
+				children: [/* @__PURE__ */ (0, $.jsx)(yt, { mark: ii(a.libraries?.[0]?.location || (a.cloud === "115open" ? "115" : a.cloud.toLowerCase())) }), f]
 			}) }),
-			/* @__PURE__ */ (0, $.jsxs)(N, { children: [
+			/* @__PURE__ */ (0, $.jsxs)(M, { children: [
 				a.name,
 				" · ",
 				a.path
 			] }),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			/* @__PURE__ */ (0, $.jsx)(Xs, {
-				label: J("settings:cloudProxy.dataProxy"),
-				value: a.data,
-				disabled: !a.writable || !!u.busy,
-				onChange: (e) => d("data", e)
-			}),
-			/* @__PURE__ */ (0, $.jsx)(Xs, {
-				label: J("settings:cloudProxy.apiProxy"),
-				value: a.api,
-				disabled: !a.writable || !!u.busy,
-				onChange: (e) => d("api", e)
-			}),
-========
-			["data", "api"].map((e) => /* @__PURE__ */ (0, $.jsx)(ac, {
+			["data", "api"].map((e) => /* @__PURE__ */ (0, $.jsx)(cc, {
 				kind: e,
 				label: J(e === "data" ? "settings:cloudProxy.dataProxy" : "settings:cloudProxy.apiProxy"),
 				value: a[e],
@@ -4982,9 +4281,8 @@ function ic({ initial: e, receipt: t, onDirty: n, onSaved: r, onSaving: i }) {
 					})), h(e, a[e]);
 				}
 			}, e)),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-			a.writable ? null : /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:cloudProxy.needsWritePermission") }),
-			p.error ? /* @__PURE__ */ (0, $.jsx)(F, {
+			a.writable ? null : /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:cloudProxy.needsWritePermission") }),
+			p.error ? /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "error",
 				title: J("settings:shared.notSaved"),
 				children: p.error
@@ -5001,18 +4299,13 @@ function ic({ initial: e, receipt: t, onDirty: n, onSaved: r, onSaving: i }) {
 		]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Xs({ label: e, value: t, disabled: n, onChange: r }) {
-	let i = t.mode === "http" || t.mode === "socks5";
-========
-function ac({ kind: e, label: t, value: n, port: r, disabled: i, validation: a, onChange: o, onPortChange: s }) {
-	let c = $s(n), l = `${e}-host`, u = `${e}-port`;
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function cc({ kind: e, label: t, value: n, port: r, disabled: i, validation: a, onChange: o, onPortChange: s }) {
+	let c = nc(n), l = `${e}-host`, u = `${e}-port`;
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		className: "flex min-w-0 flex-col gap-3",
 		children: [
-			/* @__PURE__ */ (0, $.jsx)(xe, { children: t }),
-			/* @__PURE__ */ (0, $.jsxs)(R, {
+			/* @__PURE__ */ (0, $.jsx)(Se, { children: t }),
+			/* @__PURE__ */ (0, $.jsxs)(L, {
 				"aria-label": t,
 				selectedKey: n.mode,
 				isDisabled: i,
@@ -5022,21 +4315,17 @@ function ac({ kind: e, label: t, value: n, port: r, disabled: i, validation: a, 
 						mode: String(e)
 					}));
 				},
-				children: [n.mode === "unknown" ? /* @__PURE__ */ (0, $.jsx)(z, {
+				children: [n.mode === "unknown" ? /* @__PURE__ */ (0, $.jsx)(R, {
 					id: "unknown",
 					children: J("settings:cloudProxy.unknownType")
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				}) : null, qs.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
-========
-				}) : null, nc.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				}) : null, ac.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(R, {
 					id: e,
 					children: t
 				}, e))]
 			}),
 			c ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsxs)("div", {
 				className: "flex flex-wrap gap-3",
-				children: [/* @__PURE__ */ (0, $.jsx)(P, {
+				children: [/* @__PURE__ */ (0, $.jsx)(N, {
 					className: "min-w-40 flex-1",
 					label: J("settings:cloudProxy.host", { label: t }),
 					value: n.host,
@@ -5046,14 +4335,14 @@ function ac({ kind: e, label: t, value: n, port: r, disabled: i, validation: a, 
 					validationBehavior: "aria",
 					isInvalid: !!a.errors[l],
 					hint: a.errors[l],
-					onBlur: () => a.update(l, ec(n.host)),
+					onBlur: () => a.update(l, rc(n.host)),
 					onChange: (e) => {
 						o({
 							...n,
 							host: e
 						}), a.update(l);
 					}
-				}), /* @__PURE__ */ (0, $.jsx)(P, {
+				}), /* @__PURE__ */ (0, $.jsx)(N, {
 					className: "w-full sm:w-28",
 					label: J("settings:cloudProxy.port", { label: t }),
 					value: r,
@@ -5063,15 +4352,15 @@ function ac({ kind: e, label: t, value: n, port: r, disabled: i, validation: a, 
 					validationBehavior: "aria",
 					isInvalid: !!a.errors[u],
 					hint: a.errors[u],
-					onBlur: () => a.update(u, tc(r)),
+					onBlur: () => a.update(u, ic(r)),
 					onChange: (e) => {
 						s(e), a.update(u);
 					}
 				})]
-			}), /* @__PURE__ */ (0, $.jsxs)(le, {
+			}), /* @__PURE__ */ (0, $.jsxs)(ue, {
 				summary: J("settings:cloudProxy.authentication"),
 				children: [
-					/* @__PURE__ */ (0, $.jsx)(P, {
+					/* @__PURE__ */ (0, $.jsx)(N, {
 						label: J("settings:cloudProxy.username", { label: t }),
 						value: n.username,
 						autoComplete: "off",
@@ -5081,7 +4370,7 @@ function ac({ kind: e, label: t, value: n, port: r, disabled: i, validation: a, 
 							username: e
 						})
 					}),
-					/* @__PURE__ */ (0, $.jsx)(P, {
+					/* @__PURE__ */ (0, $.jsx)(N, {
 						label: J("settings:cloudProxy.password", { label: t }),
 						type: "password",
 						value: n.password || "",
@@ -5093,7 +4382,7 @@ function ac({ kind: e, label: t, value: n, port: r, disabled: i, validation: a, 
 							password: e
 						})
 					}),
-					n.password_set ? /* @__PURE__ */ (0, $.jsx)(O, {
+					n.password_set ? /* @__PURE__ */ (0, $.jsx)(ne, {
 						isSelected: !!n.clear_password,
 						isDisabled: i,
 						onChange: (e) => o({
@@ -5108,28 +4397,23 @@ function ac({ kind: e, label: t, value: n, port: r, disabled: i, validation: a, 
 	});
 }
 // src/react/settings/code-pattern-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Zs = "^\\+{3}\\s*(?<code>FC2-PPV-\\d+)\n\\[(?<code>[A-Z]+-\\d+)\\]";
-function Qs({ receipt: e }) {
-========
-var oc = "^\\+{3}\\s*(?<code>FC2-PPV-\\d+)\n\\[(?<code>[A-Z]+-\\d+)\\]";
-function sc({ receipt: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var lc = "^\\+{3}\\s*(?<code>FC2-PPV-\\d+)\n\\[(?<code>[A-Z]+-\\d+)\\]";
+function uc({ receipt: e }) {
 	let t = X({
-		queryKey: rt,
+		queryKey: it,
 		queryFn: ({ signal: e }) => nn(e)
 	}), [n, r] = (0, Z.useState)(null), i = Y(), a = n ?? (t.data?.codePatterns ?? []).join("\n"), o = i.error || (t.error ? K(t.error) : "");
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "codes",
 		title: J("settings:codePatterns.title"),
 		onSubmit: (t) => {
 			t.preventDefault();
 			let n = a.split("\n").map((e) => e.trim()).filter(Boolean);
-			i.run("save", (e) => U(it, { codePatterns: n }, "POST", e), (t) => {
-				Jn.setQueryData(rt, t), r(null), e(J("settings:shared.settingsSaved"));
+			i.run("save", (e) => U(at, { codePatterns: n }, "POST", e), (t) => {
+				Jn.setQueryData(it, t), r(null), e(J("settings:shared.settingsSaved"));
 			});
 		},
-		children: [/* @__PURE__ */ (0, $.jsxs)(V, { children: [/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:codePatterns.help") }), /* @__PURE__ */ (0, $.jsx)(Tt, {
+		children: [/* @__PURE__ */ (0, $.jsxs)(B, { children: [/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:codePatterns.help") }), /* @__PURE__ */ (0, $.jsx)(Et, {
 			id: "codePatternSetting",
 			"aria-label": J("settings:codePatterns.title"),
 			rows: 3,
@@ -5137,17 +4421,13 @@ function sc({ receipt: e }) {
 			maxRows: 12,
 			spellCheck: "false",
 			autoComplete: "off",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			placeholder: Zs,
-========
-			placeholder: oc,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			placeholder: lc,
 			value: a,
 			isDisabled: !t.data,
 			isInvalid: !!o,
 			hint: o || void 0,
 			onChange: r
-		})] }), /* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
+		})] }), /* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(m, {
 			type: "submit",
 			...W(i.busy === "save"),
 			children: J("settings:shared.saveSettings")
@@ -5155,19 +4435,11 @@ function sc({ receipt: e }) {
 	});
 }
 // src/react/settings/service-preferences.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var $s = [
+var dc = [
 	["off", J("settings:timelineThumbnails.off")],
 	["precise", J("settings:timelineThumbnails.precise")],
 	["coarse", J("settings:timelineThumbnails.coarse")]
-], ec = [
-========
-var cc = [
-	["off", J("settings:timelineThumbnails.off")],
-	["precise", J("settings:timelineThumbnails.precise")],
-	["coarse", J("settings:timelineThumbnails.coarse")]
-], lc = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+], fc = [
 	{
 		key: "sourceBudgetRequests",
 		fallback: 6e3,
@@ -5213,61 +4485,49 @@ var cc = [
 		option: (e) => J("settings:sourceBudget.gigabyteCount", { count: e })
 	}
 ];
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function tc({ receipt: e }) {
-========
-function uc({ receipt: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function pc({ receipt: e }) {
 	let t = X({
-		queryKey: rt,
+		queryKey: it,
 		queryFn: ({ signal: e }) => nn(e)
 	}), n = Rr(), r = n.error || t.error, i = !t.data || n.isPending;
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		title: J("settings:taskSpeed.title"),
-		children: [/* @__PURE__ */ (0, $.jsxs)(I, { children: [/* @__PURE__ */ (0, $.jsx)(B, {
+		children: [/* @__PURE__ */ (0, $.jsxs)(F, { children: [/* @__PURE__ */ (0, $.jsx)(z, {
 			label: J("settings:taskSpeed.defaultSpeed"),
 			description: J("settings:taskSpeed.defaultSpeedHelp"),
-			children: /* @__PURE__ */ (0, $.jsx)(Ke, {
+			children: /* @__PURE__ */ (0, $.jsx)(qe, {
 				value: t.data?.taskSpeedMode || "standard",
 				busy: i,
 				onChange: (t) => n.mutate({ taskSpeedMode: t }, { onSuccess: () => e(J("settings:taskSpeed.saved")) })
 			})
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		}), ec.map((r) => /* @__PURE__ */ (0, $.jsx)(B, {
-========
-		}), lc.map((r) => /* @__PURE__ */ (0, $.jsx)(B, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		}), fc.map((r) => /* @__PURE__ */ (0, $.jsx)(z, {
 			label: r.label(),
 			description: r.help(),
 			children: /* @__PURE__ */ (0, $.jsx)("div", {
 				id: `${r.key}Setting`,
 				className: "shrink-0",
-				children: /* @__PURE__ */ (0, $.jsx)(R, {
+				children: /* @__PURE__ */ (0, $.jsx)(L, {
 					"aria-label": r.label(),
 					selectedKey: String(t.data?.[r.key] ?? r.fallback),
 					isDisabled: i,
 					onSelectionChange: (t) => {
 						t !== null && n.mutate({ [r.key]: Number(t) }, { onSuccess: () => e(J("settings:sourceBudget.saved")) });
 					},
-					children: r.choices.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+					children: r.choices.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 						id: String(e),
 						children: r.option(e)
 					}, e))
 				})
 			})
-		}, r.key))] }), r ? /* @__PURE__ */ (0, $.jsx)(V, {
+		}, r.key))] }), r ? /* @__PURE__ */ (0, $.jsx)(B, {
 			divided: !0,
-			children: /* @__PURE__ */ (0, $.jsx)(A, { children: K(r) })
+			children: /* @__PURE__ */ (0, $.jsx)(k, { children: K(r) })
 		}) : null]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function nc({ epoch: e = 0, disabled: t = !1 }) {
-========
-function dc({ epoch: e = 0, disabled: t = !1 }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function mc({ epoch: e = 0, disabled: t = !1 }) {
 	let n = X({
-		queryKey: bt,
+		queryKey: xt,
 		queryFn: ({ signal: e }) => an(e),
 		refetchOnMount: "always"
 	}), r = zr(), i = r.reset;
@@ -5276,78 +4536,64 @@ function dc({ epoch: e = 0, disabled: t = !1 }) {
 	}, [e, i]);
 	let a = n.data, o = r.error || n.error;
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-		/* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+		/* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 			label: J("settings:videoPreviews.timeline"),
 			description: J("settings:videoPreviews.timelineHelp"),
 			children: /* @__PURE__ */ (0, $.jsx)("div", {
 				id: "videoThumbnailSetting",
-				children: /* @__PURE__ */ (0, $.jsx)(R, {
+				children: /* @__PURE__ */ (0, $.jsx)(L, {
 					"aria-label": J("settings:timelineThumbnails.interval"),
 					selectedKey: a?.mode || "off",
 					isDisabled: t || !a || n.isFetching || r.isPending,
 					onSelectionChange: (e) => {
 						e !== null && r.mutate(String(e));
 					},
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: $s.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
-========
-					children: cc.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					children: dc.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(R, {
 						id: e,
 						children: t
 					}, e))
 				})
 			})
 		}) }),
-		r.isPending || a?.status === "running" ? /* @__PURE__ */ (0, $.jsxs)(V, {
+		r.isPending || a?.status === "running" ? /* @__PURE__ */ (0, $.jsxs)(B, {
 			divided: !0,
-			children: [r.isPending ? /* @__PURE__ */ (0, $.jsx)(Ct, {
+			children: [r.isPending ? /* @__PURE__ */ (0, $.jsx)(wt, {
 				embedded: !0,
 				kind: "gather",
 				label: J("settings:shared.saving")
-			}) : /* @__PURE__ */ (0, $.jsx)(Ct, {
+			}) : /* @__PURE__ */ (0, $.jsx)(wt, {
 				embedded: !0,
-				kind: At("timeline-thumbnails"),
+				kind: jt("timeline-thumbnails"),
 				label: J("settings:timelineThumbnails.generating")
-			}), r.isPending ? null : /* @__PURE__ */ (0, $.jsx)(St, {})]
+			}), r.isPending ? null : /* @__PURE__ */ (0, $.jsx)(Ct, {})]
 		}) : null,
-		o ? /* @__PURE__ */ (0, $.jsx)(V, {
+		o ? /* @__PURE__ */ (0, $.jsx)(B, {
 			divided: !0,
-			children: /* @__PURE__ */ (0, $.jsx)(A, { children: K(o) })
+			children: /* @__PURE__ */ (0, $.jsx)(k, { children: K(o) })
 		}) : null
 	] });
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function rc({ receipt: e }) {
-	let t = Mt();
-========
-function fc({ receipt: e }) {
+function hc({ receipt: e }) {
 	let t = Nt();
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 	(0, Z.useSyncExternalStore)(t.subscribe, t.version);
 	let n = X({
-		queryKey: rt,
+		queryKey: it,
 		queryFn: ({ signal: e }) => nn(e),
 		refetchOnMount: "always"
 	}), r = Rr(), i = n.data?.followInitialDays ?? t.value.followInitialDays, a = r.error || n.error;
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "follow-options",
 		title: J("settings:followFetch.title"),
-		children: [/* @__PURE__ */ (0, $.jsxs)(I, { children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			/* @__PURE__ */ (0, $.jsx)(ac, { kind: "follow" }),
-			/* @__PURE__ */ (0, $.jsx)(ac, { kind: "feed" }),
-========
-			/* @__PURE__ */ (0, $.jsx)(mc, { kind: "follow" }),
-			/* @__PURE__ */ (0, $.jsx)(mc, { kind: "feed" }),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-			/* @__PURE__ */ (0, $.jsx)(B, {
+		children: [/* @__PURE__ */ (0, $.jsxs)(F, { children: [
+			/* @__PURE__ */ (0, $.jsx)(_c, { kind: "follow" }),
+			/* @__PURE__ */ (0, $.jsx)(_c, { kind: "feed" }),
+			/* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:followFetch.initialRange"),
 				description: J("settings:followFetch.initialRangeHelp"),
 				children: /* @__PURE__ */ (0, $.jsx)("div", {
 					id: "followInitialDaysSetting",
 					className: "shrink-0",
-					children: /* @__PURE__ */ (0, $.jsx)(R, {
+					children: /* @__PURE__ */ (0, $.jsx)(L, {
 						"aria-label": J("settings:followFetch.initialRange"),
 						selectedKey: String(i),
 						isDisabled: n.isFetching || r.isPending,
@@ -5356,14 +4602,14 @@ function fc({ receipt: e }) {
 								typeof n.followInitialDays == "number" && (t.value.followInitialDays = n.followInitialDays), t.save(), e(J("settings:followSchedule.initialRangeSaved"));
 							} });
 						},
-						children: ye.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
+						children: be.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(R, {
 							id: e,
 							children: t
 						}, e))
 					})
 				})
 			}),
-			/* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:followFetch.avatarRefresh"),
 				description: J("settings:followFetch.avatarRefreshHelp"),
 				children: /* @__PURE__ */ (0, $.jsx)("span", {
@@ -5371,7 +4617,7 @@ function fc({ receipt: e }) {
 					children: J("settings:followSchedule.avatarRefresh")
 				})
 			}),
-			/* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:followFetch.faviconRefresh"),
 				description: J("settings:followFetch.faviconRefreshHelp"),
 				children: /* @__PURE__ */ (0, $.jsx)("span", {
@@ -5379,17 +4625,13 @@ function fc({ receipt: e }) {
 					children: J("settings:followSchedule.faviconRefresh")
 				})
 			})
-		] }), a ? /* @__PURE__ */ (0, $.jsx)(V, {
+		] }), a ? /* @__PURE__ */ (0, $.jsx)(B, {
 			divided: !0,
-			children: /* @__PURE__ */ (0, $.jsx)(A, { children: K(a) })
+			children: /* @__PURE__ */ (0, $.jsx)(k, { children: K(a) })
 		}) : null]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var ic = {
-========
-var pc = {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var gc = {
 	follow: {
 		id: "followScheduleSetting",
 		label: () => J("settings:followFetch.autoCheck"),
@@ -5411,13 +4653,8 @@ var pc = {
 		failure: () => J("settings:followSchedule.lastFetchFailed")
 	}
 };
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function ac({ kind: e }) {
-	let t = ic[e], { key: n, fetch: r, fallback: i } = Qe[e], a = X({
-========
-function mc({ kind: e }) {
-	let t = pc[e], { key: n, fetch: r, fallback: i } = Qe[e], a = X({
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function _c({ kind: e }) {
+	let t = gc[e], { key: n, fetch: r, fallback: i } = $e[e], a = X({
 		queryKey: n,
 		queryFn: ({ signal: e }) => r(e),
 		refetchOnMount: "always",
@@ -5435,14 +4672,14 @@ function mc({ kind: e }) {
 		children: [/* @__PURE__ */ (0, $.jsx)(l, { className: "size-4" }), J("settings:shared.saving")]
 	}) : null, x = s && !s.available ? J("settings:followSchedule.primaryOnly") : t.help();
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-		/* @__PURE__ */ (0, $.jsx)(B, {
+		/* @__PURE__ */ (0, $.jsx)(z, {
 			label: t.label(),
 			description: x,
 			children: /* @__PURE__ */ (0, $.jsxs)("div", {
 				id: t.id,
 				className: "flex min-h-9 shrink-0 flex-wrap items-center justify-end gap-2",
 				children: [
-					/* @__PURE__ */ (0, $.jsx)(H, {
+					/* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": t.label(),
 						isSelected: s?.enabled === !0,
 						isDisabled: !s?.available,
@@ -5455,7 +4692,7 @@ function mc({ kind: e }) {
 					d === "switch" ? b : null,
 					s?.enabled ? /* @__PURE__ */ (0, $.jsxs)("div", {
 						className: "flex items-center gap-2",
-						children: [/* @__PURE__ */ (0, $.jsx)(P, {
+						children: [/* @__PURE__ */ (0, $.jsx)(N, {
 							type: "number",
 							inputMode: "numeric",
 							name: t.name,
@@ -5483,29 +4720,21 @@ function mc({ kind: e }) {
 				]
 			})
 		}),
-		h ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(A, { children: J("settings:followSchedule.invalidInterval") }) }) : null,
-		s?.running ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(Ct, {
+		h ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(k, { children: J("settings:followSchedule.invalidInterval") }) }) : null,
+		s?.running ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(wt, {
 			embedded: !0,
-			kind: At(t.activity),
+			kind: jt(t.activity),
 			label: t.running()
 		}) }) : null,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		/* @__PURE__ */ (0, $.jsx)(oc, {
-========
-		/* @__PURE__ */ (0, $.jsx)(hc, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		/* @__PURE__ */ (0, $.jsx)(vc, {
 			kind: e,
 			status: s,
 			title: t.failure()
 		}),
-		y ? /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(A, { children: K(y) }) }) : null
+		y ? /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(k, { children: K(y) }) }) : null
 	] });
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function oc({ kind: e, status: t, title: n }) {
-========
-function hc({ kind: e, status: t, title: n }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function vc({ kind: e, status: t, title: n }) {
 	let r = Ir(e);
 	if (!t?.enabled || t.running || !t.last_error) return null;
 	let i = t.consecutive_failures ?? 0, a = Rn(t.next_run_at), o = [i > 1 ? J("settings:followSchedule.consecutiveFailures", { count: i }) : "", a ? J("settings:followSchedule.nextRun", { time: a }) : ""].filter(Boolean).join(J("shell:format.clauseSeparator")), s = [
@@ -5513,7 +4742,7 @@ function hc({ kind: e, status: t, title: n }) {
 		o,
 		r.error ? J("settings:followSchedule.retryFailed", { error: K(r.error) }) : ""
 	].filter(Boolean).join("\n");
-	return /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(F, {
+	return /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(P, {
 		tone: "error",
 		title: n,
 		action: /* @__PURE__ */ (0, $.jsx)(m, {
@@ -5528,167 +4757,143 @@ function hc({ kind: e, status: t, title: n }) {
 	}) });
 }
 // src/react/settings/media-processing-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function sc({ receipt: e }) {
-========
-function gc({ receipt: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function yc({ receipt: e }) {
 	let t = X({
-		queryKey: Ne,
+		queryKey: Pe,
 		queryFn: ({ signal: e }) => tn(e)
 	}), n = Y(), r = n.error || (t.error ? K(t.error) : ""), i = !t.data || t.isFetching || !!n.busy;
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "preview",
 		title: J("settings:videoPreviews.title"),
 		children: [
-			/* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:videoPreviews.generate"),
 				description: J("settings:videoPreviews.generateHelp"),
-				children: /* @__PURE__ */ (0, $.jsx)(H, {
+				children: /* @__PURE__ */ (0, $.jsx)(V, {
 					"aria-label": J("settings:videoPreviews.generate"),
 					isSelected: !!t.data && !t.data.metadata_only,
 					isDisabled: i,
-					onChange: (t) => void n.run("save", (e) => U(Pe, { metadata_only: !t }, "POST", e), (t) => {
-						Jn.setQueryData(Ne, t), Jn.invalidateQueries({ queryKey: bt }), Jn.invalidateQueries({ queryKey: Te }), e(t.metadata_only ? J("settings:videoPreview.turnedOff") : J("settings:videoPreview.turnedOn"));
+					onChange: (t) => void n.run("save", (e) => U(Fe, { metadata_only: !t }, "POST", e), (t) => {
+						Jn.setQueryData(Pe, t), Jn.invalidateQueries({ queryKey: xt }), Jn.invalidateQueries({ queryKey: Ee }), e(t.metadata_only ? J("settings:videoPreview.turnedOff") : J("settings:videoPreview.turnedOn"));
 					})
 				})
 			}) }),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			/* @__PURE__ */ (0, $.jsx)(nc, { disabled: !t.data || t.data.metadata_only || !!n.busy }),
-========
-			/* @__PURE__ */ (0, $.jsx)(dc, { disabled: !t.data || t.data.metadata_only || !!n.busy }),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-			/* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsx)(mc, { disabled: !t.data || t.data.metadata_only || !!n.busy }),
+			/* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:videoPreviews.decoder"),
 				description: J("settings:videoPreviews.decoderHelp"),
 				children: /* @__PURE__ */ (0, $.jsx)("div", {
 					id: "previewAccelerationSetting",
-					children: /* @__PURE__ */ (0, $.jsxs)(R, {
+					children: /* @__PURE__ */ (0, $.jsxs)(L, {
 						"aria-label": J("settings:videoPreviews.decoder"),
 						selectedKey: t.data?.preview_acceleration || "auto",
 						isDisabled: i || !!t.data?.metadata_only,
 						onSelectionChange: (t) => {
-							t !== null && n.run("preview_acceleration", (e) => U(Pe, { preview_acceleration: String(t) }, "POST", e), (t) => {
-								Jn.setQueryData(Ne, t), e(J("settings:videoPreview.decodingSaved"));
+							t !== null && n.run("preview_acceleration", (e) => U(Fe, { preview_acceleration: String(t) }, "POST", e), (t) => {
+								Jn.setQueryData(Pe, t), e(J("settings:videoPreview.decodingSaved"));
 							});
 						},
-						children: [/* @__PURE__ */ (0, $.jsx)(z, {
+						children: [/* @__PURE__ */ (0, $.jsx)(R, {
 							id: "auto",
 							children: J("settings:videoProcessing.autoHardwareFirst")
-						}), /* @__PURE__ */ (0, $.jsx)(z, {
+						}), /* @__PURE__ */ (0, $.jsx)(R, {
 							id: "software",
 							children: J("settings:videoPreview.softwareDecoding")
 						})]
 					})
 				})
 			}) }),
-			n.busy ? /* @__PURE__ */ (0, $.jsx)(V, {
+			n.busy ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(Ct, {
+				children: /* @__PURE__ */ (0, $.jsx)(wt, {
 					embedded: !0,
 					kind: "gather",
 					label: J("settings:shared.saving")
 				})
 			}) : null,
-			r ? /* @__PURE__ */ (0, $.jsx)(V, {
+			r ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(A, { children: r })
+				children: /* @__PURE__ */ (0, $.jsx)(k, { children: r })
 			}) : null
 		]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var cc = [
-========
-var _c = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var bc = [
 	0,
 	1080,
 	720,
 	480
 ];
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function lc({ receipt: e }) {
-========
-function vc({ receipt: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function xc({ receipt: e }) {
 	let t = X({
-		queryKey: Ne,
+		queryKey: Pe,
 		queryFn: ({ signal: e }) => tn(e)
 	}), n = Y(), r = n.error || (t.error ? K(t.error) : ""), i = !t.data || t.isFetching || !!n.busy;
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "transcode",
 		title: J("settings:transcoding.title"),
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(I, { children: [/* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsxs)(F, { children: [/* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:transcoding.mode"),
 				description: J("settings:transcoding.modeHelp"),
 				children: /* @__PURE__ */ (0, $.jsx)("div", {
 					id: "playbackAccelerationSetting",
-					children: /* @__PURE__ */ (0, $.jsxs)(R, {
+					children: /* @__PURE__ */ (0, $.jsxs)(L, {
 						"aria-label": J("settings:transcoding.mode"),
 						selectedKey: t.data?.playback_acceleration || "auto",
 						isDisabled: i,
 						onSelectionChange: (t) => {
-							t !== null && n.run("playback_acceleration", (e) => U(Pe, { playback_acceleration: String(t) }, "POST", e), (t) => {
-								Jn.setQueryData(Ne, t), e(J("settings:playbackTranscode.saved"));
+							t !== null && n.run("playback_acceleration", (e) => U(Fe, { playback_acceleration: String(t) }, "POST", e), (t) => {
+								Jn.setQueryData(Pe, t), e(J("settings:playbackTranscode.saved"));
 							});
 						},
-						children: [/* @__PURE__ */ (0, $.jsx)(z, {
+						children: [/* @__PURE__ */ (0, $.jsx)(R, {
 							id: "auto",
 							children: J("settings:videoProcessing.autoHardwareFirst")
-						}), /* @__PURE__ */ (0, $.jsx)(z, {
+						}), /* @__PURE__ */ (0, $.jsx)(R, {
 							id: "software",
 							children: J("settings:playbackTranscode.software")
 						})]
 					})
 				})
-			}), /* @__PURE__ */ (0, $.jsx)(B, {
+			}), /* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:transcoding.quality"),
 				description: J("settings:transcoding.qualityHelp"),
 				children: /* @__PURE__ */ (0, $.jsx)("div", {
 					id: "playbackQualitySetting",
-					children: /* @__PURE__ */ (0, $.jsx)(R, {
+					children: /* @__PURE__ */ (0, $.jsx)(L, {
 						"aria-label": J("settings:transcoding.quality"),
 						selectedKey: String(t.data?.playback_max_height ?? 0),
 						isDisabled: i,
 						onSelectionChange: (t) => {
-							t !== null && n.run("playback_max_height", (e) => U(Pe, { playback_max_height: Number(t) }, "POST", e), (t) => {
-								Jn.setQueryData(Ne, t), e(J("settings:playbackTranscode.qualitySaved"));
+							t !== null && n.run("playback_max_height", (e) => U(Fe, { playback_max_height: Number(t) }, "POST", e), (t) => {
+								Jn.setQueryData(Pe, t), e(J("settings:playbackTranscode.qualitySaved"));
 							});
 						},
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-						children: cc.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
-========
-						children: _c.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						children: bc.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 							id: String(e),
 							children: e ? J("settings:transcoding.qualityHeight", { height: e }) : J("settings:transcoding.original")
 						}, e))
 					})
 				})
 			})] }),
-			n.busy ? /* @__PURE__ */ (0, $.jsx)(V, {
+			n.busy ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(Ct, {
+				children: /* @__PURE__ */ (0, $.jsx)(wt, {
 					embedded: !0,
 					kind: "gather",
 					label: J("settings:shared.saving")
 				})
 			}) : null,
-			r ? /* @__PURE__ */ (0, $.jsx)(V, {
+			r ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(A, { children: r })
+				children: /* @__PURE__ */ (0, $.jsx)(k, { children: r })
 			}) : null
 		]
 	});
 }
 // src/react/settings/library-icon-picker.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var uc = [
-========
-var yc = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Sc = [
 	["", J("settings:libraryIcons.auto")],
 	["hard-drive", J("settings:libraryIcons.hardDrive")],
 	["database", J("settings:libraryIcons.database")],
@@ -5732,23 +4937,13 @@ var yc = [
 	["star", J("settings:libraryIcons.favorites")],
 	["tags", J("settings:libraryIcons.topics")]
 ];
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function dc(e) {
-	let t = e === "local" ? "" : Fe[e];
+function Cc(e) {
+	let t = e === "local" ? "" : Ie[e];
 	return t ? [t, J("settings:libraryIcons.auto")] : ["hard-drive", J("settings:libraryIcons.default")];
 }
-var fc = "auto";
-function pc({ value: n, label: r, kind: s = "local", onChange: c }) {
-	let l = (0, Z.useRef)(null), [u, d] = (0, Z.useState)(!1), [f, p] = (0, Z.useState)(n), [h, g] = dc(s);
-========
-function bc(e) {
-	let t = e === "local" ? "" : Fe[e];
-	return t ? [t, J("settings:libraryIcons.auto")] : ["hard-drive", J("settings:libraryIcons.default")];
-}
-var xc = "auto";
-function Sc({ value: n, label: r, kind: s = "local", onChange: c }) {
-	let l = (0, Z.useRef)(null), [u, d] = (0, Z.useState)(!1), [f, p] = (0, Z.useState)(n), [h, g] = bc(s);
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var wc = "auto";
+function Tc({ value: n, label: r, kind: s = "local", onChange: c }) {
+	let l = (0, Z.useRef)(null), [u, d] = (0, Z.useState)(!1), [f, p] = (0, Z.useState)(n), [h, g] = Cc(s);
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(m, {
 		ref: l,
 		variant: "secondary",
@@ -5762,11 +4957,7 @@ function Sc({ value: n, label: r, kind: s = "local", onChange: c }) {
 		children: /* @__PURE__ */ (0, $.jsxs)("span", {
 			"data-icon-choice": !0,
 			className: "flex items-center gap-2",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: n || h }), ((e) => e && uc.find(([t]) => t === e)?.[1] || g)(n)]
-========
-			children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: n || h }), ((e) => e && yc.find(([t]) => t === e)?.[1] || g)(n)]
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			children: [/* @__PURE__ */ (0, $.jsx)(yt, { mark: n || h }), ((e) => e && Sc.find(([t]) => t === e)?.[1] || g)(n)]
 		})
 	}), /* @__PURE__ */ (0, $.jsx)(t, {
 		triggerRef: l,
@@ -5774,7 +4965,7 @@ function Sc({ value: n, label: r, kind: s = "local", onChange: c }) {
 		onOpenChange: d,
 		placement: "bottom start",
 		offset: 4,
-		className: Ie,
+		className: Le,
 		children: /* @__PURE__ */ (0, $.jsxs)(i, {
 			"aria-label": J("settings:libraryIcons.dialogLabel", { label: r }),
 			className: "flex w-72 flex-col gap-3 outline-none",
@@ -5786,27 +4977,15 @@ function Sc({ value: n, label: r, kind: s = "local", onChange: c }) {
 				}),
 				/* @__PURE__ */ (0, $.jsx)(a, {
 					"aria-label": J("settings:libraryIcons.choices"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					value: f || fc,
-					onChange: (e) => p(e === fc ? "" : e),
+					value: f || wc,
+					onChange: (e) => p(e === wc ? "" : e),
 					className: "inline-grid grid-cols-7 gap-1",
-					children: uc.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(o, {
-						value: e || fc,
+					children: Sc.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(o, {
+						value: e || wc,
 						"aria-label": e ? t : g,
 						className: "flex h-10 cursor-pointer items-center justify-center rounded-lg text-foreground-icon-secondary outline-none hover:bg-dropdown-item-hover-background focus-visible:ring-2 focus-visible:ring-border-focus-ring data-selected:bg-dropdown-item-hover-background data-selected:text-text-primary",
-						children: /* @__PURE__ */ (0, $.jsx)(vt, { mark: e || h })
-					}, e || fc))
-========
-					value: f || xc,
-					onChange: (e) => p(e === xc ? "" : e),
-					className: "inline-grid grid-cols-7 gap-1",
-					children: yc.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(o, {
-						value: e || xc,
-						"aria-label": e ? t : g,
-						className: "flex h-10 cursor-pointer items-center justify-center rounded-lg text-foreground-icon-secondary outline-none hover:bg-dropdown-item-hover-background focus-visible:ring-2 focus-visible:ring-border-focus-ring data-selected:bg-dropdown-item-hover-background data-selected:text-text-primary",
-						children: /* @__PURE__ */ (0, $.jsx)(vt, { mark: e || h })
-					}, e || xc))
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						children: /* @__PURE__ */ (0, $.jsx)(yt, { mark: e || h })
+					}, e || wc))
 				}),
 				/* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex justify-end gap-2 border-t border-separator-border pt-2.5",
@@ -5827,31 +5006,19 @@ function Sc({ value: n, label: r, kind: s = "local", onChange: c }) {
 	})] });
 }
 // src/react/settings/library-policy-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var mc = [
-========
-var Cc = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Ec = [
 	["probe", J("settings:libraryPolicy.stepProbe")],
 	["metadata", J("settings:libraryPolicy.stepMetadata")],
 	["cover", J("settings:libraryPolicy.stepCovers")],
 	["people", J("settings:libraryPolicy.stepAvatars")],
 	["preview", J("settings:libraryPolicy.stepContactSheet")]
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-], hc = [
-========
-], wc = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+], Dc = [
 	"probe",
 	"metadata",
 	"cover",
 	"people",
 	"preview"
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-], gc = [
-========
-], Tc = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+], Oc = [
 	[
 		"auto",
 		J("settings:libraryPolicy.auto"),
@@ -5868,15 +5035,11 @@ var Cc = [
 		J("settings:libraryPolicy.customHint")
 	]
 ];
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function _c() {
-========
-function Ec() {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function kc() {
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		"data-policy-legend": "",
 		className: "flex flex-col gap-1",
-		children: [/* @__PURE__ */ (0, $.jsx)(N, { children: He }), /* @__PURE__ */ (0, $.jsxs)(le, {
+		children: [/* @__PURE__ */ (0, $.jsx)(M, { children: Ue }), /* @__PURE__ */ (0, $.jsxs)(ue, {
 			summary: J("settings:libraryPolicy.compare"),
 			children: [/* @__PURE__ */ (0, $.jsxs)("table", {
 				"data-policy-matrix": "",
@@ -5884,10 +5047,10 @@ function Ec() {
 				children: [/* @__PURE__ */ (0, $.jsx)("thead", { children: /* @__PURE__ */ (0, $.jsxs)("tr", { children: [/* @__PURE__ */ (0, $.jsx)("th", {
 					scope: "col",
 					children: /* @__PURE__ */ (0, $.jsx)(r, { children: J("settings:libraryPolicy.step") })
-				}), ze.map((e) => /* @__PURE__ */ (0, $.jsx)("th", {
+				}), Be.map((e) => /* @__PURE__ */ (0, $.jsx)("th", {
 					scope: "col",
 					children: e
-				}, e))] }) }), /* @__PURE__ */ (0, $.jsx)("tbody", { children: Ve.map(([e, ...t]) => /* @__PURE__ */ (0, $.jsxs)("tr", { children: [/* @__PURE__ */ (0, $.jsx)("th", {
+				}, e))] }) }), /* @__PURE__ */ (0, $.jsx)("tbody", { children: He.map(([e, ...t]) => /* @__PURE__ */ (0, $.jsxs)("tr", { children: [/* @__PURE__ */ (0, $.jsx)("th", {
 					scope: "row",
 					children: e
 				}), t.map((e, t) => /* @__PURE__ */ (0, $.jsx)("td", {
@@ -5899,17 +5062,13 @@ function Ec() {
 						"aria-label": J("settings:libraryPolicy.notIncluded"),
 						children: "—"
 					}) : e
-				}, ze[t]))] }, e)) })]
-			}), /* @__PURE__ */ (0, $.jsx)(N, { children: Be })]
+				}, Be[t]))] }, e)) })]
+			}), /* @__PURE__ */ (0, $.jsx)(M, { children: Ve })]
 		})]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function vc({ name: e, value: t, onChange: n }) {
-========
-function Dc({ name: e, value: t, onChange: n }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsx)(lt, {
+function Ac({ name: e, value: t, onChange: n }) {
+	return /* @__PURE__ */ (0, $.jsx)(ut, {
 		"data-guide-target": "library-policy",
 		className: "w-full",
 		"aria-label": J("settings:libraryPolicy.modeLabel", { name: e }),
@@ -5917,17 +5076,10 @@ function Dc({ name: e, value: t, onChange: n }) {
 		prefix: J("settings:libraryPolicy.mode"),
 		renderValue: /* @__PURE__ */ (0, $.jsx)("span", {
 			className: "truncate",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			children: gc.find(([e]) => e === t)?.[1]
+			children: Oc.find(([e]) => e === t)?.[1]
 		}),
 		onSelectionChange: (e) => n(String(e)),
-		children: gc.map(([e, t, n]) => /* @__PURE__ */ (0, $.jsx)(z, {
-========
-			children: Tc.find(([e]) => e === t)?.[1]
-		}),
-		onSelectionChange: (e) => n(String(e)),
-		children: Tc.map(([e, t, n]) => /* @__PURE__ */ (0, $.jsx)(z, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		children: Oc.map(([e, t, n]) => /* @__PURE__ */ (0, $.jsx)(R, {
 			id: e,
 			textValue: t,
 			children: /* @__PURE__ */ (0, $.jsxs)("span", {
@@ -5940,44 +5092,28 @@ function Dc({ name: e, value: t, onChange: n }) {
 		}, e))
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function yc({ name: e, value: t, onChange: n, previewsOff: r = !1 }) {
-========
-function Oc({ name: e, value: t, onChange: n, previewsOff: r = !1 }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsxs)(le, {
+function jc({ name: e, value: t, onChange: n, previewsOff: r = !1 }) {
+	return /* @__PURE__ */ (0, $.jsxs)(ue, {
 		defaultOpen: !0,
 		summary: J("settings:libraryPolicy.stepsSummary", {
 			name: e,
 			selected: t.length,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			total: mc.length
-========
-			total: Cc.length
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			total: Ec.length
 		}),
 		children: [/* @__PURE__ */ (0, $.jsx)("div", {
 			className: "flex flex-wrap gap-x-6 gap-y-2",
 			role: "group",
 			"aria-label": J("settings:libraryPolicy.stepsLabel", { name: e }),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			children: mc.map(([e, i]) => /* @__PURE__ */ (0, $.jsx)(O, {
-========
-			children: Cc.map(([e, i]) => /* @__PURE__ */ (0, $.jsx)(O, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			children: Ec.map(([e, i]) => /* @__PURE__ */ (0, $.jsx)(ne, {
 				isSelected: t.includes(e),
 				isDisabled: r && e === "preview",
 				onChange: (r) => n(r ? [...t, e] : t.filter((t) => t !== e)),
 				children: i
 			}, e))
-		}), r ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:libraryPolicy.previewsOff") }) : null]
+		}), r ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:libraryPolicy.previewsOff") }) : null]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function bc({ id: e, name: r, value: a, onChange: o }) {
-========
-function kc({ id: e, name: r, value: a, onChange: o }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Mc({ id: e, name: r, value: a, onChange: o }) {
 	let c = (0, Z.useRef)(null), [l, u] = (0, Z.useState)(!1), d = s.find(([e]) => e === a)?.[1] || J("settings:libraryColor.none"), f = (t) => {
 		o(t), Gn(e, t), u(!1);
 	};
@@ -6021,7 +5157,7 @@ function kc({ id: e, name: r, value: a, onChange: o }) {
 			placement: "bottom start",
 			offset: 8,
 			containerPadding: 12,
-			className: Ie,
+			className: Le,
 			children: /* @__PURE__ */ (0, $.jsxs)(i, {
 				"aria-label": J("settings:libraryColor.dialogLabel", { name: r || J("settings:mediaLibraries.untitled") }),
 				className: "outline-none",
@@ -6063,13 +5199,8 @@ function kc({ id: e, name: r, value: a, onChange: o }) {
 	})] });
 }
 // src/react/settings/push-discovery-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var xc = "/api/configuration/push-discovery", Sc = "/api/configuration/push-discovery/secret";
-function Cc({ label: e, help: t, status: n, children: r }) {
-========
-var Ac = "/api/configuration/push-discovery", jc = "/api/configuration/push-discovery/secret";
-function Mc({ label: e, help: t, status: n, children: r }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Nc = "/api/configuration/push-discovery", Pc = "/api/configuration/push-discovery/secret";
+function Fc({ label: e, help: t, status: n, children: r }) {
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		className: "flex min-h-13 w-full items-center justify-between gap-4 border-b border-separator-border py-2.5 pr-2.5 last:border-b-0",
 		children: [/* @__PURE__ */ (0, $.jsxs)("div", {
@@ -6077,24 +5208,17 @@ function Mc({ label: e, help: t, status: n, children: r }) {
 			children: [/* @__PURE__ */ (0, $.jsx)("p", {
 				className: "text-body-regular text-text-primary",
 				children: e
-			}), /* @__PURE__ */ (0, $.jsxs)(N, { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: t }), n ? /* @__PURE__ */ (0, $.jsx)("span", {
+			}), /* @__PURE__ */ (0, $.jsxs)(M, { children: [/* @__PURE__ */ (0, $.jsx)("span", { children: t }), n ? /* @__PURE__ */ (0, $.jsx)("span", {
 				className: "block",
 				children: n
 			}) : null] })]
 		}), r]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function wc({ initial: e, receipt: t }) {
-	let [n, r] = (0, Z.useState)(e), [i, a] = (0, Z.useState)(e.prefixes), [o, s] = (0, Z.useState)(""), c = Y(), l = n.media_roots, [u, d] = (0, Z.useState)(e), f = (e, n) => {
-		r(e), d(e), a(e.prefixes), s(""), t(n);
-	}, p = (e, t) => a((n) => n.map((n, r) => r === e ? {
-========
-function Nc({ initial: e, receipt: t }) {
+function Ic({ initial: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(e), [i, a] = (0, Z.useState)(e.prefixes), [o, s] = (0, Z.useState)(""), c = Y(), l = n.media_roots, u = Ta(), d = (0, Z.useId)(), [f, p] = (0, Z.useState)(e), h = (e, n) => {
 		r(e), p(e), a(e.prefixes), s(""), t(n);
 	}, g = (e, t) => a((n) => n.map((n, r) => r === e ? {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		...n,
 		...t
 	} : n)), _ = (e) => {
@@ -6114,59 +5238,36 @@ function Nc({ initial: e, receipt: t }) {
 			cloud: n.cloud,
 			prefixes: i
 		};
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		c.run("save", (e) => W(xc, t, "POST", e), (e) => f(e, J("settings:shared.settingsSaved")), (e) => s(q(e)));
-	}, g = () => {
-		c.run("secret", (e) => W(Sc, {}, "POST", e), (e) => f(e, J("settings:pushDiscovery.secretRotated")), (e) => s(q(e)));
-	}, _ = [
-		J("settings:pushDiscovery.ingestedCount", { count: u.queue.ingested }),
-		u.queue.failed ? J("settings:pushDiscovery.failedCount", { count: u.queue.failed }) : "",
-		u.queue.pending ? J("settings:pushDiscovery.pendingCount", { count: u.queue.pending }) : ""
-	].filter(Boolean).join(J("shell:format.clauseSeparator")), v = u.local_running ? J("settings:pushDiscovery.monitoring", { paths: jn(u.local_roots) }) : (u.local_message ? K(u, "local_message") : "") || J("settings:pushDiscovery.notRunningDetail");
-========
-		c.run("save", (e) => U(Ac, a, "POST", e), (e) => h(e, J("settings:shared.settingsSaved")), (e) => s(K(e)));
+		c.run("save", (e) => U(Nc, a, "POST", e), (e) => h(e, J("settings:shared.settingsSaved")), (e) => s(K(e)));
 	}, v = () => {
-		c.run("secret", (e) => U(jc, {}, "POST", e), (e) => h(e, J("settings:pushDiscovery.secretRotated")), (e) => s(K(e)));
+		c.run("secret", (e) => U(Pc, {}, "POST", e), (e) => h(e, J("settings:pushDiscovery.secretRotated")), (e) => s(K(e)));
 	}, y = [
 		J("settings:pushDiscovery.ingestedCount", { count: f.queue.ingested }),
 		f.queue.failed ? J("settings:pushDiscovery.failedCount", { count: f.queue.failed }) : "",
 		f.queue.pending ? J("settings:pushDiscovery.pendingCount", { count: f.queue.pending }) : ""
 	].filter(Boolean).join(J("shell:format.clauseSeparator")), b = f.local_running ? J("settings:pushDiscovery.monitoring", { paths: Mn(f.local_roots) }) : (f.local_message ? G(f, "local_message") : "") || J("settings:pushDiscovery.notRunningDetail");
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "pushDiscovery",
 		guide: "discovery",
 		title: J("settings:fileDiscovery.title"),
 		onSubmit: _,
 		children: [
-			/* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsxs)("div", {
+			/* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsxs)("div", {
 				className: "flex flex-wrap items-center gap-2",
 				children: [/* @__PURE__ */ (0, $.jsx)("span", {
 					className: "text-body-regular text-text-secondary",
 					children: J("settings:pushDiscovery.localMonitoring")
-				}), /* @__PURE__ */ (0, $.jsx)(yt, {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					tone: !u.enabled || !u.watch_local ? "neutral" : u.local_running ? "progress" : "warning",
-					children: !u.enabled || !u.watch_local ? J("settings:shared.notEnabled") : u.local_running ? J("settings:shared.running") : J("settings:pushDiscovery.notRunning")
-				})]
-			}) }),
-			/* @__PURE__ */ (0, $.jsxs)(I, { children: [
-				/* @__PURE__ */ (0, $.jsx)(Cc, {
-					label: J("settings:fileDiscovery.autoImport"),
-					help: J("settings:fileDiscovery.autoImportHelp"),
-					status: u.enabled ? _ : void 0,
-========
+				}), /* @__PURE__ */ (0, $.jsx)(bt, {
 					tone: !f.enabled || !f.watch_local ? "neutral" : f.local_running ? "progress" : "warning",
 					children: !f.enabled || !f.watch_local ? J("settings:shared.notEnabled") : f.local_running ? J("settings:shared.running") : J("settings:pushDiscovery.notRunning")
 				})]
 			}) }),
-			/* @__PURE__ */ (0, $.jsxs)(I, { children: [
-				/* @__PURE__ */ (0, $.jsx)(Mc, {
+			/* @__PURE__ */ (0, $.jsxs)(F, { children: [
+				/* @__PURE__ */ (0, $.jsx)(Fc, {
 					label: J("settings:fileDiscovery.autoImport"),
 					help: J("settings:fileDiscovery.autoImportHelp"),
 					status: f.enabled ? y : void 0,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-					children: /* @__PURE__ */ (0, $.jsx)(H, {
+					children: /* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": J("settings:fileDiscovery.autoImport"),
 						isSelected: n.enabled,
 						isDisabled: !n.available,
@@ -6176,18 +5277,11 @@ function Nc({ initial: e, receipt: t }) {
 						})
 					})
 				}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				/* @__PURE__ */ (0, $.jsx)(Cc, {
-					label: J("settings:fileDiscovery.monitorLocal"),
-					help: J("settings:fileDiscovery.monitorLocalHelp"),
-					status: u.enabled && u.watch_local ? v : void 0,
-========
-				/* @__PURE__ */ (0, $.jsx)(Mc, {
+				/* @__PURE__ */ (0, $.jsx)(Fc, {
 					label: J("settings:fileDiscovery.monitorLocal"),
 					help: J("settings:fileDiscovery.monitorLocalHelp"),
 					status: f.enabled && f.watch_local ? b : void 0,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-					children: /* @__PURE__ */ (0, $.jsx)(H, {
+					children: /* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": J("settings:fileDiscovery.monitorLocal"),
 						isSelected: n.watch_local,
 						isDisabled: !n.available || !n.enabled,
@@ -6197,10 +5291,10 @@ function Nc({ initial: e, receipt: t }) {
 						})
 					})
 				}),
-				/* @__PURE__ */ (0, $.jsx)(B, {
+				/* @__PURE__ */ (0, $.jsx)(z, {
 					label: J("settings:fileDiscovery.cloudNotify"),
 					description: J("settings:fileDiscovery.cloudNotifyHelp"),
-					children: /* @__PURE__ */ (0, $.jsx)(H, {
+					children: /* @__PURE__ */ (0, $.jsx)(V, {
 						"aria-label": J("settings:fileDiscovery.cloudNotify"),
 						isSelected: n.cloud,
 						isDisabled: !n.available || !n.enabled,
@@ -6211,20 +5305,20 @@ function Nc({ initial: e, receipt: t }) {
 					})
 				})
 			] }),
-			f.enabled && f.queue.last_error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			f.enabled && f.queue.last_error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(F, {
+				children: /* @__PURE__ */ (0, $.jsx)(P, {
 					tone: "error",
 					title: J("settings:pushDiscovery.lastImportFailed"),
 					children: f.queue.last_error
 				})
 			}) : null,
-			f.enabled && f.cloud ? /* @__PURE__ */ (0, $.jsxs)(V, {
+			f.enabled && f.cloud ? /* @__PURE__ */ (0, $.jsxs)(B, {
 				divided: !0,
 				children: [/* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex flex-col gap-1",
-					children: [/* @__PURE__ */ (0, $.jsx)(xe, { children: J("settings:fileDiscovery.webhookConfig") }), /* @__PURE__ */ (0, $.jsx)(N, { children: f.config_toml ? J("settings:pushDiscovery.webhookHelp") : f.origin ? J("settings:pushDiscovery.noSecret") : J("settings:pushDiscovery.needsLanUrl") })]
-				}), f.config_toml ? /* @__PURE__ */ (0, $.jsxs)(le, {
+					children: [/* @__PURE__ */ (0, $.jsx)(Se, { children: J("settings:fileDiscovery.webhookConfig") }), /* @__PURE__ */ (0, $.jsx)(M, { children: f.config_toml ? J("settings:pushDiscovery.webhookHelp") : f.origin ? J("settings:pushDiscovery.noSecret") : J("settings:pushDiscovery.needsLanUrl") })]
+				}), f.config_toml ? /* @__PURE__ */ (0, $.jsxs)(ue, {
 					summary: J("settings:fileDiscovery.viewConfig"),
 					children: [/* @__PURE__ */ (0, $.jsx)(Kr, {
 						code: f.config_toml,
@@ -6233,16 +5327,16 @@ function Nc({ initial: e, receipt: t }) {
 						bounded: !1,
 						copyLabel: J("settings:pushDiscovery.copyConfig"),
 						onCopy: () => t(J("settings:pushDiscovery.configCopied"))
-					}), /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:pushDiscovery.invalidPasteHelp") })]
+					}), /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:pushDiscovery.invalidPasteHelp") })]
 				}) : null]
 			}) : null,
-			/* @__PURE__ */ (0, $.jsx)(V, {
+			/* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
 				children: /* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex flex-col gap-3",
 					children: [
-						/* @__PURE__ */ (0, $.jsx)(xe, { children: J("settings:pushDiscovery.cloudPrefixes") }),
-						/* @__PURE__ */ (0, $.jsx)(N, { children: /* @__PURE__ */ (0, $.jsx)("span", {
+						/* @__PURE__ */ (0, $.jsx)(Se, { children: J("settings:pushDiscovery.cloudPrefixes") }),
+						/* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)("span", {
 							"data-copy-key": "settings.pushDiscovery.cloudPrefixesHelp",
 							children: J("settings:pushDiscovery.cloudPrefixesHelp")
 						}) }),
@@ -6255,7 +5349,7 @@ function Nc({ initial: e, receipt: t }) {
 								return /* @__PURE__ */ (0, $.jsxs)("div", {
 									className: "flex items-start gap-2",
 									children: [
-										/* @__PURE__ */ (0, $.jsx)(P, {
+										/* @__PURE__ */ (0, $.jsx)(N, {
 											className: "min-w-0 flex-1",
 											"aria-label": J("settings:pushDiscovery.prefixLabel", { index: t + 1 }),
 											placeholder: "/115open/Peach",
@@ -6272,7 +5366,7 @@ function Nc({ initial: e, receipt: t }) {
 										}),
 										/* @__PURE__ */ (0, $.jsxs)("div", {
 											className: "flex min-w-0 flex-col gap-1",
-											children: [/* @__PURE__ */ (0, $.jsx)(lt, {
+											children: [/* @__PURE__ */ (0, $.jsx)(ut, {
 												"aria-label": J("settings:pushDiscovery.prefixRootLabel", { index: t + 1 }),
 												prefix: J("settings:pushDiscovery.mapsTo"),
 												selectedKey: e.root || null,
@@ -6284,11 +5378,11 @@ function Nc({ initial: e, receipt: t }) {
 												onSelectionChange: (e) => {
 													e !== null && (g(t, { root: String(e) }), u.clear());
 												},
-												children: l.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+												children: l.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 													id: e,
 													children: e
 												}, e))
-											}), o ? /* @__PURE__ */ (0, $.jsx)(A, {
+											}), o ? /* @__PURE__ */ (0, $.jsx)(k, {
 												id: `${d}-${t}`,
 												children: o
 											}) : null]
@@ -6296,7 +5390,7 @@ function Nc({ initial: e, receipt: t }) {
 										/* @__PURE__ */ (0, $.jsx)(m, {
 											variant: "secondary",
 											iconOnly: !0,
-											leadingIcon: Me,
+											leadingIcon: Ne,
 											"aria-label": J("settings:pushDiscovery.removeRow"),
 											onClick: () => {
 												a((e) => e.filter((e, n) => n !== t)), u.clear();
@@ -6317,11 +5411,11 @@ function Nc({ initial: e, receipt: t }) {
 					]
 				})
 			}),
-			o || c.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			o || c.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(A, { children: o || c.error })
+				children: /* @__PURE__ */ (0, $.jsx)(k, { children: o || c.error })
 			}) : null,
-			/* @__PURE__ */ (0, $.jsxs)(M, { children: [f.enabled && f.cloud && f.config_toml ? /* @__PURE__ */ (0, $.jsx)(m, {
+			/* @__PURE__ */ (0, $.jsxs)(j, { children: [f.enabled && f.cloud && f.config_toml ? /* @__PURE__ */ (0, $.jsx)(m, {
 				variant: "secondary",
 				onClick: v,
 				disabled: !n.available,
@@ -6337,11 +5431,7 @@ function Nc({ initial: e, receipt: t }) {
 	});
 }
 // src/react/settings/media-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-async function Tc(e) {
-========
-async function Pc(e) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+async function Lc(e) {
 	let t;
 	try {
 		t = await en();
@@ -6356,22 +5446,14 @@ async function Pc(e) {
 	});
 	return n;
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Ec = (e) => $r.find(([t]) => t === e)?.[1] ?? e, Dc = [...$r, ["smb", J("settings:mediaLibraries.smbShare")]], Oc = (e) => e.library_icon || dc(e.transport === "smb" ? "smb" : e.location)[0], kc = async (e) => Vn(e, (e) => W(Re, e)), Ac = (e) => ({
-========
-var Fc = (e) => $r.find(([t]) => t === e)?.[1] ?? e, Ic = [...$r, ["smb", J("settings:mediaLibraries.smbShare")]], Lc = (e) => e.library_icon || bc(e.transport === "smb" ? "smb" : e.location)[0], Rc = async (e) => Hn(e, (e) => U(Re, e)), zc = (e) => ({
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Rc = (e) => $r.find(([t]) => t === e)?.[1] ?? e, zc = [...$r, ["smb", J("settings:mediaLibraries.smbShare")]], Bc = (e) => e.library_icon || Cc(e.transport === "smb" ? "smb" : e.location)[0], Vc = async (e) => Hn(e, (e) => U(ze, e)), Hc = (e) => ({
 	library_id: e.library_id,
 	library: e.library,
 	library_icon: e.library_icon,
 	library_color: e.library_color,
 	library_policy: e.library_policy,
 	library_stages: e.library_stages
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}), jc = (e) => e.library_stages ? hc.filter((t) => e.library_stages.split(",").includes(t)) : [], Mc = (e = "") => ({
-========
-}), Bc = (e) => e.library_stages ? wc.filter((t) => e.library_stages.split(",").includes(t)) : [], Vc = (e = "") => ({
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+}), Uc = (e) => e.library_stages ? Dc.filter((t) => e.library_stages.split(",").includes(t)) : [], Wc = (e = "") => ({
 	path: e,
 	transport: e.startsWith("smb://") ? "smb" : "filesystem",
 	location: "local",
@@ -6384,11 +5466,7 @@ var Fc = (e) => $r.find(([t]) => t === e)?.[1] ?? e, Ic = [...$r, ["smb", J("set
 	library_stages: "",
 	cost: "free"
 });
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Nc(e) {
-========
-function Hc(e) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Gc(e) {
 	let t = e.media_sources?.filter((e) => $r.some(([t]) => t === e.location));
 	return t?.length ? t.map((e) => ({
 		transport: e.transport === "smb" || e.path.startsWith("smb://") ? "smb" : "filesystem",
@@ -6406,28 +5484,16 @@ function Hc(e) {
 		root_id: e.root_id,
 		library_id: e.library_id || Yn(),
 		cost: e.cost ?? mr(e.location)
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	})) : (e.media_dirs.length ? e.media_dirs : [""]).map((e) => Mc(e));
+	})) : (e.media_dirs.length ? e.media_dirs : [""]).map((e) => Wc(e));
 }
-var Pc = (e) => !(e instanceof p) || e.status !== 400 ? null : Ft(e.body) ?? null;
-function Fc({ data: e, receipt: t }) {
-========
-	})) : (e.media_dirs.length ? e.media_dirs : [""]).map((e) => Vc(e));
-}
-var Uc = (e) => !(e instanceof p) || e.status !== 400 ? null : It(e.body) ?? null;
-function Wc({ data: e, receipt: t }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Kc = (e) => !(e instanceof p) || e.status !== 400 ? null : It(e.body) ?? null;
+function qc({ data: e, receipt: t }) {
 	let n = !e.section_errors?.media_sources && !e.section_errors?.library_count, r = !!e.media_sources?.some((e) => ri(e.location));
 	return (0, Z.useEffect)(() => {
 		if (n && e.editable) {
 			let t = /* @__PURE__ */ new Map();
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			for (let n of Nc(e)) t.set(n.library_id, (t.get(n.library_id) ?? 0) + 1);
-			Xn("media", {
-========
-			for (let n of Hc(e)) t.set(n.library_id, (t.get(n.library_id) ?? 0) + 1);
+			for (let n of Gc(e)) t.set(n.library_id, (t.get(n.library_id) ?? 0) + 1);
 			Zn("media", {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 				folders: [...t.values()],
 				cloud: r
 			});
@@ -6448,14 +5514,10 @@ function Wc({ data: e, receipt: t }) {
 		n && {
 			id: "library-folders",
 			label: J("settings:libraryFolders.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: e.editable ? /* @__PURE__ */ (0, $.jsx)(Ic, {
-========
-			content: e.editable ? /* @__PURE__ */ (0, $.jsx)(Gc, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: e.editable ? /* @__PURE__ */ (0, $.jsx)(Jc, {
 				data: e,
 				receipt: t
-			}) : /* @__PURE__ */ (0, $.jsx)(F, {
+			}) : /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "neutral",
 				title: J("settings:mediaLibraries.readOnly"),
 				children: e.notice
@@ -6464,29 +5526,17 @@ function Wc({ data: e, receipt: t }) {
 		n && !e.editable && !!e.media_sources && {
 			id: "library-mounts",
 			label: J("settings:mountStatus.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(Rc, { data: e })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(qc, { data: e })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(Xc, { data: e })
 		},
 		n && r && {
 			id: "library-cloud-proxy",
 			label: J("settings:cloudProxy.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(Js, { receipt: t })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(rc, { receipt: t })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(oc, { receipt: t })
 		},
 		n && e.push_discovery && {
 			id: "library-discovery",
 			label: J("settings:fileDiscovery.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(wc, {
-========
-			content: /* @__PURE__ */ (0, $.jsx)(Nc, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(Ic, {
 				initial: e.push_discovery,
 				receipt: t
 			})
@@ -6494,58 +5544,33 @@ function Wc({ data: e, receipt: t }) {
 		{
 			id: "library-code-patterns",
 			label: J("settings:codePatterns.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(Qs, { receipt: t })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(sc, { receipt: t })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(uc, { receipt: t })
 		},
 		{
 			id: "library-video-previews",
 			label: J("settings:videoPreviews.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(sc, { receipt: t })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(gc, { receipt: t })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(yc, { receipt: t })
 		},
 		{
 			id: "library-transcoding",
 			label: J("settings:transcoding.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(lc, { receipt: t })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(vc, { receipt: t })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(xc, { receipt: t })
 		},
 		{
 			id: "library-task-speed",
 			label: J("settings:taskSpeed.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(tc, { receipt: t })
+			content: /* @__PURE__ */ (0, $.jsx)(pc, { receipt: t })
 		}
 	] });
 }
-function Ic({ data: e, receipt: t }) {
+function Jc({ data: e, receipt: t }) {
 	let { checked: n, checkFailed: r } = Wr(), { rows: i, edit: a, add: o, remove: s, errors: c, setErrors: l, picking: u, pick: d, inputRef: f } = ai({
-		initial: () => Nc(e),
-		blank: () => Mc(),
-		pickFolder: kc,
-		describe: q
-========
-			content: /* @__PURE__ */ (0, $.jsx)(uc, { receipt: t })
-		}
-	] });
-}
-function Gc({ data: e, receipt: t }) {
-	let { checked: n, checkFailed: r } = Wr(), { rows: i, edit: a, add: o, remove: s, errors: c, setErrors: l, picking: u, pick: d, inputRef: f } = ai({
-		initial: () => Hc(e),
-		blank: () => Vc(),
-		pickFolder: Rc,
+		initial: () => Gc(e),
+		blank: () => Wc(),
+		pickFolder: Vc,
 		describe: K
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 	}), [p, h] = (0, Z.useState)(!1), g = X({
-		queryKey: Ne,
+		queryKey: Pe,
 		queryFn: ({ signal: e }) => tn(e)
 	}, Jn).data?.metadata_only === !0, [_, v] = (0, Z.useState)(!1), [y, x] = (0, Z.useState)(""), [S, C] = (0, Z.useState)({}), [w, T] = (0, Z.useState)(null), E = (0, Z.useRef)(e.revision), ee = (0, Z.useRef)(!1), D = Y();
 	Or();
@@ -6553,20 +5578,16 @@ function Gc({ data: e, receipt: t }) {
 		i.forEach((n, r) => {
 			n.library_id === i[e].library_id && a(r, t);
 		});
-	}, k = Nr([...i.reduce((e, t) => e.has(t.library_id) ? e : e.set(t.library_id, t), /* @__PURE__ */ new Map()).values()], (e) => e.library_id), [ne, re] = (0, Z.useState)(null);
+	}, O = Nr([...i.reduce((e, t) => e.has(t.library_id) ? e : e.set(t.library_id, t), /* @__PURE__ */ new Map()).values()], (e) => e.library_id), [re, ie] = (0, Z.useState)(null);
 	(0, Z.useEffect)(() => {
-		if (!ne) return;
-		let e = document.querySelector(`[data-library-key="${CSS.escape(ne)}"] [data-library-head] input`);
-		e?.scrollIntoView({ block: "center" }), e?.focus(), re(null);
-	}, [ne]);
-	let ie = (e, t) => {
+		if (!re) return;
+		let e = document.querySelector(`[data-library-key="${CSS.escape(re)}"] [data-library-head] input`);
+		e?.scrollIntoView({ block: "center" }), e?.focus(), ie(null);
+	}, [re]);
+	let ae = (e, t) => {
 		let n = i.find((e) => e.library_id === t);
 		if (n) {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			a(e, Ac(n));
-========
-			a(e, zc(n));
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			a(e, Hc(n));
 			return;
 		}
 		let r = Yn();
@@ -6577,40 +5598,31 @@ function Gc({ data: e, receipt: t }) {
 			library_color: "",
 			library_policy: "auto",
 			library_stages: ""
-		}), re(r);
+		}), ie(r);
 	};
 	(0, Z.useEffect)(() => {
 		if (!w) return;
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		let e = setTimeout(() => location.assign(w.url), Hs);
-========
-		let e = setTimeout(() => location.assign(w.url), Js);
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		let e = setTimeout(() => location.assign(w.url), Zs);
 		return () => clearTimeout(e);
 	}, [w]);
-	let ae = (e) => {
+	let oe = (e) => {
 		e.preventDefault();
 		let t = i.findIndex((e) => !e.cost);
 		if (t >= 0) {
 			v(!0);
 			let n = e.currentTarget;
 			requestAnimationFrame(() => n.querySelector(`[data-media-read-policy="${t}"] button`)?.focus());
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		} else D.busy || ee.current || (x(""), ee.current = !0, Tc(p).then((e) => {
-			ee.current = !1, e && oe();
-========
-		} else D.busy || ee.current || (x(""), ee.current = !0, Pc(p).then((e) => {
-			ee.current = !1, e && ce();
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		} else D.busy || ee.current || (x(""), ee.current = !0, Lc(p).then((e) => {
+			ee.current = !1, e && le();
 		}));
-	}, oe = (t) => e.media_sources?.find((e) => e.root_id === t.root_id && e.path === t.path), se = (e) => {
-		let t = e.transport === "smb" ? oe(e) : void 0;
+	}, se = (t) => e.media_sources?.find((e) => e.root_id === t.root_id && e.path === t.path), ce = (e) => {
+		let t = e.transport === "smb" ? se(e) : void 0;
 		return t?.smb_username || t?.smb_password_saved ? t : void 0;
-	}, ce = () => {
+	}, le = () => {
 		D.run("save", (t) => U(b, {
 			revision: E.current,
 			media_dirs: i.map((e) => e.path),
-			...e.media_sources ? { media_sources: i.map((e) => e.smb_clear && !se(e) ? {
+			...e.media_sources ? { media_sources: i.map((e) => e.smb_clear && !ce(e) ? {
 				...e,
 				smb_clear: !1
 			} : e) } : {},
@@ -6619,24 +5631,19 @@ function Gc({ data: e, receipt: t }) {
 		}, "POST", t), (e) => {
 			E.current = e.revision, l([]), t(J("settings:shared.settingsSaved")), T(e);
 		}, (e) => {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			let t = Pc(e);
-			l(t?.media_dirs ?? []), (!t || t.port) && x(t?.port || q(e));
-========
-			let t = Uc(e);
+			let t = Kc(e);
 			l(t?.media_dirs ?? []), (!t || t.port) && x(t?.port || K(e));
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		});
 	};
-	if (w) return /* @__PURE__ */ (0, $.jsx)(L, {
+	if (w) return /* @__PURE__ */ (0, $.jsx)(I, {
 		guide: "media",
 		title: J("settings:libraryFolders.title"),
-		children: /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsxs)(F, {
+		children: /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsxs)(P, {
 			tone: "success",
 			title: J("settings:shared.configSaved"),
 			children: [
 				J("settings:mediaLibraries.restartingRedirect"),
-				/* @__PURE__ */ (0, $.jsx)(Ae, {
+				/* @__PURE__ */ (0, $.jsx)(je, {
 					href: w.url,
 					size: "small",
 					children: J("settings:mediaLibraries.goToCollection")
@@ -6645,22 +5652,18 @@ function Gc({ data: e, receipt: t }) {
 			]
 		}) })
 	});
-	let le = i.some((e) => ri(e.location)), ue = le ? (e.mount_dependencies ?? []).filter((e) => !e.available) : [];
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	let ue = i.some((e) => ri(e.location)), de = ue ? (e.mount_dependencies ?? []).filter((e) => !e.available) : [];
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "media",
 		title: J("settings:libraryFolders.title"),
-		onSubmit: ae,
-		children: [/* @__PURE__ */ (0, $.jsxs)(V, { children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			/* @__PURE__ */ (0, $.jsx)(_c, {}),
-========
-			/* @__PURE__ */ (0, $.jsx)(Ec, {}),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		onSubmit: oe,
+		children: [/* @__PURE__ */ (0, $.jsxs)(B, { children: [
+			/* @__PURE__ */ (0, $.jsx)(kc, {}),
 			/* @__PURE__ */ (0, $.jsx)("div", {
 				role: "group",
 				"aria-label": J("settings:libraryFolders.title"),
 				className: "flex flex-col gap-4",
-				children: k.map((e) => {
+				children: O.map((e) => {
 					let t = i.findIndex((t) => t.library_id === e.library_id), l = i.map((e, t) => ({
 						row: e,
 						index: t
@@ -6678,17 +5681,13 @@ function Gc({ data: e, receipt: t }) {
 							/* @__PURE__ */ (0, $.jsxs)("div", {
 								"data-library-head": "",
 								children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-									/* @__PURE__ */ (0, $.jsx)(pc, {
-========
-									/* @__PURE__ */ (0, $.jsx)(Sc, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+									/* @__PURE__ */ (0, $.jsx)(Tc, {
 										label: J("settings:mediaLibraries.iconLabel", { name: h }),
 										value: e.library_icon,
 										kind: e.transport === "smb" ? "smb" : e.location,
 										onChange: (e) => te(t, { library_icon: e })
 									}),
-									/* @__PURE__ */ (0, $.jsx)(P, {
+									/* @__PURE__ */ (0, $.jsx)(N, {
 										className: "w-full",
 										"aria-label": J("settings:mediaLibraries.nameLabel", { name: h }),
 										maxLength: 80,
@@ -6696,239 +5695,34 @@ function Gc({ data: e, receipt: t }) {
 										value: e.library,
 										onChange: (e) => te(t, { library: e })
 									}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-									/* @__PURE__ */ (0, $.jsx)(bc, {
-========
-									/* @__PURE__ */ (0, $.jsx)(kc, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+									/* @__PURE__ */ (0, $.jsx)(Mc, {
 										id: e.library_id,
 										name: e.library,
 										value: e.library_color,
 										onChange: (e) => te(t, { library_color: e })
 									}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-									/* @__PURE__ */ (0, $.jsx)(vc, {
-========
-									/* @__PURE__ */ (0, $.jsx)(Dc, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+									/* @__PURE__ */ (0, $.jsx)(Ac, {
 										name: h,
 										value: p,
 										onChange: (n) => te(t, {
 											library_policy: n,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-											library_stages: n === "custom" ? e.library_stages || hc.join(",") : ""
-========
-											library_stages: n === "custom" ? e.library_stages || wc.join(",") : ""
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+											library_stages: n === "custom" ? e.library_stages || Dc.join(",") : ""
 										})
 									})
 								]
 							}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							p === "custom" ? /* @__PURE__ */ (0, $.jsx)(yc, {
+							p === "custom" ? /* @__PURE__ */ (0, $.jsx)(jc, {
 								name: h,
-								value: jc(e),
+								value: Uc(e),
 								previewsOff: g,
-								onChange: (e) => te(t, { library_stages: hc.filter((t) => e.includes(t)).join(",") })
-========
-							p === "custom" ? /* @__PURE__ */ (0, $.jsx)(Oc, {
-								name: h,
-								value: Bc(e),
-								previewsOff: g,
-								onChange: (e) => te(t, { library_stages: wc.filter((t) => e.includes(t)).join(",") })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+								onChange: (e) => te(t, { library_stages: Dc.filter((t) => e.includes(t)).join(",") })
 							}) : null,
 							/* @__PURE__ */ (0, $.jsxs)("div", {
 								"data-library-folders": "",
 								role: "group",
 								"aria-label": J("settings:mediaLibraries.directoriesLabel", { name: h }),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-								children: [l.map(({ row: t, index: o }) => /* @__PURE__ */ (0, $.jsxs)(Qr, {
-									label: J("settings:mediaLibraries.directoryLabel", { index: o + 1 }),
-									path: t.path,
-									onPath: (e) => a(o, {
-										path: e,
-										transport: e.startsWith("smb://") ? "smb" : t.transport
-									}),
-									error: c[o],
-									inputRef: f(o),
-									picking: u === o,
-									onPick: () => void d(o),
-									onRemove: i.length > 1 ? () => s(o) : void 0,
-									status: se(t) ? /* @__PURE__ */ (0, $.jsx)(Lc, { online: se(t)?.online }) : null,
-									children: [/* @__PURE__ */ (0, $.jsxs)(Zr, { children: [
-										/* @__PURE__ */ (0, $.jsx)(ni, {
-											index: o,
-											value: t.transport === "smb" ? "smb" : t.location,
-											options: Dc,
-											onChange: (e) => {
-												let n = e === "smb";
-												a(o, {
-													transport: n ? "smb" : "filesystem",
-													location: n ? "local" : e,
-													cost: n || e === "local" ? "free" : "",
-													path: n ? t.path.startsWith("smb://") ? t.path : "smb://" : t.path.startsWith("smb://") ? "" : t.path
-												}), C((e) => {
-													let t = { ...e };
-													return delete t[o], t;
-												});
-											}
-										}),
-										/* @__PURE__ */ (0, $.jsx)(ei, {
-											index: o,
-											cost: t.cost,
-											onChange: (e) => a(o, { cost: e }),
-											error: _ && !t.cost ? J("settings:mediaLibraries.readPolicyRequired") : void 0
-										}),
-										t.root_id && !se(t) ? /* @__PURE__ */ (0, $.jsx)(Xr, {
-											label: J("settings:mediaLibraries.changeType"),
-											className: "w-full @lg:w-auto @lg:flex-1",
-											children: /* @__PURE__ */ (0, $.jsxs)(R, {
-												className: "w-full",
-												"aria-label": J("settings:mediaLibraries.changeTypeLabel", { index: o + 1 }),
-												placeholder: J("settings:mediaLibraries.changeTypePlaceholder"),
-												selectedKey: t.change_mode || null,
-												onSelectionChange: (e) => {
-													e === "add" ? a(o, {
-														root_id: void 0,
-														root: "",
-														change_mode: ""
-													}) : a(o, { change_mode: "relocate" });
-												},
-												children: [/* @__PURE__ */ (0, $.jsx)(z, {
-													id: "relocate",
-													children: J("settings:mediaLibraries.relocate")
-												}), /* @__PURE__ */ (0, $.jsx)(z, {
-													id: "add",
-													children: J("settings:mediaLibraries.addAnother")
-												})]
-											})
-										}) : null,
-										k.length > 1 ? /* @__PURE__ */ (0, $.jsx)(Xr, {
-											label: J("settings:mediaLibraries.moveTo"),
-											className: "w-full @lg:w-48",
-											children: /* @__PURE__ */ (0, $.jsxs)(R, {
-												className: "w-full",
-												"aria-label": J("settings:mediaLibraries.moveToLabel", { index: o + 1 }),
-												selectedKey: t.library_id,
-												renderValue: /* @__PURE__ */ (0, $.jsxs)("span", {
-													className: "flex min-w-0 items-center gap-2",
-													children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: Oc(e) }), /* @__PURE__ */ (0, $.jsx)("span", {
-														className: "truncate",
-														children: h
-													})]
-												}),
-												onSelectionChange: (e) => {
-													e && ie(o, String(e));
-												},
-												children: [k.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
-													id: e.library_id,
-													textValue: e.library || J("settings:mediaLibraries.untitled"),
-													children: /* @__PURE__ */ (0, $.jsxs)("span", {
-														className: "flex min-w-0 items-center gap-2",
-														children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: Oc(e) }), /* @__PURE__ */ (0, $.jsx)("span", {
-															className: "truncate",
-															children: e.library || J("settings:mediaLibraries.untitled")
-														})]
-													})
-												}, e.library_id)), l.length > 1 ? /* @__PURE__ */ (0, $.jsx)(z, {
-													id: "new",
-													textValue: J("settings:mediaLibraries.newLibrary"),
-													children: /* @__PURE__ */ (0, $.jsxs)("span", {
-														className: "flex min-w-0 items-center gap-2",
-														children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: "plus" }), /* @__PURE__ */ (0, $.jsx)("span", { children: J("settings:mediaLibraries.newLibrary") })]
-													})
-												}) : null]
-											})
-										}) : null
-									] }), t.transport === "smb" ? /* @__PURE__ */ (0, $.jsxs)("div", {
-										className: "flex w-full flex-col gap-2",
-										children: [
-											/* @__PURE__ */ (0, $.jsxs)(Zr, { children: [/* @__PURE__ */ (0, $.jsx)(Xr, {
-												label: J("settings:smbShare.account"),
-												className: "w-full @lg:flex-1",
-												children: /* @__PURE__ */ (0, $.jsx)(P, {
-													"aria-label": J("settings:smbShare.accountLabel", { index: o + 1 }),
-													value: t.smb_username || "",
-													autoComplete: "off",
-													isDisabled: t.smb_clear,
-													onChange: (e) => a(o, { smb_username: e })
-												})
-											}), /* @__PURE__ */ (0, $.jsx)(Xr, {
-												label: J("settings:smbShare.password"),
-												className: "w-full @lg:flex-1",
-												children: /* @__PURE__ */ (0, $.jsx)(P, {
-													"aria-label": J("settings:smbShare.passwordLabel", { index: o + 1 }),
-													type: "password",
-													value: t.smb_password || "",
-													autoComplete: "new-password",
-													placeholder: t.smb_password_saved ? J("settings:smbShare.keepPassword") : "",
-													isDisabled: t.smb_clear,
-													onChange: (e) => a(o, { smb_password: e })
-												})
-											})] }),
-											/* @__PURE__ */ (0, $.jsx)(O, {
-												isSelected: t.smb_encrypt || !1,
-												isDisabled: t.smb_clear,
-												onChange: (e) => a(o, { smb_encrypt: e }),
-												children: J("settings:smbShare.requireEncryption")
-											}),
-											/* @__PURE__ */ (0, $.jsx)(O, {
-												isSelected: t.smb_clear || !1,
-												onChange: (e) => a(o, { smb_clear: e }),
-												children: J("settings:smbShare.removeAccount")
-											}),
-											/* @__PURE__ */ (0, $.jsx)(m, {
-												className: "self-start",
-												variant: "secondary",
-												...G(D.busy === `smb-${o}`),
-												onClick: () => void D.run(`smb-${o}`, (e) => W("/api/configuration/smb/test", t, "POST", e), (e) => {
-													let t = J("settings:smbShare.readable");
-													C((n) => ({
-														...n,
-														[o]: {
-															message: t,
-															directories: e.directories
-														}
-													})), n(t);
-												}, (e) => {
-													let t = q(e);
-													C((e) => ({
-														...e,
-														[o]: {
-															message: t,
-															directories: []
-														}
-													})), r(J("settings:connectionCheck.action", { service: "SMB" }), t);
-												}),
-												children: J("settings:smbShare.testConnection")
-											}),
-											S[o] ? /* @__PURE__ */ (0, $.jsx)(N, { children: S[o].message }) : null,
-											S[o]?.directories.length ? /* @__PURE__ */ (0, $.jsx)(R, {
-												"aria-label": J("settings:smbShare.subdirectoryLabel", { index: o + 1 }),
-												placeholder: J("settings:smbShare.openSubdirectory"),
-												selectedKey: null,
-												onSelectionChange: (e) => {
-													e && (a(o, { path: t.path.replace(/\/$/, "") + "/" + encodeURIComponent(String(e)) }), C((e) => ({
-														...e,
-														[o]: {
-															message: J("settings:smbShare.testSubdirectory"),
-															directories: []
-														}
-													})));
-												},
-												children: S[o].directories.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
-													id: e,
-													children: e
-												}, e))
-											}) : null,
-											/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:smbShare.help") })
-										]
-									}) : null]
-								}, o)), /* @__PURE__ */ (0, $.jsx)("div", {
-========
 								children: [l.map(({ row: t, index: o }) => {
-									let p = se(t), g = !!(p && t.smb_clear);
+									let p = ce(t), g = !!(p && t.smb_clear);
 									return /* @__PURE__ */ (0, $.jsxs)(Qr, {
 										label: J("settings:mediaLibraries.directoryLabel", { index: o + 1 }),
 										path: t.path,
@@ -6942,12 +5736,12 @@ function Gc({ data: e, receipt: t }) {
 										picking: u === o,
 										onPick: () => void d(o),
 										onRemove: i.length > 1 ? () => s(o) : void 0,
-										status: oe(t) ? /* @__PURE__ */ (0, $.jsx)(Kc, { online: oe(t)?.online }) : null,
+										status: se(t) ? /* @__PURE__ */ (0, $.jsx)(Yc, { online: se(t)?.online }) : null,
 										children: [/* @__PURE__ */ (0, $.jsxs)(Zr, { children: [
 											/* @__PURE__ */ (0, $.jsx)(ni, {
 												index: o,
 												value: t.transport === "smb" ? "smb" : t.location,
-												options: Ic,
+												options: zc,
 												onChange: (e) => {
 													let n = e === "smb";
 													a(o, {
@@ -6968,10 +5762,10 @@ function Gc({ data: e, receipt: t }) {
 												onChange: (e) => a(o, { cost: e }),
 												error: _ && !t.cost ? J("settings:mediaLibraries.readPolicyRequired") : void 0
 											}),
-											t.root_id && !oe(t) ? /* @__PURE__ */ (0, $.jsx)(Xr, {
+											t.root_id && !se(t) ? /* @__PURE__ */ (0, $.jsx)(Xr, {
 												label: J("settings:mediaLibraries.changeType"),
 												className: "w-full @lg:w-auto @lg:flex-1",
-												children: /* @__PURE__ */ (0, $.jsxs)(R, {
+												children: /* @__PURE__ */ (0, $.jsxs)(L, {
 													className: "w-full",
 													"aria-label": J("settings:mediaLibraries.changeTypeLabel", { index: o + 1 }),
 													placeholder: J("settings:mediaLibraries.changeTypePlaceholder"),
@@ -6983,48 +5777,48 @@ function Gc({ data: e, receipt: t }) {
 															change_mode: ""
 														}) : a(o, { change_mode: "relocate" });
 													},
-													children: [/* @__PURE__ */ (0, $.jsx)(z, {
+													children: [/* @__PURE__ */ (0, $.jsx)(R, {
 														id: "relocate",
 														children: J("settings:mediaLibraries.relocate")
-													}), /* @__PURE__ */ (0, $.jsx)(z, {
+													}), /* @__PURE__ */ (0, $.jsx)(R, {
 														id: "add",
 														children: J("settings:mediaLibraries.addAnother")
 													})]
 												})
 											}) : null,
-											k.length > 1 ? /* @__PURE__ */ (0, $.jsx)(Xr, {
+											O.length > 1 ? /* @__PURE__ */ (0, $.jsx)(Xr, {
 												label: J("settings:mediaLibraries.moveTo"),
 												className: "w-full @lg:w-48",
-												children: /* @__PURE__ */ (0, $.jsxs)(R, {
+												children: /* @__PURE__ */ (0, $.jsxs)(L, {
 													className: "w-full",
 													"aria-label": J("settings:mediaLibraries.moveToLabel", { index: o + 1 }),
 													selectedKey: t.library_id,
 													renderValue: /* @__PURE__ */ (0, $.jsxs)("span", {
 														className: "flex min-w-0 items-center gap-2",
-														children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: Lc(e) }), /* @__PURE__ */ (0, $.jsx)("span", {
+														children: [/* @__PURE__ */ (0, $.jsx)(yt, { mark: Bc(e) }), /* @__PURE__ */ (0, $.jsx)("span", {
 															className: "truncate",
 															children: h
 														})]
 													}),
 													onSelectionChange: (e) => {
-														e && ie(o, String(e));
+														e && ae(o, String(e));
 													},
-													children: [k.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+													children: [O.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 														id: e.library_id,
 														textValue: e.library || J("settings:mediaLibraries.untitled"),
 														children: /* @__PURE__ */ (0, $.jsxs)("span", {
 															className: "flex min-w-0 items-center gap-2",
-															children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: Lc(e) }), /* @__PURE__ */ (0, $.jsx)("span", {
+															children: [/* @__PURE__ */ (0, $.jsx)(yt, { mark: Bc(e) }), /* @__PURE__ */ (0, $.jsx)("span", {
 																className: "truncate",
 																children: e.library || J("settings:mediaLibraries.untitled")
 															})]
 														})
-													}, e.library_id)), l.length > 1 ? /* @__PURE__ */ (0, $.jsx)(z, {
+													}, e.library_id)), l.length > 1 ? /* @__PURE__ */ (0, $.jsx)(R, {
 														id: "new",
 														textValue: J("settings:mediaLibraries.newLibrary"),
 														children: /* @__PURE__ */ (0, $.jsxs)("span", {
 															className: "flex min-w-0 items-center gap-2",
-															children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: "plus" }), /* @__PURE__ */ (0, $.jsx)("span", { children: J("settings:mediaLibraries.newLibrary") })]
+															children: [/* @__PURE__ */ (0, $.jsx)(yt, { mark: "plus" }), /* @__PURE__ */ (0, $.jsx)("span", { children: J("settings:mediaLibraries.newLibrary") })]
 														})
 													}) : null]
 												})
@@ -7035,7 +5829,7 @@ function Gc({ data: e, receipt: t }) {
 												/* @__PURE__ */ (0, $.jsxs)(Zr, { children: [/* @__PURE__ */ (0, $.jsx)(Xr, {
 													label: J("settings:smbShare.account"),
 													className: "w-full @lg:flex-1",
-													children: /* @__PURE__ */ (0, $.jsx)(P, {
+													children: /* @__PURE__ */ (0, $.jsx)(N, {
 														"aria-label": J("settings:smbShare.accountLabel", { index: o + 1 }),
 														value: t.smb_username || "",
 														autoComplete: "off",
@@ -7045,7 +5839,7 @@ function Gc({ data: e, receipt: t }) {
 												}), /* @__PURE__ */ (0, $.jsx)(Xr, {
 													label: J("settings:smbShare.password"),
 													className: "w-full @lg:flex-1",
-													children: /* @__PURE__ */ (0, $.jsx)(P, {
+													children: /* @__PURE__ */ (0, $.jsx)(N, {
 														"aria-label": J("settings:smbShare.passwordLabel", { index: o + 1 }),
 														type: "password",
 														value: t.smb_password || "",
@@ -7055,15 +5849,15 @@ function Gc({ data: e, receipt: t }) {
 														onChange: (e) => a(o, { smb_password: e })
 													})
 												})] }),
-												p ? /* @__PURE__ */ (0, $.jsx)(O, {
+												p ? /* @__PURE__ */ (0, $.jsx)(ne, {
 													isSelected: g,
 													onChange: (e) => a(o, { smb_clear: e }),
 													children: J("settings:smbShare.removeAccount")
 												}) : null,
 												/* @__PURE__ */ (0, $.jsxs)("div", {
 													className: "flex flex-wrap items-center justify-between gap-3",
-													children: [/* @__PURE__ */ (0, $.jsx)(H, {
-														className: "[--color-background-tertiary-default:var(--color-border-button-default)]",
+													children: [/* @__PURE__ */ (0, $.jsx)(V, {
+														"data-smb-encryption": "",
 														isSelected: t.smb_encrypt || !1,
 														isDisabled: g,
 														onChange: (e) => a(o, { smb_encrypt: e }),
@@ -7094,8 +5888,8 @@ function Gc({ data: e, receipt: t }) {
 														children: J("settings:smbShare.testConnection")
 													})]
 												}),
-												S[o] ? /* @__PURE__ */ (0, $.jsx)(N, { children: S[o].message }) : null,
-												S[o]?.directories.length ? /* @__PURE__ */ (0, $.jsx)(R, {
+												S[o] ? /* @__PURE__ */ (0, $.jsx)(M, { children: S[o].message }) : null,
+												S[o]?.directories.length ? /* @__PURE__ */ (0, $.jsx)(L, {
 													"aria-label": J("settings:smbShare.subdirectoryLabel", { index: o + 1 }),
 													placeholder: J("settings:smbShare.openSubdirectory"),
 													selectedKey: null,
@@ -7111,28 +5905,23 @@ function Gc({ data: e, receipt: t }) {
 															}
 														})));
 													},
-													children: S[o].directories.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+													children: S[o].directories.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 														id: e,
 														children: e
 													}, e))
 												}) : null,
-												/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:smbShare.help") })
+												/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:smbShare.help") })
 											]
 										}) : null]
 									}, o);
 								}), /* @__PURE__ */ (0, $.jsx)("div", {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 									className: "flex",
 									children: /* @__PURE__ */ (0, $.jsx)(m, {
 										variant: "secondary",
 										"aria-label": J("settings:mediaLibraries.addDirectoryLabel", { name: h }),
 										onClick: () => {
 											o(), a(i.length, {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-												...Ac(e),
-========
-												...zc(e),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+												...Hc(e),
 												location: e.location,
 												cost: e.cost
 											});
@@ -7151,17 +5940,12 @@ function Gc({ data: e, receipt: t }) {
 				onClick: o,
 				children: J("settings:mediaLibraries.addLibrary")
 			}),
-			/* @__PURE__ */ (0, $.jsx)(N, { children: we }),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			ce ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(ti, {}), /* @__PURE__ */ (0, $.jsx)(Gs, {})] }) : null,
-			le.map((e) => /* @__PURE__ */ (0, $.jsxs)(N, { children: [
-========
-			le ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(ti, {}), /* @__PURE__ */ (0, $.jsx)(Zs, {})] }) : null,
-			ue.map((e) => /* @__PURE__ */ (0, $.jsxs)(N, { children: [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			/* @__PURE__ */ (0, $.jsx)(M, { children: Te }),
+			ue ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(ti, {}), /* @__PURE__ */ (0, $.jsx)(ec, {})] }) : null,
+			de.map((e) => /* @__PURE__ */ (0, $.jsxs)(M, { children: [
 				J("settings:mediaLibraries.dependencyMissingName", { name: e.name }),
 				J("shell:format.sentenceGap"),
-				/* @__PURE__ */ (0, $.jsxs)(ge, {
+				/* @__PURE__ */ (0, $.jsxs)(_e, {
 					href: e.download_url,
 					children: [
 						J("settings:shared.download"),
@@ -7170,17 +5954,17 @@ function Gc({ data: e, receipt: t }) {
 					]
 				})
 			] }, e.name)),
-			/* @__PURE__ */ (0, $.jsx)(O, {
+			/* @__PURE__ */ (0, $.jsx)(ne, {
 				isSelected: p,
 				onChange: h,
 				children: J("settings:mediaLibraries.scanAfterSave")
 			}),
-			y ? /* @__PURE__ */ (0, $.jsx)(F, {
+			y ? /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "error",
 				title: J("settings:shared.notSaved"),
 				children: y
 			}) : null
-		] }), /* @__PURE__ */ (0, $.jsx)(M, {
+		] }), /* @__PURE__ */ (0, $.jsx)(j, {
 			status: J("settings:libraryFolders.restartNotice"),
 			children: /* @__PURE__ */ (0, $.jsx)(m, {
 				type: "submit",
@@ -7190,36 +5974,24 @@ function Gc({ data: e, receipt: t }) {
 		})]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Lc({ online: e }) {
+function Yc({ online: e }) {
 	return /* @__PURE__ */ (0, $.jsx)(Gr, { online: e });
 }
-function Rc({ data: e }) {
-========
-function Kc({ online: e }) {
-	return /* @__PURE__ */ (0, $.jsx)(Gr, { online: e });
-}
-function qc({ data: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Xc({ data: e }) {
 	let t = e.media_sources, n = Y(), { checked: r, checkFailed: i } = Wr();
-	return t ? /* @__PURE__ */ (0, $.jsxs)(L, {
+	return t ? /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "mounts",
 		title: J("settings:mountStatus.title"),
 		children: [
-			/* @__PURE__ */ (0, $.jsx)(be, { children: t.map((e, t) => /* @__PURE__ */ (0, $.jsxs)(j, {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				term: /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: ii(e.location) }), Ec(e.location)] }),
-				children: [e.path || J("settings:mountStatus.notConfigured"), /* @__PURE__ */ (0, $.jsx)(Lc, { online: e.online })]
-========
-				term: /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(vt, { mark: ii(e.location) }), Fc(e.location)] }),
-				children: [e.path || J("settings:mountStatus.notConfigured"), /* @__PURE__ */ (0, $.jsx)(Kc, { online: e.online })]
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			/* @__PURE__ */ (0, $.jsx)(xe, { children: t.map((e, t) => /* @__PURE__ */ (0, $.jsxs)(A, {
+				term: /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(yt, { mark: ii(e.location) }), Rc(e.location)] }),
+				children: [e.path || J("settings:mountStatus.notConfigured"), /* @__PURE__ */ (0, $.jsx)(Yc, { online: e.online })]
 			}, t)) }),
-			n.error ? /* @__PURE__ */ (0, $.jsx)(V, {
+			n.error ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(A, { children: n.error })
+				children: /* @__PURE__ */ (0, $.jsx)(k, { children: n.error })
 			}) : null,
-			/* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
+			/* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(m, {
 				variant: "secondary",
 				onClick: () => void n.run("refresh", (e) => Qt(e), (e) => {
 					Jn.setQueryData(v, e), !e.section_errors?.media_sources && e.media_sources ? r(J("settings:mountStatus.refreshed")) : i(J("settings:mountStatus.refresh"), e.section_errors?.media_sources?.message || J("settings:shared.notFound"));
@@ -7234,12 +6006,8 @@ function qc({ data: e }) {
 	}) : null;
 }
 // src/react/settings/password-pair.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function zc({ label: e, password: t, confirmation: n, onPassword: r, onConfirmation: i, disabled: a = !1, passwordError: o, passwordHint: s, confirmationError: c, confirmationInvalid: l = !1 }) {
-========
-function Jc({ label: e, password: t, confirmation: n, onPassword: r, onConfirmation: i, disabled: a = !1, passwordError: o, passwordHint: s, confirmationError: c, confirmationInvalid: l = !1 }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(P, {
+function Zc({ label: e, password: t, confirmation: n, onPassword: r, onConfirmation: i, disabled: a = !1, passwordError: o, passwordHint: s, confirmationError: c, confirmationInvalid: l = !1 }) {
+	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(N, {
 		id: "access-password",
 		type: "password",
 		label: e,
@@ -7252,7 +6020,7 @@ function Jc({ label: e, password: t, confirmation: n, onPassword: r, onConfirmat
 		validationBehavior: "aria",
 		isInvalid: !a && !!o,
 		hint: a ? s : o || s
-	}), /* @__PURE__ */ (0, $.jsx)(P, {
+	}), /* @__PURE__ */ (0, $.jsx)(N, {
 		id: "access-confirm",
 		type: "password",
 		label: J("settings:accessPassword.confirm"),
@@ -7268,22 +6036,13 @@ function Jc({ label: e, password: t, confirmation: n, onPassword: r, onConfirmat
 	})] });
 }
 // src/react/settings/access-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Bc = {
-========
-var Yc = {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var Qc = {
 	legacy: J("settings:accessPassword.legacyHelp"),
 	locked: J("settings:accessPassword.lockedHelp"),
 	password: J("settings:accessPassword.passwordHelp")
 };
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Vc({ initial: e, receipt: t, devices: n, after: r, onSaved: i }) {
-	let [a, o] = (0, Z.useState)(e), [s, c] = (0, Z.useState)(""), [l, u] = (0, Z.useState)(""), [d, f] = (0, Z.useState)(""), [h, g] = (0, Z.useState)(!1), [_, v] = (0, Z.useState)({}), y = (0, Z.useRef)(null), b = Y(), x = (e) => {
-========
-function Xc({ initial: e, receipt: t, onSaved: n }) {
+function $c({ initial: e, receipt: t, onSaved: n }) {
 	let [r, i] = (0, Z.useState)(e), [a, o] = (0, Z.useState)(""), [s, c] = (0, Z.useState)(""), [l, u] = (0, Z.useState)(""), [d, f] = (0, Z.useState)(!1), [h, g] = (0, Z.useState)({}), _ = (0, Z.useRef)(null), v = Y(), y = (e) => {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		e.preventDefault();
 		let m = {};
 		r.mode === "password" && !a && (m.current_password = J("settings:accessPassword.enterCurrent")), d || ((s.length < 8 || s.length > 256) && (m.password = J("settings:accessPassword.lengthError")), s !== l && (m.confirmation = J("settings:accessPassword.mismatch"))), g(m), Object.keys(m).length ? requestAnimationFrame(() => _.current?.querySelector("input[aria-invalid=\"true\"]")?.focus()) : v.run("save", (e) => U("/api/configuration/access", {
@@ -7299,95 +6058,26 @@ function Xc({ initial: e, receipt: t, onSaved: n }) {
 			let t = e instanceof p ? e.body : null, n = It(t) || It(t?.detail);
 			n ? g(n) : v.setError(K(e));
 		});
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	}, S = Bc[a.mode], C = a.mode !== "locked";
-	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-		/* @__PURE__ */ (0, $.jsxs)(L, {
-			guide: "access",
-			title: J("settings:accessPassword.title"),
-			onSubmit: x,
-			children: [/* @__PURE__ */ (0, $.jsx)("div", {
-				ref: y,
-				children: /* @__PURE__ */ (0, $.jsxs)(V, { children: [
-					S ? /* @__PURE__ */ (0, $.jsx)(N, { children: S }) : null,
-					a.mode === "open" ? /* @__PURE__ */ (0, $.jsx)(F, {
-						tone: "warning",
-						title: J("settings:accessPassword.notSet"),
-						children: J("settings:accessPassword.openWarning")
-					}) : null,
-					a.mode === "password" || a.mode === "legacy" ? /* @__PURE__ */ (0, $.jsx)(O, {
-						isSelected: h,
-						onChange: g,
-						children: J("settings:accessPassword.turnOff")
-					}) : null,
-					a.mode === "password" ? /* @__PURE__ */ (0, $.jsx)(P, {
-						id: "access-current",
-						type: "password",
-						label: J("settings:accessPassword.current"),
-						autoComplete: "current-password",
-						maxLength: 256,
-						value: s,
-						onChange: c,
-						isRequired: !0,
-						validationBehavior: "aria",
-						isInvalid: !!_.current_password,
-						hint: _.current_password
-					}) : null,
-					C && !h ? /* @__PURE__ */ (0, $.jsx)(zc, {
-						label: a.mode === "password" ? J("settings:accessPassword.new") : J("settings:accessPassword.set"),
-						password: l,
-						confirmation: d,
-						onPassword: u,
-						onConfirmation: f,
-						passwordError: _.password,
-						confirmationError: _.confirmation,
-						passwordHint: J("settings:accessPassword.newHelp")
-					}) : null,
-					h ? /* @__PURE__ */ (0, $.jsx)(F, {
-						tone: "warning",
-						title: J("settings:accessPassword.scope"),
-						children: J("settings:accessPassword.disableWarning")
-					}) : null,
-					b.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: b.error }) : null
-				] })
-			}), C ? /* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
-				type: "submit",
-				...G(b.busy === "save"),
-				children: J("settings:shared.saveSettings")
-			}) }) : null]
-		}),
-		n && (a.mode === "password" || a.mode === "legacy") ? n(a) : null,
-		r ? r(a) : null
-	] });
-}
-// src/react/settings/api-token-settings.tsx
-var Hc = "/api/configuration/access/token/rotate";
-function Uc(e, t) {
-	let n = J("settings:accessToken.scriptsInvalidated"), r = J(e === "legacy" ? "settings:accessToken.rotateEffectLegacy" : e === "open" ? "settings:accessToken.rotateEffectOpen" : "settings:accessToken.rotateEffectPassword", { scripts: n });
-	return t ? J("settings:accessToken.rotateEffectPaired", { sentence: r }) : r;
-}
-function Wc({ initial: e, mode: t, receipt: n }) {
-========
-	}, b = Yc[r.mode], x = r.mode !== "locked";
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	}, b = Qc[r.mode], x = r.mode !== "locked";
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "access",
 		title: J("settings:accessPassword.title"),
 		onSubmit: y,
 		children: [/* @__PURE__ */ (0, $.jsx)("div", {
 			ref: _,
-			children: /* @__PURE__ */ (0, $.jsxs)(V, { children: [
-				b ? /* @__PURE__ */ (0, $.jsx)(N, { children: b }) : null,
-				r.mode === "open" ? /* @__PURE__ */ (0, $.jsx)(F, {
+			children: /* @__PURE__ */ (0, $.jsxs)(B, { children: [
+				b ? /* @__PURE__ */ (0, $.jsx)(M, { children: b }) : null,
+				r.mode === "open" ? /* @__PURE__ */ (0, $.jsx)(P, {
 					tone: "warning",
 					title: J("settings:accessPassword.notSet"),
 					children: J("settings:accessPassword.openWarning")
 				}) : null,
-				r.mode === "password" || r.mode === "legacy" ? /* @__PURE__ */ (0, $.jsx)(O, {
+				r.mode === "password" || r.mode === "legacy" ? /* @__PURE__ */ (0, $.jsx)(ne, {
 					isSelected: d,
 					onChange: f,
 					children: J("settings:accessPassword.turnOff")
 				}) : null,
-				r.mode === "password" ? /* @__PURE__ */ (0, $.jsx)(P, {
+				r.mode === "password" ? /* @__PURE__ */ (0, $.jsx)(N, {
 					id: "access-current",
 					type: "password",
 					label: J("settings:accessPassword.current"),
@@ -7400,7 +6090,7 @@ function Wc({ initial: e, mode: t, receipt: n }) {
 					isInvalid: !!h.current_password,
 					hint: h.current_password
 				}) : null,
-				x && !d ? /* @__PURE__ */ (0, $.jsx)(Jc, {
+				x && !d ? /* @__PURE__ */ (0, $.jsx)(Zc, {
 					label: r.mode === "password" ? J("settings:accessPassword.new") : J("settings:accessPassword.set"),
 					password: s,
 					confirmation: l,
@@ -7410,14 +6100,14 @@ function Wc({ initial: e, mode: t, receipt: n }) {
 					confirmationError: h.confirmation,
 					passwordHint: J("settings:accessPassword.newHelp")
 				}) : null,
-				d ? /* @__PURE__ */ (0, $.jsx)(F, {
+				d ? /* @__PURE__ */ (0, $.jsx)(P, {
 					tone: "warning",
 					title: J("settings:accessPassword.scope"),
 					children: J("settings:accessPassword.disableWarning")
 				}) : null,
-				v.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: v.error }) : null
+				v.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: v.error }) : null
 			] })
-		}), x ? /* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
+		}), x ? /* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(m, {
 			type: "submit",
 			...W(v.busy === "save"),
 			children: J("settings:shared.saveSettings")
@@ -7425,24 +6115,23 @@ function Wc({ initial: e, mode: t, receipt: n }) {
 	});
 }
 // src/react/settings/api-token-settings.tsx
-var Zc = "/api/configuration/access/token/rotate";
-function Qc(e, t) {
+var el = "/api/configuration/access/token/rotate";
+function tl(e, t) {
 	let n = J("settings:accessToken.scriptsInvalidated"), r = J(e === "legacy" ? "settings:accessToken.rotateEffectLegacy" : e === "open" ? "settings:accessToken.rotateEffectOpen" : "settings:accessToken.rotateEffectPassword", { scripts: n });
 	return t ? J("settings:accessToken.rotateEffectPaired", { sentence: r }) : r;
 }
-function $c({ initial: e, mode: t, receipt: n }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function nl({ initial: e, mode: t, receipt: n }) {
 	let [r, i] = (0, Z.useState)(e), [a, o] = (0, Z.useState)(null), s = Y(), c = Fr();
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		title: J("settings:accessToken.title"),
-		children: [/* @__PURE__ */ (0, $.jsxs)(V, { children: [
-			/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:accessToken.help") }),
+		children: [/* @__PURE__ */ (0, $.jsxs)(B, { children: [
+			/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:accessToken.help") }),
 			a ? /* @__PURE__ */ (0, $.jsxs)("div", {
 				className: "flex min-w-0 flex-col gap-2",
 				children: [
 					/* @__PURE__ */ (0, $.jsxs)("div", {
 						className: "flex min-w-0 flex-wrap items-end gap-2",
-						children: [/* @__PURE__ */ (0, $.jsx)(P, {
+						children: [/* @__PURE__ */ (0, $.jsx)(N, {
 							className: "min-w-0 flex-1",
 							label: J("settings:accessToken.newToken"),
 							value: a.token,
@@ -7455,40 +6144,33 @@ function $c({ initial: e, mode: t, receipt: n }) {
 							children: J("settings:accessToken.copy")
 						})]
 					}),
-					s.error ? /* @__PURE__ */ (0, $.jsx)(N, {
+					s.error ? /* @__PURE__ */ (0, $.jsx)(M, {
 						role: "status",
 						children: J("settings:accessToken.copyFailed")
 					}) : null,
-					/* @__PURE__ */ (0, $.jsx)(F, {
+					/* @__PURE__ */ (0, $.jsx)(P, {
 						tone: "info",
 						title: J("settings:accessToken.shownOnce"),
 						children: J("settings:accessToken.shownOnceHelp")
 					})
 				]
 			}) : null,
-			a?.relogin ? /* @__PURE__ */ (0, $.jsx)(F, {
+			a?.relogin ? /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "warning",
 				title: J("settings:accessToken.reloginTitle"),
 				children: J("settings:accessToken.reloginHelp")
 			}) : null,
-			r.rotatable ? null : /* @__PURE__ */ (0, $.jsx)(N, { children: r.reason })
-		] }), r.rotatable ? /* @__PURE__ */ (0, $.jsx)(M, {
+			r.rotatable ? null : /* @__PURE__ */ (0, $.jsx)(M, { children: r.reason })
+		] }), r.rotatable ? /* @__PURE__ */ (0, $.jsx)(j, {
 			status: J("settings:accessToken.immediate"),
 			children: /* @__PURE__ */ (0, $.jsx)(m, {
 				variant: "secondary",
 				onClick: () => void Wt({
 					title: J("settings:accessToken.rotateTitle"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					body: Uc(t, r.paired),
+					body: tl(t, r.paired),
 					confirmLabel: J("settings:accessToken.rotate"),
 					onConfirm: async () => {
-						let e = await W(Hc, {});
-========
-					body: Qc(t, r.paired),
-					confirmLabel: J("settings:accessToken.rotate"),
-					onConfirm: async () => {
-						let e = await U(Zc, {});
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						let e = await U(el, {});
 						i(e), o(e), e.mode === "legacy" && c.invalidateQueries({ queryKey: ["access-sessions"] }), n(e.signed_out ? J("settings:accessToken.rotatedSignedOut", { count: e.signed_out }) : J("settings:accessToken.rotated"));
 					}
 				}),
@@ -7498,11 +6180,7 @@ function $c({ initial: e, mode: t, receipt: n }) {
 	});
 }
 // src/react/settings/certificate-trust.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Gc({ rows: e, label: t }) {
-========
-function el({ rows: e, label: t }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function rl({ rows: e, label: t }) {
 	let n = e.length + 8, r = e.flatMap((e, t) => [...e].flatMap((e, n) => e === "1" ? [`M${n + 4} ${t + 4}h1v1h-1z`] : [])).join("");
 	return /* @__PURE__ */ (0, $.jsx)("svg", {
 		role: "img",
@@ -7516,24 +6194,16 @@ function el({ rows: e, label: t }) {
 		})
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Kc = [
-========
-var tl = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var il = [
 	[J("settings:certificateTrust.iosDevices"), J("settings:certificateTrust.iosSteps")],
 	["Android", J("settings:certificateTrust.androidSteps")],
 	[J("settings:certificateTrust.computer"), J("settings:certificateTrust.computerSteps")]
 ];
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function qc({ initial: e }) {
-========
-function nl({ initial: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function al({ initial: e }) {
 	let t = Math.max(60, e.expires_in - 60) * 1e3, n = X({
 		queryKey: ["ca-certificate"],
 		initialData: e,
-		queryFn: ({ signal: e }) => Mt("/api/configuration/certificate", e),
+		queryFn: ({ signal: e }) => H("/api/configuration/certificate", e),
 		staleTime: t,
 		refetchInterval: t,
 		refetchOnMount: !0,
@@ -7544,12 +6214,12 @@ function nl({ initial: e }) {
 		16,
 		24
 	].map((e) => a.slice(e, e + 8).join(":"));
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		title: J("settings:certificateTrust.title"),
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(V, { children: [/* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:certificateTrust.help") }), /* @__PURE__ */ (0, $.jsxs)("div", {
+			/* @__PURE__ */ (0, $.jsxs)(B, { children: [/* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:certificateTrust.help") }), /* @__PURE__ */ (0, $.jsxs)("div", {
 				className: "flex min-w-0 flex-wrap items-start gap-4",
-				children: [i ? /* @__PURE__ */ (0, $.jsx)(F, {
+				children: [i ? /* @__PURE__ */ (0, $.jsx)(P, {
 					tone: "error",
 					title: /* @__PURE__ */ (0, $.jsx)("span", {
 						"data-copy-key": "settings.certificateTrust.qrRefreshFailed",
@@ -7566,19 +6236,15 @@ function nl({ initial: e }) {
 						})
 					}),
 					children: K(n.error)
-				}) : n.isStale ? /* @__PURE__ */ (0, $.jsx)(N, {
+				}) : n.isStale ? /* @__PURE__ */ (0, $.jsx)(M, {
 					role: "status",
 					children: J("settings:certificateTrust.qrRefreshing")
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				}) : /* @__PURE__ */ (0, $.jsx)(Gc, {
-========
-				}) : /* @__PURE__ */ (0, $.jsx)(el, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				}) : /* @__PURE__ */ (0, $.jsx)(rl, {
 					rows: r.qr,
 					label: J("settings:certificateTrust.qrLabel")
 				}), /* @__PURE__ */ (0, $.jsxs)("div", {
 					className: "flex min-w-0 flex-1 basis-64 flex-col gap-2",
-					children: [/* @__PURE__ */ (0, $.jsxs)(be, { children: [/* @__PURE__ */ (0, $.jsx)(j, {
+					children: [/* @__PURE__ */ (0, $.jsxs)(xe, { children: [/* @__PURE__ */ (0, $.jsx)(A, {
 						term: J("settings:certificateTrust.fingerprint"),
 						children: /* @__PURE__ */ (0, $.jsx)("span", {
 							className: "flex max-w-sm flex-wrap justify-end gap-x-2 font-mono text-caption-1-regular",
@@ -7587,25 +6253,21 @@ function nl({ initial: e }) {
 								children: e
 							}, t))
 						})
-					}), /* @__PURE__ */ (0, $.jsx)(j, {
+					}), /* @__PURE__ */ (0, $.jsx)(A, {
 						term: J("settings:certificateTrust.validUntil"),
 						children: r.not_after
-					})] }), !i && !n.isStale ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:certificateTrust.qrHelp") }) : null]
+					})] }), !i && !n.isStale ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:certificateTrust.qrHelp") }) : null]
 				})]
 			})] }),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			/* @__PURE__ */ (0, $.jsx)(I, { children: Kc.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(B, {
-========
-			/* @__PURE__ */ (0, $.jsx)(I, { children: tl.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(B, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			/* @__PURE__ */ (0, $.jsx)(F, { children: il.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
 				label: e,
 				description: t
 			}, e)) }),
-			/* @__PURE__ */ (0, $.jsx)(V, {
+			/* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:certificateTrust.verifyHelp") })
+				children: /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:certificateTrust.verifyHelp") })
 			}),
-			/* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(h, {
+			/* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(h, {
 				href: r.download,
 				download: "peach-local-ca.crt",
 				leadingIcon: Vr,
@@ -7615,52 +6277,28 @@ function nl({ initial: e }) {
 	});
 }
 // src/react/settings/device-sessions.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Jc = "/api/configuration/access/sessions", Yc = (e) => e.device || J("settings:deviceSessions.unknownBrowser"), Xc = {
-	glyph: Ce,
+var ol = "/api/configuration/access/sessions", sl = (e) => e.device || J("settings:deviceSessions.unknownBrowser"), cl = {
+	glyph: we,
 	brand: "apple"
-}, Zc = {
-	glyph: Mn,
-	brand: "android"
-}, Qc = {
-	iPhone: {
-		platform: Xc,
-		terminal: kt
-	},
-	iPad: {
-		platform: Xc,
-		terminal: me
-	},
-	Android: {
-		platform: Zc,
-		terminal: kt
-	},
-	"Android tablet": {
-		platform: Zc,
-========
-var rl = "/api/configuration/access/sessions", il = (e) => e.device || J("settings:deviceSessions.unknownBrowser"), al = {
-	glyph: Ce,
-	brand: "apple"
-}, ol = {
+}, ll = {
 	glyph: Nn,
 	brand: "android"
-}, sl = {
+}, ul = {
 	iPhone: {
-		platform: al,
-		terminal: kt
+		platform: cl,
+		terminal: At
 	},
 	iPad: {
-		platform: al,
-		terminal: me
+		platform: cl,
+		terminal: he
 	},
 	Android: {
-		platform: ol,
-		terminal: kt
+		platform: ll,
+		terminal: At
 	},
 	"Android tablet": {
-		platform: ol,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-		terminal: me,
+		platform: ll,
+		terminal: he,
 		label: () => J("settings:deviceSessions.androidTablet")
 	},
 	ChromeOS: {
@@ -7669,167 +6307,95 @@ var rl = "/api/configuration/access/sessions", il = (e) => e.device || J("settin
 	},
 	Windows: {
 		platform: {
-			glyph: Et,
+			glyph: Dt,
 			brand: "windows"
 		},
 		terminal: Ur
 	},
 	macOS: {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		platform: Xc,
+		platform: cl,
 		terminal: Ur
 	},
 	Linux: { terminal: Ur }
-}, $c = "inline size-4 -mt-0.5 mr-1 align-middle";
-function el({ platform: e }) {
+}, dl = "inline size-4 -mt-0.5 mr-1 align-middle";
+function fl({ platform: e }) {
 	if ("browser" in e) return /* @__PURE__ */ (0, $.jsx)(oi, {
 		name: e.browser,
-		className: $c
-========
-		platform: al,
-		terminal: Ur
-	},
-	Linux: { terminal: Ur }
-}, cl = "inline size-4 -mt-0.5 mr-1 align-middle";
-function ll({ platform: e }) {
-	if ("browser" in e) return /* @__PURE__ */ (0, $.jsx)(oi, {
-		name: e.browser,
-		className: cl
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		className: dl
 	});
 	let { glyph: t, brand: n } = e;
 	return /* @__PURE__ */ (0, $.jsx)(t, {
 		"aria-hidden": !0,
 		"data-platform-mark": n,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		className: $c
+		className: dl
 	});
 }
-function tl({ row: e }) {
-	if (!e.device) return Yc(e);
-	let t = e.device.split(" · "), n = Qc[t.at(-1) ?? ""] ? t.pop() : "", r = t.join(" · "), i = n ? Qc[n].platform : void 0;
+function pl({ row: e }) {
+	if (!e.device) return sl(e);
+	let t = e.device.split(" · "), n = ul[t.at(-1) ?? ""] ? t.pop() : "", r = t.join(" · "), i = n ? ul[n].platform : void 0;
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
 		r ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [si(r) ? /* @__PURE__ */ (0, $.jsx)(oi, {
 			name: r,
-			className: $c
+			className: dl
 		}) : null, r] }) : null,
 		r && n ? " · " : null,
-		n ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [i ? /* @__PURE__ */ (0, $.jsx)(el, { platform: i }) : null, Qc[n].label?.() ?? n] }) : null
+		n ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [i ? /* @__PURE__ */ (0, $.jsx)(fl, { platform: i }) : null, ul[n].label?.() ?? n] }) : null
 	] });
 }
-function nl({ row: e }) {
-	let t = Qc[e.device.split(" · ").at(-1) ?? ""]?.terminal ?? Jt;
-========
-		className: cl
-	});
-}
-function ul({ row: e }) {
-	if (!e.device) return il(e);
-	let t = e.device.split(" · "), n = sl[t.at(-1) ?? ""] ? t.pop() : "", r = t.join(" · "), i = n ? sl[n].platform : void 0;
-	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-		r ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [si(r) ? /* @__PURE__ */ (0, $.jsx)(oi, {
-			name: r,
-			className: cl
-		}) : null, r] }) : null,
-		r && n ? " · " : null,
-		n ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [i ? /* @__PURE__ */ (0, $.jsx)(ll, { platform: i }) : null, sl[n].label?.() ?? n] }) : null
-	] });
-}
-function dl({ row: e }) {
-	let t = sl[e.device.split(" · ").at(-1) ?? ""]?.terminal ?? Yt;
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function ml({ row: e }) {
+	let t = ul[e.device.split(" · ").at(-1) ?? ""]?.terminal ?? Yt;
 	return /* @__PURE__ */ (0, $.jsx)(t, {
 		"aria-hidden": !0,
 		className: "size-5 shrink-0 text-foreground-icon-secondary"
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function rl({ row: e, children: t }) {
-========
-function fl({ row: e, children: t }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function hl({ row: e, children: t }) {
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		className: "flex min-h-13 w-full items-center justify-between gap-4 border-b border-separator-border py-2.5 pr-2.5 last:border-b-0",
 		children: [/* @__PURE__ */ (0, $.jsxs)("div", {
 			className: "flex min-w-0 items-center gap-3",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			children: [/* @__PURE__ */ (0, $.jsx)(nl, { row: e }), /* @__PURE__ */ (0, $.jsxs)("div", {
+			children: [/* @__PURE__ */ (0, $.jsx)(ml, { row: e }), /* @__PURE__ */ (0, $.jsxs)("div", {
 				className: "flex min-w-0 flex-col",
 				children: [/* @__PURE__ */ (0, $.jsx)("p", {
 					className: "text-body-regular text-text-primary",
-					children: /* @__PURE__ */ (0, $.jsx)(tl, { row: e })
+					children: /* @__PURE__ */ (0, $.jsx)(pl, { row: e })
 				}), /* @__PURE__ */ (0, $.jsx)("p", {
 					className: "text-body-2-regular text-text-secondary",
-					children: ol(e)
-========
-			children: [/* @__PURE__ */ (0, $.jsx)(dl, { row: e }), /* @__PURE__ */ (0, $.jsxs)("div", {
-				className: "flex min-w-0 flex-col",
-				children: [/* @__PURE__ */ (0, $.jsx)("p", {
-					className: "text-body-regular text-text-primary",
-					children: /* @__PURE__ */ (0, $.jsx)(ul, { row: e })
-				}), /* @__PURE__ */ (0, $.jsx)("p", {
-					className: "text-body-2-regular text-text-secondary",
-					children: hl(e)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					children: vl(e)
 				})]
 			})]
 		}), t]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function il(e, t = Date.now() / 1e3) {
-========
-function pl(e, t = Date.now() / 1e3) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function gl(e, t = Date.now() / 1e3) {
 	let n = Math.max(0, t - e);
 	return n < 60 ? J("settings:deviceSessions.justNow") : n < 3600 ? J("settings:deviceSessions.minutesAgo", { count: Math.floor(n / 60) }) : n < 86400 ? J("settings:deviceSessions.hoursAgo", { count: Math.floor(n / 3600) }) : n < 2592e3 ? J("settings:deviceSessions.daysAgo", { count: Math.floor(n / 86400) }) : (/* @__PURE__ */ new Date(e * 1e3)).toLocaleDateString(Tn);
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function al(e) {
+function _l(e) {
 	return e.network === "loopback" ? J("settings:deviceSessions.loopback") : e.network ? e.remote ? J("settings:deviceSessions.viaRemoteAccess", { network: e.network }) : e.network : "";
 }
-var ol = (e) => [J("settings:deviceSessions.lastActive", { time: il(e.last_seen) }), al(e)].filter(Boolean).join(" · ");
-function sl({ revision: e, receipt: t }) {
+var vl = (e) => [J("settings:deviceSessions.lastActive", { time: gl(e.last_seen) }), _l(e)].filter(Boolean).join(" · ");
+function yl({ revision: e, receipt: t }) {
 	let n = X({
 		queryKey: ["access-sessions", e],
 		refetchOnMount: "always",
-		queryFn: ({ signal: e }) => U(Jc, e)
-========
-function ml(e) {
-	return e.network === "loopback" ? J("settings:deviceSessions.loopback") : e.network ? e.remote ? J("settings:deviceSessions.viaRemoteAccess", { network: e.network }) : e.network : "";
-}
-var hl = (e) => [J("settings:deviceSessions.lastActive", { time: pl(e.last_seen) }), ml(e)].filter(Boolean).join(" · ");
-function gl({ revision: e, receipt: t }) {
-	let n = X({
-		queryKey: ["access-sessions", e],
-		refetchOnMount: "always",
-		queryFn: ({ signal: e }) => Mt(rl, e)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		queryFn: ({ signal: e }) => H(ol, e)
 	});
-	return n.error ? /* @__PURE__ */ (0, $.jsx)(L, {
+	return n.error ? /* @__PURE__ */ (0, $.jsx)(I, {
 		title: J("settings:signedInDevices.title"),
-		children: /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(Je, {
+		children: /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(Ye, {
 			titleKey: "settings:deviceSessions.loadFailed",
 			query: n
 		}) })
-	}) : n.isFetching || !n.data ? /* @__PURE__ */ (0, $.jsx)(at, {
+	}) : n.isFetching || !n.data ? /* @__PURE__ */ (0, $.jsx)(ot, {
 		label: J("settings:deviceSessions.loading"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		html: Yt
-	}) : /* @__PURE__ */ (0, $.jsx)(cl, {
-========
 		html: Xt
-	}) : /* @__PURE__ */ (0, $.jsx)(_l, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	}) : /* @__PURE__ */ (0, $.jsx)(bl, {
 		initial: n.data,
 		receipt: t
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function cl({ initial: e, receipt: t }) {
-========
-function _l({ initial: e, receipt: t }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function bl({ initial: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(e);
 	(0, Z.useEffect)(() => r(e), [e]);
 	let i = n.sessions.filter((e) => !e.current);
@@ -7842,56 +6408,39 @@ function _l({ initial: e, receipt: t }) {
 	let a = (e) => void Wt({
 		title: J("settings:deviceSessions.revokeTitle"),
 		body: J("settings:deviceSessions.revokeBody", {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			device: Yc(e),
-			details: ol(e)
+			device: sl(e),
+			details: vl(e)
 		}),
 		confirmLabel: J("settings:deviceSessions.revokeConfirm"),
 		onConfirm: async () => {
-			r(await W(`${Jc}/revoke`, {
-========
-			device: il(e),
-			details: hl(e)
-		}),
-		confirmLabel: J("settings:deviceSessions.revokeConfirm"),
-		onConfirm: async () => {
-			r(await U(`${rl}/revoke`, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			r(await U(`${ol}/revoke`, {
 				revision: n.revision,
 				id: e.id
 			})), t(J("settings:deviceSessions.revoked"));
 		}
 	});
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		title: J("settings:signedInDevices.title"),
 		children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			n.sessions.length ? /* @__PURE__ */ (0, $.jsx)(I, { children: n.sessions.map((e) => /* @__PURE__ */ (0, $.jsx)(rl, {
-========
-			n.sessions.length ? /* @__PURE__ */ (0, $.jsx)(I, { children: n.sessions.map((e) => /* @__PURE__ */ (0, $.jsx)(fl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			n.sessions.length ? /* @__PURE__ */ (0, $.jsx)(F, { children: n.sessions.map((e) => /* @__PURE__ */ (0, $.jsx)(hl, {
 				row: e,
-				children: e.current ? /* @__PURE__ */ (0, $.jsx)(k, {
+				children: e.current ? /* @__PURE__ */ (0, $.jsx)(O, {
 					color: "blue",
 					variant: "caption",
 					children: J("settings:deviceSessions.thisDevice")
 				}) : n.manageable ? /* @__PURE__ */ (0, $.jsx)(m, {
 					size: "small",
 					variant: "secondary",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					"aria-label": J("settings:deviceSessions.revokeDevice", { device: Yc(e) }),
-========
-					"aria-label": J("settings:deviceSessions.revokeDevice", { device: il(e) }),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					"aria-label": J("settings:deviceSessions.revokeDevice", { device: sl(e) }),
 					onClick: () => a(e),
 					children: J("settings:deviceSessions.revoke")
 				}) : null
-			}, e.id)) }) : /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:deviceSessions.empty") }) }),
-			!n.manageable && i.length ? /* @__PURE__ */ (0, $.jsx)(V, {
+			}, e.id)) }) : /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:deviceSessions.empty") }) }),
+			!n.manageable && i.length ? /* @__PURE__ */ (0, $.jsx)(B, {
 				divided: !0,
-				children: /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:deviceSessions.serverOnly") })
+				children: /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:deviceSessions.serverOnly") })
 			}) : null,
-			n.manageable && i.length ? /* @__PURE__ */ (0, $.jsx)(M, {
+			n.manageable && i.length ? /* @__PURE__ */ (0, $.jsx)(j, {
 				status: J("settings:signedInDevices.passwordChangeNotice"),
 				children: /* @__PURE__ */ (0, $.jsx)(m, {
 					variant: "secondary",
@@ -7900,11 +6449,7 @@ function _l({ initial: e, receipt: t }) {
 						body: J("settings:deviceSessions.revokeOthersBody", { count: i.length }),
 						confirmLabel: J("settings:deviceSessions.revokeConfirm"),
 						onConfirm: async () => {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-							let e = await W(`${Jc}/revoke`, {
-========
-							let e = await U(`${rl}/revoke`, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+							let e = await U(`${ol}/revoke`, {
 								revision: n.revision,
 								scope: "others"
 							});
@@ -7918,53 +6463,40 @@ function _l({ initial: e, receipt: t }) {
 	});
 }
 // src/react/settings/port-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var ll = [{
-========
-var vl = [{
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var xl = [{
 	value: "0.0.0.0",
 	label: J("settings:accessAddress.lanDevices")
 }, {
 	value: "127.0.0.1",
 	label: J("settings:accessAddress.thisComputerOnly")
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-}];
-function ul({ data: e, receipt: t }) {
-	let n = e.network, r = n ? n.editable : e.editable && e.port_editable !== !1, [i, a] = (0, Z.useState)(n?.host ?? "127.0.0.1"), [o, s] = (0, Z.useState)(n?.mdns_name ?? "peach"), [c, l] = (0, Z.useState)(String(e.port)), [u, d] = (0, Z.useState)({}), [f, h] = (0, Z.useState)(null), g = Y();
-	return (0, Z.useEffect)(() => {
-		if (!f) return;
-		let e = setTimeout(() => location.assign(f.url), Hs);
-========
-}], yl = (e) => /^\d+$/.test(e.trim()) && Number(e) >= 1 && Number(e) <= 65535 ? "" : q("errors.onboarding.portInvalid", ""), bl = (e) => /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i.test(e.trim()) ? "" : q("errors.onboarding.mdnsNameInvalid", "");
-function xl({ data: e, receipt: t }) {
+}], Sl = (e) => /^\d+$/.test(e.trim()) && Number(e) >= 1 && Number(e) <= 65535 ? "" : q("errors.onboarding.portInvalid", ""), Cl = (e) => /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i.test(e.trim()) ? "" : q("errors.onboarding.mdnsNameInvalid", "");
+function wl({ data: e, receipt: t }) {
 	let n = e.network, r = n ? n.editable : e.editable && e.port_editable !== !1, [i, a] = (0, Z.useState)(n?.host ?? "127.0.0.1"), [o, s] = (0, Z.useState)(n?.mdns_name ?? "peach"), [c, l] = (0, Z.useState)(String(e.port)), u = Ta(), d = u.errors, [f, h] = (0, Z.useState)(null), g = Y();
 	return (0, Z.useEffect)(() => {
 		if (!f) return;
-		let e = setTimeout(() => location.assign(f.url), Js);
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		let e = setTimeout(() => location.assign(f.url), Zs);
 		return () => clearTimeout(e);
-	}, [f]), f ? /* @__PURE__ */ (0, $.jsx)(L, {
+	}, [f]), f ? /* @__PURE__ */ (0, $.jsx)(I, {
 		guide: "port",
 		title: J("settings:accessUrls.title"),
-		children: /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsxs)(F, {
+		children: /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsxs)(P, {
 			tone: "success",
 			title: J("settings:shared.configSaved"),
-			children: [J("settings:accessAddress.restarting"), /* @__PURE__ */ (0, $.jsx)(Ae, {
+			children: [J("settings:accessAddress.restarting"), /* @__PURE__ */ (0, $.jsx)(je, {
 				href: f.url,
 				size: "small",
 				children: J("settings:accessAddress.backToNetwork")
 			})]
 		}) })
-	}) : /* @__PURE__ */ (0, $.jsxs)(L, {
+	}) : /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "port",
 		title: J("settings:accessUrls.title"),
 		onSubmit: r ? (r) => {
 			r.preventDefault();
 			let a = r.currentTarget;
 			u.check(a, {
-				port: yl(c),
-				mdns_name: n?.editable && i === "0.0.0.0" ? bl(o) : ""
+				port: Sl(c),
+				mdns_name: n?.editable && i === "0.0.0.0" ? Cl(o) : ""
 			}) && g.run("save", (t) => U(b, {
 				revision: e.revision,
 				media_dirs: e.media_dirs,
@@ -7982,58 +6514,34 @@ function xl({ data: e, receipt: t }) {
 				t && (t.port || t.host || t.mdns_name) ? u.check(a, t) : g.setError(K(e));
 			});
 		} : void 0,
-		children: [/* @__PURE__ */ (0, $.jsxs)(V, { children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			n ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(dl, {
-========
-			n ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(Sl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		children: [/* @__PURE__ */ (0, $.jsxs)(B, { children: [
+			n ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(Tl, {
 				label: J("settings:accessAddress.localUrl"),
 				value: n.local_url,
 				receipt: t
 			}), n.lan_url || n.ip_url ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				/* @__PURE__ */ (0, $.jsx)(dl, {
-========
-				/* @__PURE__ */ (0, $.jsx)(Sl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				/* @__PURE__ */ (0, $.jsx)(Tl, {
 					label: J("settings:accessAddress.phoneUrl"),
 					value: n.lan_url || n.ip_url,
 					receipt: t
 				}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				n.lan_url && n.ip_url ? /* @__PURE__ */ (0, $.jsx)(dl, {
-========
-				n.lan_url && n.ip_url ? /* @__PURE__ */ (0, $.jsx)(Sl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				n.lan_url && n.ip_url ? /* @__PURE__ */ (0, $.jsx)(Tl, {
 					label: J("settings:accessAddress.alternateIp"),
 					value: n.ip_url,
 					receipt: t
 				}) : null,
-				/* @__PURE__ */ (0, $.jsxs)(N, { children: [J("settings:accessAddress.sameWifi"), n.ip_url && n.lan_url ? J("settings:accessAddress.tryIp") : ""] })
-			] }) : /* @__PURE__ */ (0, $.jsx)(N, { children: n.scope === "local" ? J("settings:accessAddress.localOnly") : J("settings:accessAddress.lanUnavailable") })] }) : null,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			r ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [n?.editable ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(ps, {
-========
-			r ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [n?.editable ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(vs, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				/* @__PURE__ */ (0, $.jsxs)(M, { children: [J("settings:accessAddress.sameWifi"), n.ip_url && n.lan_url ? J("settings:accessAddress.tryIp") : ""] })
+			] }) : /* @__PURE__ */ (0, $.jsx)(M, { children: n.scope === "local" ? J("settings:accessAddress.localOnly") : J("settings:accessAddress.lanUnavailable") })] }) : null,
+			r ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [n?.editable ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(xs, {
 				id: "configHost",
 				label: J("settings:accessAddress.whoCanConnect"),
 				value: i,
 				onChange: a,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				options: ll,
-				isDisabled: !!g.busy,
-				isInvalid: !!u.host,
-				children: u.host ? /* @__PURE__ */ (0, $.jsx)(A, { children: u.host }) : null
-			}), i === "0.0.0.0" ? /* @__PURE__ */ (0, $.jsx)(ms, {
-========
-				options: vl,
+				options: xl,
 				isDisabled: !!g.busy,
 				isInvalid: !!d.host,
-				children: d.host ? /* @__PURE__ */ (0, $.jsx)(A, { children: d.host }) : null
-			}), i === "0.0.0.0" ? /* @__PURE__ */ (0, $.jsx)(ys, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				children: d.host ? /* @__PURE__ */ (0, $.jsx)(k, { children: d.host }) : null
+			}), i === "0.0.0.0" ? /* @__PURE__ */ (0, $.jsx)(Ss, {
 				id: "configMdnsName",
 				"data-settings-field": "mdns_name",
 				label: J("settings:accessUrls.lanUrl"),
@@ -8041,7 +6549,7 @@ function xl({ data: e, receipt: t }) {
 				onChange: (e) => {
 					s(e), u.update("mdns_name");
 				},
-				onBlur: () => u.update("mdns_name", bl(o)),
+				onBlur: () => u.update("mdns_name", Cl(o)),
 				prefix: n.local_url.startsWith("https:") ? "https://" : "http://",
 				suffix: ".local",
 				autoComplete: "off",
@@ -8049,15 +6557,9 @@ function xl({ data: e, receipt: t }) {
 				maxLength: 63,
 				isDisabled: !!g.busy,
 				validationBehavior: "aria",
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				isInvalid: !!u.mdns_name,
-				hint: u.mdns_name || void 0
-			}) : null] }) : null, /* @__PURE__ */ (0, $.jsx)(ms, {
-========
 				isInvalid: !!d.mdns_name,
 				hint: d.mdns_name || void 0
-			}) : null] }) : null, /* @__PURE__ */ (0, $.jsx)(ys, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			}) : null] }) : null, /* @__PURE__ */ (0, $.jsx)(Ss, {
 				id: "configPort",
 				"data-settings-field": "port",
 				label: J("settings:accessUrls.port"),
@@ -8067,19 +6569,19 @@ function xl({ data: e, receipt: t }) {
 				onChange: (e) => {
 					l(e), u.update("port");
 				},
-				onBlur: () => u.update("port", yl(c)),
+				onBlur: () => u.update("port", Sl(c)),
 				isDisabled: !!g.busy,
 				validationBehavior: "aria",
 				isInvalid: !!d.port,
 				hint: d.port
-			})] }) : /* @__PURE__ */ (0, $.jsx)(N, { children: e.notice || J("settings:accessAddress.managedByStartup") }),
-			n?.editable && i === "0.0.0.0" && n.scope === "local" ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("settings:accessAddress.phoneUrlAfterRestart") }) : null,
-			g.error ? /* @__PURE__ */ (0, $.jsx)(F, {
+			})] }) : /* @__PURE__ */ (0, $.jsx)(M, { children: e.notice || J("settings:accessAddress.managedByStartup") }),
+			n?.editable && i === "0.0.0.0" && n.scope === "local" ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("settings:accessAddress.phoneUrlAfterRestart") }) : null,
+			g.error ? /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "error",
 				title: J("settings:shared.notSaved"),
 				children: g.error
 			}) : null
-		] }), r ? /* @__PURE__ */ (0, $.jsx)(M, {
+		] }), r ? /* @__PURE__ */ (0, $.jsx)(j, {
 			status: J("settings:accessUrls.restartNotice"),
 			children: /* @__PURE__ */ (0, $.jsx)(m, {
 				type: "submit",
@@ -8089,17 +6591,13 @@ function xl({ data: e, receipt: t }) {
 		}) : null]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function dl({ label: e, value: t, receipt: n }) {
-========
-function Sl({ label: e, value: t, receipt: n }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Tl({ label: e, value: t, receipt: n }) {
 	let r = Y();
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		className: "flex min-w-0 flex-col gap-2",
 		children: [/* @__PURE__ */ (0, $.jsxs)("div", {
 			className: "flex min-w-0 flex-wrap items-end gap-2",
-			children: [/* @__PURE__ */ (0, $.jsx)(P, {
+			children: [/* @__PURE__ */ (0, $.jsx)(N, {
 				className: "min-w-0 flex-1",
 				label: e,
 				value: t,
@@ -8111,50 +6609,34 @@ function Sl({ label: e, value: t, receipt: n }) {
 				onClick: () => void r.run("copy", () => navigator.clipboard.writeText(t), () => n(J("settings:accessAddress.copied"))),
 				children: J("settings:accessAddress.copyUrl")
 			})]
-		}), r.error ? /* @__PURE__ */ (0, $.jsx)(N, {
+		}), r.error ? /* @__PURE__ */ (0, $.jsx)(M, {
 			role: "status",
 			children: J("settings:accessAddress.copyFailed")
 		}) : null]
 	});
 }
 // src/react/settings/peach-proxy-fields.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var fl = [
-========
-var Cl = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var El = [
 	["environment", J("settings:peachProxy.environment")],
 	["direct", J("settings:cloudProxy.direct")],
 	["proxy", J("settings:shared.custom")]
 ];
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function pl({ mode: e, onChange: t, labelledBy: n }) {
-========
-function wl({ mode: e, onChange: t, labelledBy: n }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsx)(R, {
+function Dl({ mode: e, onChange: t, labelledBy: n }) {
+	return /* @__PURE__ */ (0, $.jsx)(L, {
 		"aria-label": n ? void 0 : J("settings:peachProxy.mode"),
 		"aria-labelledby": n,
 		selectedKey: e,
 		onSelectionChange: (e) => {
 			e !== null && t(String(e));
 		},
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		children: fl.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
-========
-		children: Cl.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(z, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		children: El.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(R, {
 			id: e,
 			children: t
 		}, e))
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function ml({ id: e, value: t, onChange: n, saved: r = !1, required: i, error: a }) {
-========
-function Tl({ id: e, value: t, onChange: n, saved: r = !1, required: i, error: a, onBlur: o }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsx)(P, {
+function Ol({ id: e, value: t, onChange: n, saved: r = !1, required: i, error: a, onBlur: o }) {
+	return /* @__PURE__ */ (0, $.jsx)(N, {
 		id: e,
 		type: "password",
 		label: J("settings:peachProxy.url"),
@@ -8172,24 +6654,16 @@ function Tl({ id: e, value: t, onChange: n, saved: r = !1, required: i, error: a
 	});
 }
 // src/react/settings/tunnel-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var hl = 2e3, gl = 3e5, _l = [["quick", J("settings:cloudflareTunnel.quick")], ["named", J("settings:cloudflareTunnel.named")]], vl = {
+var kl = 2e3, Al = 3e5, jl = [["quick", J("settings:cloudflareTunnel.quick")], ["named", J("settings:cloudflareTunnel.named")]], Ml = {
 	quick: J("settings:remoteAccess.quickHelp"),
 	named: J("settings:remoteAccess.namedHelp")
 };
-function yl({ revision: e, initial: t, receipt: n, blocked: r = !1 }) {
-========
-var El = 2e3, Dl = 3e5, Ol = [["quick", J("settings:cloudflareTunnel.quick")], ["named", J("settings:cloudflareTunnel.named")]], kl = {
-	quick: J("settings:remoteAccess.quickHelp"),
-	named: J("settings:remoteAccess.namedHelp")
-};
-function Al(e, t = !1) {
+function Nl(e, t = !1) {
 	if (!e.trim() && !t) return "";
 	let n = e.trim().replace(/\.+$/, "").replace(/^https?:\/\//i, "").replace(/\/+$/, "").replace(/\.+$/, "");
 	return n ? n.length > 253 || !/^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)+$/i.test(n) ? q("errors.tunnel.invalidHostname", "", { value: e }) : "" : q("errors.tunnel.hostnameRequired", "");
 }
-function jl({ revision: e, initial: t, receipt: n, blocked: r = !1 }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Pl({ revision: e, initial: t, receipt: n, blocked: r = !1 }) {
 	let [i, a] = (0, Z.useState)(t);
 	(0, Z.useEffect)(() => {
 		r && a((e) => e.state === "stopped" ? e : {
@@ -8205,15 +6679,9 @@ function jl({ revision: e, initial: t, receipt: n, blocked: r = !1 }) {
 		let e = new AbortController();
 		return Wn({
 			signal: e.signal,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			everyMs: hl,
-			limitMs: gl,
-			read: (e) => Zt(e),
-========
-			everyMs: El,
-			limitMs: Dl,
+			everyMs: kl,
+			limitMs: Al,
 			read: (e) => Qt(e),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 			apply: (e) => {
 				e.tunnel && (Jn.setQueryData(v, e), a(e.tunnel), c(e.revision));
 			},
@@ -8222,7 +6690,7 @@ function jl({ revision: e, initial: t, receipt: n, blocked: r = !1 }) {
 	}, [i.state]);
 	let C = (e, t, n, r) => {
 		_.check(e, {
-			hostname: S && !x ? Al(d, n && !i.hostname) : "",
+			hostname: S && !x ? Nl(d, n && !i.hostname) : "",
 			token: S && n && !x && !i.token_set && !h.trim() ? q("errors.tunnel.tokenRequired", "") : ""
 		}) && b.run(t, (e) => U("/api/configuration/tunnel", {
 			revision: s,
@@ -8237,42 +6705,34 @@ function jl({ revision: e, initial: t, receipt: n, blocked: r = !1 }) {
 			r ? _.check(e, r) : b.setError(K(t));
 		});
 	};
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		id: "tunnel",
 		guide: "tunnel",
 		title: J("settings:remoteAccess.title"),
 		onSubmit: (e) => {
 			e.preventDefault(), C(e.currentTarget, "save", x, () => n(J("settings:shared.settingsSaved")));
 		},
-		aside: /* @__PURE__ */ (0, $.jsx)(yt, {
+		aside: /* @__PURE__ */ (0, $.jsx)(bt, {
 			tone: i.error ? "error" : x ? "progress" : "neutral",
 			children: i.error ? J("settings:cloudflareTunnel.connectionFailed") : i.state === "running" ? J("settings:shared.running") : i.state === "starting" ? J("settings:cloudflareTunnel.connectingStatus") : J("settings:shared.stopped")
 		}),
-		children: [/* @__PURE__ */ (0, $.jsxs)(V, { children: [
-			i.named_available ? /* @__PURE__ */ (0, $.jsx)(ct, {
+		children: [/* @__PURE__ */ (0, $.jsxs)(B, { children: [
+			i.named_available ? /* @__PURE__ */ (0, $.jsx)(lt, {
 				"aria-label": J("settings:cloudflareTunnel.modeLabel"),
 				value: l,
 				isDisabled: x || r,
 				onChange: (e) => {
 					u(e), _.clear();
 				},
-				className: nt,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				children: _l.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(o, {
-========
-				children: Ol.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(o, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				className: rt,
+				children: jl.map(([e, t]) => /* @__PURE__ */ (0, $.jsx)(o, {
 					value: e,
-					className: tt,
+					className: nt,
 					children: t
 				}, e))
 			}) : null,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			/* @__PURE__ */ (0, $.jsx)(N, { children: vl[S ? "named" : "quick"] }),
-========
-			/* @__PURE__ */ (0, $.jsx)(N, { children: kl[S ? "named" : "quick"] }),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-			S ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(P, {
+			/* @__PURE__ */ (0, $.jsx)(M, { children: Ml[S ? "named" : "quick"] }),
+			S ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [/* @__PURE__ */ (0, $.jsx)(N, {
 				id: "tunnel-hostname",
 				"data-settings-field": "hostname",
 				label: J("settings:remoteAccess.hostname"),
@@ -8285,11 +6745,11 @@ function jl({ revision: e, initial: t, receipt: n, blocked: r = !1 }) {
 				isDisabled: x || r,
 				validationBehavior: "aria",
 				onBlur: () => {
-					d.trim() && _.update("hostname", Al(d));
+					d.trim() && _.update("hostname", Nl(d));
 				},
 				isInvalid: !!y.hostname,
 				hint: y.hostname || J("settings:remoteAccess.hostnameHelp")
-			}), /* @__PURE__ */ (0, $.jsx)(P, {
+			}), /* @__PURE__ */ (0, $.jsx)(N, {
 				id: "tunnel-token",
 				"data-settings-field": "token",
 				type: "password",
@@ -8305,27 +6765,27 @@ function jl({ revision: e, initial: t, receipt: n, blocked: r = !1 }) {
 				isInvalid: !!y.token,
 				hint: y.token || (i.token_set ? J("settings:cloudflareTunnel.tokenSaved") : J("settings:cloudflareTunnel.tokenHint"))
 			})] }) : null,
-			i.available ? null : /* @__PURE__ */ (0, $.jsx)(F, {
+			i.available ? null : /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "warning",
 				title: J("settings:cloudflareTunnel.binaryMissing"),
 				children: J("settings:cloudflareTunnel.binaryMissingHelp")
 			}),
-			i.state === "running" && i.url ? /* @__PURE__ */ (0, $.jsx)(F, {
+			i.state === "running" && i.url ? /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "info",
 				title: J("settings:cloudflareTunnel.publicUrl"),
-				children: /* @__PURE__ */ (0, $.jsx)(ge, {
+				children: /* @__PURE__ */ (0, $.jsx)(_e, {
 					href: i.url,
 					children: i.url
 				})
 			}) : null,
-			i.state === "starting" ? /* @__PURE__ */ (0, $.jsx)(F, {
+			i.state === "starting" ? /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "info",
 				title: J("settings:cloudflareTunnel.connectingTitle"),
 				children: J("settings:cloudflareTunnel.connectingHelp")
 			}) : null,
-			i.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: G(i, "error") }) : null,
-			b.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: b.error }) : null
-		] }), /* @__PURE__ */ (0, $.jsxs)(M, { children: [/* @__PURE__ */ (0, $.jsx)(m, {
+			i.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: G(i, "error") }) : null,
+			b.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: b.error }) : null
+		] }), /* @__PURE__ */ (0, $.jsxs)(j, { children: [/* @__PURE__ */ (0, $.jsx)(m, {
 			variant: i.named_available ? "secondary" : "primary",
 			onClick: (e) => C(e.currentTarget.form, "toggle", !x, (e) => n(e.enabled ? J("settings:cloudflareTunnel.started") : J("settings:cloudflareTunnel.stopped"))),
 			...W(b.busy === "toggle"),
@@ -8339,22 +6799,13 @@ function jl({ revision: e, initial: t, receipt: n, blocked: r = !1 }) {
 	});
 }
 // src/react/settings/network-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function bl({ data: e, receipt: t, issues: n }) {
-	let [r, i] = (0, Z.useState)(e.access?.mode), a = r === "open" || r === "locked";
-========
-function Ml({ data: e, receipt: t, issues: n }) {
+function Fl({ data: e, receipt: t, issues: n }) {
 	let [r, i] = (0, Z.useState)(e.access), a = r?.mode === "open" || r?.mode === "locked";
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 	return /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [n, /* @__PURE__ */ (0, $.jsx)(_a, { entries: [
 		(!!e.network || e.editable && e.port_editable !== !1 && !e.section_errors?.media_sources) && {
 			id: "network-addresses",
 			label: J("settings:accessUrls.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(ul, {
-========
-			content: /* @__PURE__ */ (0, $.jsx)(xl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(wl, {
 				data: e,
 				receipt: t
 			})
@@ -8362,22 +6813,7 @@ function Ml({ data: e, receipt: t, issues: n }) {
 		e.access && {
 			id: "network-access",
 			label: J("settings:accessPassword.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(Vc, {
-				initial: e.access,
-				receipt: t,
-				onSaved: (e) => i(e.mode),
-				devices: (e) => /* @__PURE__ */ (0, $.jsx)(sl, {
-					revision: e.revision,
-					receipt: t
-				}),
-				after: e.api_token ? (n) => /* @__PURE__ */ (0, $.jsx)(Wc, {
-					initial: e.api_token,
-					mode: n.mode,
-					receipt: t
-				}) : void 0
-========
-			content: /* @__PURE__ */ (0, $.jsx)(Xc, {
+			content: /* @__PURE__ */ (0, $.jsx)($c, {
 				initial: e.access,
 				receipt: t,
 				onSaved: i
@@ -8386,7 +6822,7 @@ function Ml({ data: e, receipt: t, issues: n }) {
 		r && (r.mode === "password" || r.mode === "legacy") && {
 			id: "network-devices",
 			label: J("settings:signedInDevices.title"),
-			content: /* @__PURE__ */ (0, $.jsx)(gl, {
+			content: /* @__PURE__ */ (0, $.jsx)(yl, {
 				revision: r.revision,
 				receipt: t
 			})
@@ -8394,30 +6830,21 @@ function Ml({ data: e, receipt: t, issues: n }) {
 		r && e.api_token && {
 			id: "network-api-token",
 			label: J("settings:accessToken.title"),
-			content: /* @__PURE__ */ (0, $.jsx)($c, {
+			content: /* @__PURE__ */ (0, $.jsx)(nl, {
 				initial: e.api_token,
 				mode: r.mode,
 				receipt: t
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 			})
 		},
 		e.certificate && {
 			id: "network-certificate",
 			label: J("settings:certificateTrust.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(qc, { initial: e.certificate })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(nl, { initial: e.certificate })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(al, { initial: e.certificate })
 		},
 		e.tunnel && {
 			id: "network-tunnel",
 			label: J("settings:remoteAccess.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(yl, {
-========
-			content: /* @__PURE__ */ (0, $.jsx)(jl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(Pl, {
 				revision: e.revision,
 				initial: e.tunnel,
 				receipt: t,
@@ -8427,22 +6854,14 @@ function Ml({ data: e, receipt: t, issues: n }) {
 		e.peach_proxy && {
 			id: "peachProxy",
 			label: J("settings:peachProxy.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(xl, {
-========
-			content: /* @__PURE__ */ (0, $.jsx)(Nl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(Il, {
 				initial: e.peach_proxy,
 				receipt: t
 			})
 		}
 	] })] });
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function xl({ initial: e, receipt: t }) {
-	let [n, r] = (0, Z.useState)(e), [i, a] = (0, Z.useState)(e.mode), [o, s] = (0, Z.useState)(""), c = Y();
-========
-function Nl({ initial: e, receipt: t }) {
+function Il({ initial: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(e), [i, a] = (0, Z.useState)(e.mode), [o, s] = (0, Z.useState)(""), c = Y(), l = Ta(), u = () => {
 		if (i !== "proxy" || !o && n.proxy_saved) return "";
 		let e = o.trim(), t = /^(?:https?|socks5h?):\/\/([^/?#\s]+)\/?$/i.exec(e)?.[1];
@@ -8451,8 +6870,7 @@ function Nl({ initial: e, receipt: t }) {
 		} catch {}
 		return q("errors.peachProxy.addressInvalid", "");
 	};
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "proxy",
 		title: J("settings:peachProxy.title"),
 		onSubmit: (e) => {
@@ -8464,28 +6882,20 @@ function Nl({ initial: e, receipt: t }) {
 			});
 		},
 		children: [
-			/* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+			/* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 				label: J("settings:peachProxy.mode"),
 				description: J("settings:peachProxy.modeHelp"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				children: /* @__PURE__ */ (0, $.jsx)(pl, {
-========
-				children: /* @__PURE__ */ (0, $.jsx)(wl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				children: /* @__PURE__ */ (0, $.jsx)(Dl, {
 					mode: i,
 					onChange: (e) => {
 						a(e), l.clear();
 					}
 				})
 			}) }),
-			i === "proxy" || n.needs_selection || c.error ? /* @__PURE__ */ (0, $.jsxs)(V, {
+			i === "proxy" || n.needs_selection || c.error ? /* @__PURE__ */ (0, $.jsxs)(B, {
 				divided: !0,
 				children: [
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					i === "proxy" ? /* @__PURE__ */ (0, $.jsx)(ml, {
-========
-					i === "proxy" ? /* @__PURE__ */ (0, $.jsx)(Tl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					i === "proxy" ? /* @__PURE__ */ (0, $.jsx)(Ol, {
 						id: "peachProxyAddress",
 						value: o,
 						saved: n.proxy_saved,
@@ -8497,15 +6907,15 @@ function Nl({ initial: e, receipt: t }) {
 							s(e), l.update("peachProxyAddress");
 						}
 					}) : null,
-					n.needs_selection ? /* @__PURE__ */ (0, $.jsx)(F, {
+					n.needs_selection ? /* @__PURE__ */ (0, $.jsx)(P, {
 						tone: "warning",
 						title: J("settings:peachProxy.chooseMode"),
 						children: J("settings:peachProxy.modeConflict")
 					}) : null,
-					c.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: c.error }) : null
+					c.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: c.error }) : null
 				]
 			}) : null,
-			/* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
+			/* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(m, {
 				type: "submit",
 				...W(c.busy === "save"),
 				children: J("settings:shared.saveSettings")
@@ -8514,50 +6924,31 @@ function Nl({ initial: e, receipt: t }) {
 	});
 }
 // src/react/follow-manage/credentials.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Sl = J("follow:sourceCredentials.clearBody"), Cl = J("follow:sourceCredentials.worldReadable"), wl = [ve, _e];
-function Tl(e, t) {
+var Ll = J("follow:sourceCredentials.clearBody"), Rl = J("follow:sourceCredentials.worldReadable"), zl = [ye, ve];
+function Bl(e, t) {
 	return (e.shared_fields || []).includes(t) ? J("follow:sourceCredentials.fromSharedHint") : e.fields.includes(t) ? J("follow:sourceCredentials.savedHint") : J("follow:sourceCredentials.notSet");
 }
-function El({ row: e }) {
-	if (Gt(e)) return /* @__PURE__ */ (0, $.jsx)(k, {
-========
-var Pl = J("follow:sourceCredentials.clearBody"), Fl = J("follow:sourceCredentials.worldReadable"), Il = [ve, _e];
-function Ll(e, t) {
-	return (e.shared_fields || []).includes(t) ? J("follow:sourceCredentials.fromSharedHint") : e.fields.includes(t) ? J("follow:sourceCredentials.savedHint") : J("follow:sourceCredentials.notSet");
-}
-function Rl({ row: e }) {
-	if (Kt(e)) return /* @__PURE__ */ (0, $.jsx)(k, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Vl({ row: e }) {
+	if (Kt(e)) return /* @__PURE__ */ (0, $.jsx)(O, {
 		variant: "caption",
 		color: "lime",
 		children: J("follow:sourceCredentials.configured")
 	});
 	let t = e.requirement === "required" ? "yellow" : e.requirement === "blocked" ? "rose" : "neutral";
-	return /* @__PURE__ */ (0, $.jsx)(k, {
+	return /* @__PURE__ */ (0, $.jsx)(O, {
 		variant: "caption",
 		color: t,
 		children: x[e.requirement] || ""
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Dl({ row: e, readOnly: t, open: n, toast: r }) {
-	let [i, a] = (0, Z.useState)({}), [o, s] = (0, Z.useState)(""), c = Gt(e), l = e.browser_login === !0 && !t, u = di(ui(e.provider), l && n, wl), d = Mr({
-		mutationFn: (t) => tr(e.provider, t),
-========
-function zl({ row: e, readOnly: t, open: n, toast: r }) {
-	let [i, a] = (0, Z.useState)({}), [o, s] = (0, Z.useState)(""), c = Kt(e), l = e.browser_login === !0 && !t, u = di(ui(e.provider), l && n, Il), d = Mr({
+function Hl({ row: e, readOnly: t, open: n, toast: r }) {
+	let [i, a] = (0, Z.useState)({}), [o, s] = (0, Z.useState)(""), c = Kt(e), l = e.browser_login === !0 && !t, u = di(ui(e.provider), l && n, zl), d = Mr({
 		mutationFn: (t) => nr(e.provider, t),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		onSuccess: (e, t) => {
 			if (e.note) s(q(e.note_code ?? "", e.note));
 			else {
 				s(""), a({});
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				for (let e of wl) qn.invalidateQueries({
-========
-				for (let e of Il) Jn.invalidateQueries({
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				for (let e of zl) Jn.invalidateQueries({
 					queryKey: e,
 					exact: !0
 				});
@@ -8573,7 +6964,7 @@ function zl({ row: e, readOnly: t, open: n, toast: r }) {
 	return /* @__PURE__ */ (0, $.jsxs)("div", {
 		className: "flex flex-col gap-3",
 		children: [
-			/* @__PURE__ */ (0, $.jsxs)(N, { children: [G(e, "why"), e.where ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [" ", /* @__PURE__ */ (0, $.jsx)(ge, {
+			/* @__PURE__ */ (0, $.jsxs)(M, { children: [G(e, "why"), e.where ? /* @__PURE__ */ (0, $.jsxs)($.Fragment, { children: [" ", /* @__PURE__ */ (0, $.jsx)(_e, {
 				href: e.where,
 				children: J("follow:sourceCredentials.getCredentials")
 			})] }) : null] }),
@@ -8588,17 +6979,13 @@ function zl({ row: e, readOnly: t, open: n, toast: r }) {
 				login: u,
 				saved: c
 			})] }) : null,
-			e.howto ? /* @__PURE__ */ (0, $.jsx)(N, { children: G(e, "howto") }) : null,
+			e.howto ? /* @__PURE__ */ (0, $.jsx)(M, { children: G(e, "howto") }) : null,
 			/* @__PURE__ */ (0, $.jsx)("div", {
 				className: "flex w-full flex-col gap-3",
-				children: (e.needs || []).map((n) => /* @__PURE__ */ (0, $.jsx)(P, {
+				children: (e.needs || []).map((n) => /* @__PURE__ */ (0, $.jsx)(N, {
 					type: "password",
 					label: n,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					placeholder: Tl(e, n),
-========
-					placeholder: Ll(e, n),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+					placeholder: Bl(e, n),
 					autoComplete: "off",
 					spellCheck: "false",
 					isDisabled: t || u.busy,
@@ -8618,11 +7005,7 @@ function zl({ row: e, readOnly: t, open: n, toast: r }) {
 					...W(d.isPending || u.busy),
 					onClick: () => void Wt({
 						title: J("follow:sourceCredentials.clearTitle"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-						body: Sl,
-========
-						body: Pl,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						body: Ll,
 						confirmLabel: J("follow:sourceCredentials.clearTitle"),
 						danger: !0,
 						holdToConfirm: !0,
@@ -8637,14 +7020,14 @@ function zl({ row: e, readOnly: t, open: n, toast: r }) {
 					children: J("follow:shared.saveSettings")
 				})]
 			}),
-			o || u.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: o || u.error }) : null,
-			(e.shared_fields || []).length ? /* @__PURE__ */ (0, $.jsx)(N, { children: J("follow:sourceCredentials.sharedFieldsHint", {
+			o || u.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: o || u.error }) : null,
+			(e.shared_fields || []).length ? /* @__PURE__ */ (0, $.jsx)(M, { children: J("follow:sourceCredentials.sharedFieldsHint", {
 				count: e.shared_fields.length,
 				fields: Mn(e.shared_fields)
 			}) }) : null,
-			e.path ? /* @__PURE__ */ (0, $.jsx)(le, {
+			e.path ? /* @__PURE__ */ (0, $.jsx)(ue, {
 				summary: J("follow:sourceCredentials.credentialsFile"),
-				children: /* @__PURE__ */ (0, $.jsx)(Ue, {
+				children: /* @__PURE__ */ (0, $.jsx)(We, {
 					path: e.path,
 					className: "font-mono text-caption-1-regular text-text-tertiary",
 					onRevealed: r
@@ -8653,13 +7036,8 @@ function zl({ row: e, readOnly: t, open: n, toast: r }) {
 		]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Ol({ row: e, readOnly: t, toast: n }) {
-	let [r, i] = (0, Z.useState)(e.requirement === "required" && !Gt(e)), a = /* @__PURE__ */ (0, $.jsxs)("span", {
-========
-function Bl({ row: e, readOnly: t, toast: n }) {
+function Ul({ row: e, readOnly: t, toast: n }) {
 	let [r, i] = (0, Z.useState)(e.requirement === "required" && !Kt(e)), a = /* @__PURE__ */ (0, $.jsxs)("span", {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		className: "flex min-w-0 flex-wrap items-center gap-2",
 		children: [
 			/* @__PURE__ */ (0, $.jsx)("span", {
@@ -8670,12 +7048,8 @@ function Bl({ row: e, readOnly: t, toast: n }) {
 				className: "min-w-0 text-body-medium wrap-anywhere text-text-primary",
 				children: e.provider_label
 			}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			/* @__PURE__ */ (0, $.jsx)(El, { row: e }),
-========
-			/* @__PURE__ */ (0, $.jsx)(Rl, { row: e }),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
-			e.missing.map((e) => /* @__PURE__ */ (0, $.jsx)(k, {
+			/* @__PURE__ */ (0, $.jsx)(Vl, { row: e }),
+			e.missing.map((e) => /* @__PURE__ */ (0, $.jsx)(O, {
 				variant: "caption",
 				color: "rose",
 				children: J("follow:sourceCredentials.missingField", { field: e })
@@ -8684,49 +7058,36 @@ function Bl({ row: e, readOnly: t, toast: n }) {
 	});
 	return e.requirement === "none" || e.requirement === "blocked" ? /* @__PURE__ */ (0, $.jsxs)("div", {
 		className: "flex flex-wrap items-center gap-3 border-b border-separator-border px-6 py-5 last:border-b-0 max-sm:px-4",
-		children: [a, e.requirement === "blocked" ? /* @__PURE__ */ (0, $.jsx)(N, { children: G(e, "why") }) : null]
+		children: [a, e.requirement === "blocked" ? /* @__PURE__ */ (0, $.jsx)(M, { children: G(e, "why") }) : null]
 	}) : /* @__PURE__ */ (0, $.jsxs)("div", {
 		"data-credential-provider": e.provider,
 		className: "flex flex-col gap-2 border-b border-separator-border px-6 py-5 last:border-b-0 max-sm:px-4",
 		children: [
 			a,
-			/* @__PURE__ */ (0, $.jsx)(le, {
+			/* @__PURE__ */ (0, $.jsx)(ue, {
 				summary: Kt(e) ? J("follow:sourceCredentials.editCredentials") : J("follow:sourceCredentials.enterCredentials"),
 				isOpen: r,
 				onOpenChange: i,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				children: /* @__PURE__ */ (0, $.jsx)(Dl, {
-========
-				children: /* @__PURE__ */ (0, $.jsx)(zl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				children: /* @__PURE__ */ (0, $.jsx)(Hl, {
 					row: e,
 					readOnly: t,
 					open: r,
 					toast: n
 				})
 			}),
-			e.world_readable ? /* @__PURE__ */ (0, $.jsx)(F, {
+			e.world_readable ? /* @__PURE__ */ (0, $.jsx)(P, {
 				tone: "error",
 				title: J("follow:sourceCredentials.permissionsTooOpen"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				children: Cl
-========
-				children: Fl
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				children: Rl
 			}) : null
 		]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function kl({ data: e, readOnly: t, toast: n, embedded: r = !1 }) {
-	let i = e.providers || [], a = i.filter((e) => e.requirement === "required" && !Gt(e));
-========
-function Vl({ data: e, readOnly: t, toast: n, embedded: r = !1 }) {
+function Wl({ data: e, readOnly: t, toast: n, embedded: r = !1 }) {
 	let i = e.providers || [], a = i.filter((e) => e.requirement === "required" && !Kt(e));
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 	if ((0, Z.useEffect)(() => {
 		Zn("credentials", { done: i.filter(Kt).map((e) => e.provider) });
-	}, [e]), !i.length) return /* @__PURE__ */ (0, $.jsx)(pe, {
+	}, [e]), !i.length) return /* @__PURE__ */ (0, $.jsx)(me, {
 		size: "compact",
 		icon: Ht,
 		title: J("follow:sourceCredentials.emptyTitle"),
@@ -8760,22 +7121,18 @@ function Vl({ data: e, readOnly: t, toast: n, embedded: r = !1 }) {
 				padding: "none",
 				className: "flex flex-col overflow-hidden"
 			}),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			children: e.rows.map((e) => /* @__PURE__ */ (0, $.jsx)(Ol, {
-========
-			children: e.rows.map((e) => /* @__PURE__ */ (0, $.jsx)(Bl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			children: e.rows.map((e) => /* @__PURE__ */ (0, $.jsx)(Ul, {
 				row: e,
 				readOnly: t,
 				toast: n
 			}, e.provider))
 		})]
 	}, e.title)) });
-	return r ? /* @__PURE__ */ (0, $.jsx)(L, {
+	return r ? /* @__PURE__ */ (0, $.jsx)(I, {
 		guide: "credentials",
 		title: J("follow:sourceCredentials.sectionTitle"),
 		aside: o || void 0,
-		children: /* @__PURE__ */ (0, $.jsx)(V, { children: /* @__PURE__ */ (0, $.jsx)("div", {
+		children: /* @__PURE__ */ (0, $.jsx)(B, { children: /* @__PURE__ */ (0, $.jsx)("div", {
 			className: "flex flex-col gap-4",
 			children: s
 		}) })
@@ -8794,11 +7151,7 @@ function Vl({ data: e, readOnly: t, toast: n, embedded: r = !1 }) {
 	});
 }
 // src/react/settings/entry-links-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Al({ initial: e, receipt: t }) {
-	let [n, r] = (0, Z.useState)(e.sites), i = Y(), a = (e, t) => r((n) => n.map((n) => n.key === e ? {
-========
-function Hl(e) {
+function Gl(e) {
 	let t = e.host.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
 	if (!t) return "";
 	let n = t.length > 100 ? "errors.entryLinks.hostTooLong" : /^[a-z\d](?:[a-z\d-]*[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]*[a-z\d])?)+$/i.test(t) ? "" : "errors.entryLinks.hostShape";
@@ -8808,27 +7161,26 @@ function Hl(e) {
 		example: e.default_host
 	}) : "";
 }
-function Ul({ initial: e, receipt: t }) {
+function Kl({ initial: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(e.sites), i = Y(), a = Ta(), o = (e, t) => r((n) => n.map((n) => n.key === e ? {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 		...n,
 		host: t
 	} : n));
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "entry-links",
 		title: J("settings:entryLinks.title"),
 		onSubmit: (e) => {
-			if (e.preventDefault(), !a.check(e.currentTarget, Object.fromEntries(n.map((e) => [e.key, Hl(e)])))) return;
+			if (e.preventDefault(), !a.check(e.currentTarget, Object.fromEntries(n.map((e) => [e.key, Gl(e)])))) return;
 			let o = { sites: Object.fromEntries(n.map((e) => [e.key, { host: e.host }])) };
 			i.run("save", (e) => U("/api/configuration/entry-links", o, "POST", e), (e) => {
 				r(e.sites), t(J("settings:shared.settingsSaved"));
 			});
 		},
-		children: [/* @__PURE__ */ (0, $.jsxs)(V, { children: [
-			/* @__PURE__ */ (0, $.jsx)(N, { children: de }),
-			n.map((e) => /* @__PURE__ */ (0, $.jsx)(P, {
+		children: [/* @__PURE__ */ (0, $.jsxs)(B, { children: [
+			/* @__PURE__ */ (0, $.jsx)(M, { children: fe }),
+			n.map((e) => /* @__PURE__ */ (0, $.jsx)(N, {
 				id: `entry-link-${e.key}`,
-				label: /* @__PURE__ */ (0, $.jsx)(ht, {
+				label: /* @__PURE__ */ (0, $.jsx)(gt, {
 					site: e.key,
 					label: J("settings:entryLinks.siteAddress", { site: e.label })
 				}),
@@ -8841,12 +7193,12 @@ function Ul({ initial: e, receipt: t }) {
 				onChange: (t) => {
 					o(e.key, t), a.update(e.key);
 				},
-				onBlur: () => a.update(e.key, Hl(e)),
+				onBlur: () => a.update(e.key, Gl(e)),
 				validationBehavior: "aria",
-				hint: a.errors[e.key] || fe
+				hint: a.errors[e.key] || pe
 			}, e.key)),
-			i.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: i.error }) : null
-		] }), /* @__PURE__ */ (0, $.jsx)(M, { children: /* @__PURE__ */ (0, $.jsx)(m, {
+			i.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: i.error }) : null
+		] }), /* @__PURE__ */ (0, $.jsx)(j, { children: /* @__PURE__ */ (0, $.jsx)(m, {
 			type: "submit",
 			...W(i.busy === "save"),
 			children: J("settings:shared.saveSettings")
@@ -8854,19 +7206,12 @@ function Ul({ initial: e, receipt: t }) {
 	});
 }
 // src/react/settings/indexer-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var jl = "/api/configuration/indexers";
-function Ml({ receipt: e }) {
-	let t = X({
-		queryKey: ["indexers"],
-		queryFn: ({ signal: e }) => U(jl, e),
-========
-var Wl = "/api/configuration/indexers", Gl = [
+var ql = "/api/configuration/indexers", Jl = [
 	"name",
 	"url",
 	"api_key"
-], Kl = (e, t) => `${e.key}-${t}`;
-function ql(e, t) {
+], Yl = (e, t) => `${e.key}-${t}`;
+function Xl(e, t) {
 	let n = t.trim();
 	if (e === "name") return !n || n.length > 80 ? q("errors.resourceSearch.invalidIndexerName", "") : "";
 	if (e === "api_key") return n.length > 512 || /\s/.test(n) ? q("errors.resourceSearch.invalidApiKey", "") : "";
@@ -8876,49 +7221,33 @@ function ql(e, t) {
 	} catch {}
 	return q("errors.resourceSearch.endpointFormat", "");
 }
-function Jl({ receipt: e }) {
+function Zl({ receipt: e }) {
 	let t = X({
 		queryKey: ["indexers"],
-		queryFn: ({ signal: e }) => Mt(Wl, e),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		queryFn: ({ signal: e }) => H(ql, e),
 		refetchOnMount: "always"
 	});
-	return t.error ? /* @__PURE__ */ (0, $.jsx)(Je, {
+	return t.error ? /* @__PURE__ */ (0, $.jsx)(Ye, {
 		titleKey: "settings:indexers.loadFailed",
 		query: t
-	}) : t.isFetching ? /* @__PURE__ */ (0, $.jsx)(at, {
+	}) : t.isFetching ? /* @__PURE__ */ (0, $.jsx)(ot, {
 		label: J("settings:indexers.loading"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		html: Cn
-	}) : t.data ? /* @__PURE__ */ (0, $.jsx)(Fl, {
-========
 		html: wn
-	}) : t.data ? /* @__PURE__ */ (0, $.jsx)(Zl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	}) : t.data ? /* @__PURE__ */ (0, $.jsx)(eu, {
 		initial: t.data,
 		receipt: e
 	}) : null;
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Nl(e) {
-========
-function Yl(e) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function Ql(e) {
 	try {
 		return new globalThis.URL(e).host;
 	} catch {
 		return e;
 	}
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Pl({ row: e, index: t }) {
+function $l({ row: e, index: t }) {
 	let n = [
-		e.url ? Nl(e.url) : J("settings:indexers.noUrl"),
-========
-function Xl({ row: e, index: t }) {
-	let n = [
-		e.url ? Yl(e.url) : J("settings:indexers.noUrl"),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		e.url ? Ql(e.url) : J("settings:indexers.noUrl"),
 		e.enabled ? J("settings:shared.enabled") : J("settings:shared.disabled"),
 		e.api_key_set && !e.clear_api_key ? J("settings:indexers.apiKeySaved") : e.api_key ? J("settings:indexers.apiKeyUnsaved") : J("settings:indexers.noApiKey")
 	];
@@ -8933,13 +7262,8 @@ function Xl({ row: e, index: t }) {
 		})]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Fl({ initial: e, receipt: t }) {
-	let [n, r] = (0, Z.useState)(e.indexers), i = Y();
-========
-function Zl({ initial: e, receipt: t }) {
+function eu({ initial: e, receipt: t }) {
 	let [n, r] = (0, Z.useState)(e.indexers), [i, a] = (0, Z.useState)({}), o = Ta(), s = Y();
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 	(0, Z.useEffect)(() => {
 		Zn("indexers", { open: e.indexers.map((e) => !e.url) });
 	}, [e]);
@@ -8947,7 +7271,7 @@ function Zl({ initial: e, receipt: t }) {
 		...n,
 		...t
 	} : n)), l = (e, t) => {
-		let n = Kl(e, t), r = e[t] ?? "";
+		let n = Yl(e, t), r = e[t] ?? "";
 		return {
 			"data-settings-field": n,
 			value: r,
@@ -8958,73 +7282,62 @@ function Zl({ initial: e, receipt: t }) {
 				c(e.key, { [t]: r }), o.update(n);
 			},
 			onBlur: () => {
-				r && o.update(n, ql(t, r));
+				r && o.update(n, Xl(t, r));
 			}
 		};
 	};
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		guide: "indexers",
 		title: J("settings:indexers.title"),
 		onSubmit: (e) => {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			e.preventDefault(), i.run("save", (e) => W(jl, { indexers: n }, "POST", e), (e) => {
-========
 			e.preventDefault();
 			let i = {}, c = {};
-			for (let e of n) for (let t of Gl) {
-				let n = ql(t, e[t] ?? "");
-				n && (i[Kl(e, t)] = n, c[e.key] = !0);
+			for (let e of n) for (let t of Jl) {
+				let n = Xl(t, e[t] ?? "");
+				n && (i[Yl(e, t)] = n, c[e.key] = !0);
 			}
-			o.check(e.currentTarget, i) ? s.run("save", (e) => U(Wl, { indexers: n }, "POST", e), (e) => {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			o.check(e.currentTarget, i) ? s.run("save", (e) => U(ql, { indexers: n }, "POST", e), (e) => {
 				r(e.indexers), t(J("settings:indexers.saved"));
 			}) : a((e) => ({
 				...e,
 				...c
 			}));
 		},
-		children: [/* @__PURE__ */ (0, $.jsxs)(V, { children: [/* @__PURE__ */ (0, $.jsxs)("div", {
+		children: [/* @__PURE__ */ (0, $.jsxs)(B, { children: [/* @__PURE__ */ (0, $.jsxs)("div", {
 			className: "flex min-w-0 flex-col gap-4",
-			children: [/* @__PURE__ */ (0, $.jsx)(le, {
+			children: [/* @__PURE__ */ (0, $.jsx)(ue, {
 				summary: J("settings:indexers.connectHelp"),
-				children: /* @__PURE__ */ (0, $.jsxs)(N, { children: [
+				children: /* @__PURE__ */ (0, $.jsxs)(M, { children: [
 					J("settings:indexers.helpText"),
 					" ",
-					/* @__PURE__ */ (0, $.jsx)(ge, {
+					/* @__PURE__ */ (0, $.jsx)(_e, {
 						href: "https://github.com/peach-mitao/peach/blob/master/docs/RESOURCE_SEARCH.md",
 						children: J("settings:indexers.setupGuide")
 					})
 				] })
 			}), n.map((t, n) => /* @__PURE__ */ (0, $.jsx)("div", {
 				className: "min-w-0 border-t border-separator-border pt-2",
-				children: /* @__PURE__ */ (0, $.jsx)(le, {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					defaultOpen: !e.url,
-					summary: /* @__PURE__ */ (0, $.jsx)(Pl, {
-						row: e,
-						index: t
-========
+				children: /* @__PURE__ */ (0, $.jsx)(ue, {
 					isOpen: i[t.key] ?? !e.indexers.some((e) => e.key === t.key && e.url),
 					onOpenChange: (e) => a((n) => ({
 						...n,
 						[t.key]: e
 					})),
-					summary: /* @__PURE__ */ (0, $.jsx)(Xl, {
+					summary: /* @__PURE__ */ (0, $.jsx)($l, {
 						row: t,
 						index: n
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
 					}),
 					children: /* @__PURE__ */ (0, $.jsxs)("div", {
 						className: "flex min-w-0 flex-col gap-4",
 						children: [
-							/* @__PURE__ */ (0, $.jsx)(P, {
+							/* @__PURE__ */ (0, $.jsx)(N, {
 								label: J("settings:shared.name"),
 								"aria-label": J("settings:indexers.nameLabel", { index: n + 1 }),
 								maxLength: 80,
 								isDisabled: !!s.busy,
 								...l(t, "name")
 							}),
-							/* @__PURE__ */ (0, $.jsx)(P, {
+							/* @__PURE__ */ (0, $.jsx)(N, {
 								label: J("settings:indexers.torznabUrl"),
 								"aria-label": J("settings:indexers.torznabUrlLabel", { index: n + 1 }),
 								type: "url",
@@ -9035,7 +7348,7 @@ function Zl({ initial: e, receipt: t }) {
 							}),
 							/* @__PURE__ */ (0, $.jsxs)("div", {
 								className: "flex min-w-0 flex-col gap-2",
-								children: [/* @__PURE__ */ (0, $.jsx)(P, {
+								children: [/* @__PURE__ */ (0, $.jsx)(N, {
 									label: "API key",
 									"aria-label": J("settings:indexers.apiKeyLabel", { index: n + 1 }),
 									type: "password",
@@ -9043,7 +7356,7 @@ function Zl({ initial: e, receipt: t }) {
 									placeholder: t.api_key_set ? J("settings:shared.savedLeaveBlank") : void 0,
 									isDisabled: !!s.busy,
 									...l(t, "api_key")
-								}), t.api_key_set ? /* @__PURE__ */ (0, $.jsx)(O, {
+								}), t.api_key_set ? /* @__PURE__ */ (0, $.jsx)(ne, {
 									isSelected: !!t.clear_api_key,
 									isDisabled: !!s.busy,
 									onChange: (e) => c(t.key, { clear_api_key: e }),
@@ -9052,7 +7365,7 @@ function Zl({ initial: e, receipt: t }) {
 							}),
 							/* @__PURE__ */ (0, $.jsxs)("div", {
 								className: "flex min-h-10 items-center justify-between gap-3",
-								children: [/* @__PURE__ */ (0, $.jsx)(H, {
+								children: [/* @__PURE__ */ (0, $.jsx)(V, {
 									isSelected: t.enabled,
 									isDisabled: !!s.busy,
 									onChange: (e) => c(t.key, { enabled: e }),
@@ -9061,7 +7374,7 @@ function Zl({ initial: e, receipt: t }) {
 									variant: "secondary",
 									type: "button",
 									size: "small",
-									leadingIcon: Me,
+									leadingIcon: Ne,
 									disabled: !!s.busy,
 									"aria-label": J("settings:indexers.removeLabel", { index: n + 1 }),
 									onClick: () => r((e) => e.filter((e) => e.key !== t.key)),
@@ -9072,7 +7385,7 @@ function Zl({ initial: e, receipt: t }) {
 					})
 				})
 			}, t.key))]
-		}), s.error ? /* @__PURE__ */ (0, $.jsx)(A, { children: s.error }) : null] }), /* @__PURE__ */ (0, $.jsxs)(M, { children: [/* @__PURE__ */ (0, $.jsx)(m, {
+		}), s.error ? /* @__PURE__ */ (0, $.jsx)(k, { children: s.error }) : null] }), /* @__PURE__ */ (0, $.jsxs)(j, { children: [/* @__PURE__ */ (0, $.jsx)(m, {
 			variant: "secondary",
 			type: "button",
 			disabled: !!s.busy || n.length >= e.max_indexers,
@@ -9092,186 +7405,142 @@ function Zl({ initial: e, receipt: t }) {
 	});
 }
 // src/react/settings/scraping-browser-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Il = ["window", "headless"], Ll = (e) => J(e === "headless" ? "settings:scrapingBrowser.headless" : "settings:scrapingBrowser.window");
-function Rl({ receipt: e }) {
-========
-var Ql = ["window", "headless"], $l = (e) => J(e === "headless" ? "settings:scrapingBrowser.headless" : "settings:scrapingBrowser.window");
-function eu({ receipt: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var tu = ["window", "headless"], nu = (e) => J(e === "headless" ? "settings:scrapingBrowser.headless" : "settings:scrapingBrowser.window");
+function ru({ receipt: e }) {
 	let t = X({
-		queryKey: $e,
+		queryKey: et,
 		queryFn: ({ signal: e }) => rn(e),
 		refetchOnMount: "always"
 	}), n = Mr({
-		mutationFn: (e) => U(et, { browser_mode: e }),
+		mutationFn: (e) => U(tt, { browser_mode: e }),
 		onSuccess: (t) => {
-			Jn.setQueryData($e, (e) => e && {
+			Jn.setQueryData(et, (e) => e && {
 				...e,
 				browser_mode: t.browser_mode
 			}), e(J("settings:shared.settingsSaved"));
 		}
 	}, Jn), r = n.error || t.error;
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		title: J("settings:scrapingBrowser.title"),
-		children: [/* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+		children: [/* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 			label: J("settings:scrapingBrowser.mode"),
 			description: J("settings:scrapingBrowser.modeHelp"),
 			children: /* @__PURE__ */ (0, $.jsx)("div", {
 				id: "scrapingBrowserModeSetting",
 				className: "shrink-0",
-				children: /* @__PURE__ */ (0, $.jsx)(R, {
+				children: /* @__PURE__ */ (0, $.jsx)(L, {
 					"aria-label": J("settings:scrapingBrowser.mode"),
 					selectedKey: t.data?.browser_mode ?? "window",
 					isDisabled: !t.data || n.isPending,
 					onSelectionChange: (e) => {
 						e !== null && n.mutate(String(e));
 					},
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: Il.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+					children: tu.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 						id: e,
-						children: Ll(e)
-========
-					children: Ql.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
-						id: e,
-						children: $l(e)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						children: nu(e)
 					}, e))
 				})
 			})
-		}) }), r ? /* @__PURE__ */ (0, $.jsx)(V, {
+		}) }), r ? /* @__PURE__ */ (0, $.jsx)(B, {
 			divided: !0,
-			children: /* @__PURE__ */ (0, $.jsx)(A, { children: K(r) })
+			children: /* @__PURE__ */ (0, $.jsx)(k, { children: K(r) })
 		}) : null]
 	});
 }
 // src/react/settings/want-search-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var zl = [
-========
-var tu = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+var iu = [
 	1,
 	3,
 	7,
 	14,
 	30
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-], Bl = [
-========
-], nu = [
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+], au = [
 	1,
 	3,
 	5,
 	10,
 	0
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-], Vl = (e) => e === 1 ? J("settings:wantSearch.daily") : J("settings:wantSearch.everyDays", { count: e }), Hl = (e) => e === 0 ? J("settings:wantSearch.never") : J("settings:wantSearch.attempts", { count: e });
-function Ul({ receipt: e }) {
-========
-], ru = (e) => e === 1 ? J("settings:wantSearch.daily") : J("settings:wantSearch.everyDays", { count: e }), iu = (e) => e === 0 ? J("settings:wantSearch.never") : J("settings:wantSearch.attempts", { count: e });
-function au({ receipt: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+], ou = (e) => e === 1 ? J("settings:wantSearch.daily") : J("settings:wantSearch.everyDays", { count: e }), su = (e) => e === 0 ? J("settings:wantSearch.never") : J("settings:wantSearch.attempts", { count: e });
+function cu({ receipt: e }) {
 	let t = X({
-		queryKey: rt,
+		queryKey: it,
 		queryFn: ({ signal: e }) => nn(e),
 		refetchOnMount: "always"
 	}), n = Rr("want-search"), r = !t.data || n.isPending, i = (t) => n.mutate(t, { onSuccess: () => e(J("settings:shared.settingsSaved")) }), a = n.error || t.error;
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		title: J("settings:wantSearch.title"),
-		children: [/* @__PURE__ */ (0, $.jsxs)(I, { children: [/* @__PURE__ */ (0, $.jsx)(B, {
+		children: [/* @__PURE__ */ (0, $.jsxs)(F, { children: [/* @__PURE__ */ (0, $.jsx)(z, {
 			label: J("settings:wantSearch.interval"),
 			description: J("settings:wantSearch.intervalHelp"),
 			children: /* @__PURE__ */ (0, $.jsx)("div", {
 				id: "wantStaleSearchDaysSetting",
 				className: "shrink-0",
-				children: /* @__PURE__ */ (0, $.jsx)(R, {
+				children: /* @__PURE__ */ (0, $.jsx)(L, {
 					"aria-label": J("settings:wantSearch.interval"),
 					selectedKey: String(t.data?.wantStaleSearchDays ?? 7),
 					isDisabled: r,
 					onSelectionChange: (e) => {
 						e !== null && i({ wantStaleSearchDays: Number(e) });
 					},
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: zl.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+					children: iu.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 						id: String(e),
-						children: Vl(e)
-========
-					children: tu.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
-						id: String(e),
-						children: ru(e)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						children: ou(e)
 					}, e))
 				})
 			})
-		}), /* @__PURE__ */ (0, $.jsx)(B, {
+		}), /* @__PURE__ */ (0, $.jsx)(z, {
 			label: J("settings:wantSearch.giveUp"),
 			description: J("settings:wantSearch.giveUpHelp"),
 			children: /* @__PURE__ */ (0, $.jsx)("div", {
 				id: "wantStaleAttemptLimitSetting",
 				className: "shrink-0",
-				children: /* @__PURE__ */ (0, $.jsx)(R, {
+				children: /* @__PURE__ */ (0, $.jsx)(L, {
 					"aria-label": J("settings:wantSearch.giveUp"),
 					selectedKey: String(t.data?.wantStaleAttemptLimit ?? 3),
 					isDisabled: r,
 					onSelectionChange: (e) => {
 						e !== null && i({ wantStaleAttemptLimit: Number(e) });
 					},
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-					children: Bl.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
+					children: au.map((e) => /* @__PURE__ */ (0, $.jsx)(R, {
 						id: String(e),
-						children: Hl(e)
-========
-					children: nu.map((e) => /* @__PURE__ */ (0, $.jsx)(z, {
-						id: String(e),
-						children: iu(e)
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+						children: su(e)
 					}, e))
 				})
 			})
-		})] }), a ? /* @__PURE__ */ (0, $.jsx)(V, {
+		})] }), a ? /* @__PURE__ */ (0, $.jsx)(B, {
 			divided: !0,
-			children: /* @__PURE__ */ (0, $.jsx)(A, { children: K(a) })
+			children: /* @__PURE__ */ (0, $.jsx)(k, { children: K(a) })
 		}) : null]
 	});
 }
 // src/react/settings/cover-fallback-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Wl({ receipt: e }) {
-========
-function ou({ receipt: e }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function lu({ receipt: e }) {
 	let t = X({
-		queryKey: rt,
+		queryKey: it,
 		queryFn: ({ signal: e }) => nn(e),
 		refetchOnMount: "always"
 	}), n = Rr("cover-fallback"), r = n.error || t.error;
-	return /* @__PURE__ */ (0, $.jsxs)(L, {
+	return /* @__PURE__ */ (0, $.jsxs)(I, {
 		title: J("settings:coverFallback.title"),
-		children: [/* @__PURE__ */ (0, $.jsx)(I, { children: /* @__PURE__ */ (0, $.jsx)(B, {
+		children: [/* @__PURE__ */ (0, $.jsx)(F, { children: /* @__PURE__ */ (0, $.jsx)(z, {
 			label: J("settings:coverFallback.javdb"),
 			description: J("settings:coverFallback.javdbHelp"),
-			children: /* @__PURE__ */ (0, $.jsx)(H, {
+			children: /* @__PURE__ */ (0, $.jsx)(V, {
 				"aria-label": J("settings:coverFallback.javdb"),
 				isSelected: t.data?.javdbCoverFallback === !0,
 				isDisabled: !t.data || n.isPending,
 				onChange: (t) => n.mutate({ javdbCoverFallback: t }, { onSuccess: () => e(J("settings:shared.settingsSaved")) })
 			})
-		}) }), r ? /* @__PURE__ */ (0, $.jsx)(V, {
+		}) }), r ? /* @__PURE__ */ (0, $.jsx)(B, {
 			divided: !0,
-			children: /* @__PURE__ */ (0, $.jsx)(A, { children: K(r) })
+			children: /* @__PURE__ */ (0, $.jsx)(k, { children: K(r) })
 		}) : null]
 	});
 }
 // src/react/settings/source-settings.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Gl({ data: e, receipt: t, active: n, issues: r }) {
-========
-function su({ data: e, receipt: t, active: n, issues: r }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function uu({ data: e, receipt: t, active: n, issues: r }) {
 	let i = X({
-		queryKey: ve,
+		queryKey: ye,
 		queryFn: ({ signal: e }) => $t(e),
 		enabled: n,
 		refetchOnMount: "always"
@@ -9287,19 +7556,15 @@ function su({ data: e, receipt: t, active: n, issues: r }) {
 					variant: "secondary",
 					children: J("settings:sourceSettings.sourcesLink")
 				})
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			}), i.data ? /* @__PURE__ */ (0, $.jsx)(kl, {
-========
-			}), i.data ? /* @__PURE__ */ (0, $.jsx)(Vl, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			}), i.data ? /* @__PURE__ */ (0, $.jsx)(Wl, {
 				data: i.data,
 				readOnly: !!e.ledger_read_only,
 				toast: t,
 				embedded: !0
-			}) : i.error ? /* @__PURE__ */ (0, $.jsx)(Je, {
+			}) : i.error ? /* @__PURE__ */ (0, $.jsx)(Ye, {
 				titleKey: "settings:sourceSettings.credentialsFailed",
 				query: i
-			}) : n ? /* @__PURE__ */ (0, $.jsx)(at, {
+			}) : n ? /* @__PURE__ */ (0, $.jsx)(ot, {
 				label: J("settings:sourceSettings.loadingCredentials"),
 				html: qt
 			}) : null] })
@@ -9307,38 +7572,22 @@ function su({ data: e, receipt: t, active: n, issues: r }) {
 		{
 			id: "sources-follow-fetch",
 			label: J("settings:followFetch.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(rc, { receipt: t })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(fc, { receipt: t })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(hc, { receipt: t })
 		},
 		{
 			id: "sources-scraping-browser",
 			label: J("settings:scrapingBrowser.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(Rl, { receipt: t })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(eu, { receipt: t })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(ru, { receipt: t })
 		},
 		{
 			id: "sources-covers",
 			label: J("settings:coverFallback.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(Wl, { receipt: t })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(ou, { receipt: t })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(lu, { receipt: t })
 		},
 		e.entry_links && {
 			id: "sources-entry-links",
 			label: J("settings:entryLinks.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(Al, {
-========
-			content: /* @__PURE__ */ (0, $.jsx)(Ul, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(Kl, {
 				initial: e.entry_links,
 				receipt: t
 			})
@@ -9346,35 +7595,20 @@ function su({ data: e, receipt: t, active: n, issues: r }) {
 		{
 			id: "sources-indexers",
 			label: J("settings:indexers.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(Ml, { receipt: t })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(Jl, { receipt: t })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(Zl, { receipt: t })
 		},
 		{
 			id: "sources-want-search",
 			label: J("settings:wantSearch.title"),
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			content: /* @__PURE__ */ (0, $.jsx)(Ul, { receipt: t })
-========
-			content: /* @__PURE__ */ (0, $.jsx)(au, { receipt: t })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			content: /* @__PURE__ */ (0, $.jsx)(cu, { receipt: t })
 		}
 	] })] });
 }
 // src/react/settings/configuration-panel.ts
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var Kl = "flex flex-col gap-6";
-function ql(e) {
+var du = "flex flex-col gap-6";
+function fu(e) {
 	return {
-		className: e.active ? `${Kl} ui-board-group-active` : Kl,
-========
-var cu = "flex flex-col gap-6";
-function lu(e) {
-	return {
-		className: e.active ? `${cu} ui-board-group-active` : cu,
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		className: e.active ? `${du} ui-board-group-active` : du,
 		"data-board-group": String(e.index),
 		id: e.id,
 		role: "tabpanel",
@@ -9382,11 +7616,7 @@ function lu(e) {
 	};
 }
 // src/react/settings/configuration-shape.ts
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Jl(e) {
-========
-function uu(e) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function pu(e) {
 	let t = e.downloads;
 	if (!t) return null;
 	let n = t.media_sources ?? [];
@@ -9400,11 +7630,7 @@ function uu(e) {
 		localDownload: !0
 	};
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Yl(e) {
-========
-function du(e) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function mu(e) {
 	let t = e.tunnel;
 	return {
 		port: !!(e.editable && e.port_editable !== !1),
@@ -9419,11 +7645,7 @@ function du(e) {
 		tunnelNote: !!(t && (!t.available || t.state === "starting" || t.state === "running" && t.url))
 	};
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Xl(e) {
-========
-function fu(e) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function hu(e) {
 	let t = e.updates, n = e.update_job?.state ?? "idle", r = !t || t.state === "unchecked" && !t.checked_at && n === "idle", i = +!!t?.package_kind + (r ? 0 : +!!t?.checked_at + (t?.state === "unchecked" ? 0 : 1) + (n === "idle" ? 0 : 1)), a = e.automatic_updates, o = e.storage;
 	return {
 		releaseFacts: t?.package_kind ? 5 : 4,
@@ -9443,20 +7665,12 @@ function fu(e) {
 	};
 }
 // src/react/settings/configuration-page.tsx
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Zl({ receipt: e, reopenTutorial: t, section: n = "", diagnostics: r }) {
-========
-function pu({ receipt: e, reopenTutorial: t, section: n = "", diagnostics: r }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function gu({ receipt: e, reopenTutorial: t, section: n = "", diagnostics: r }) {
 	let i = X({
 		queryKey: v,
 		queryFn: ({ signal: e }) => Qt(e)
 	}), a = i.data;
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	return a ? /* @__PURE__ */ (0, $.jsx)(tu, {
-========
-	return a ? /* @__PURE__ */ (0, $.jsx)(_u, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	return a ? /* @__PURE__ */ (0, $.jsx)(bu, {
 		data: a,
 		receipt: e,
 		reopenTutorial: t,
@@ -9468,21 +7682,17 @@ function pu({ receipt: e, reopenTutorial: t, section: n = "", diagnostics: r }) 
 		}
 	}) : /* @__PURE__ */ (0, $.jsx)("div", {
 		className: "ui-configpage",
-		children: /* @__PURE__ */ (0, $.jsx)(F, {
+		children: /* @__PURE__ */ (0, $.jsx)(P, {
 			tone: "error",
 			title: J("settings:configurationPage.loadFailedTitle"),
 			children: i.error ? K(i.error) : J("settings:configurationPage.loadFailed")
 		})
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-function Ql({ data: e, sections: t, reload: n, refreshing: r }) {
-========
-function mu({ data: e, sections: t, reload: n, refreshing: r }) {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+function _u({ data: e, sections: t, reload: n, refreshing: r }) {
 	return /* @__PURE__ */ (0, $.jsx)($.Fragment, { children: t.map((t) => {
 		let i = e.section_errors?.[t];
-		return i ? /* @__PURE__ */ (0, $.jsx)(F, {
+		return i ? /* @__PURE__ */ (0, $.jsx)(P, {
 			tone: "error",
 			title: i.title,
 			action: /* @__PURE__ */ (0, $.jsx)(m, {
@@ -9496,25 +7706,14 @@ function mu({ data: e, sections: t, reload: n, refreshing: r }) {
 		}, t) : null;
 	}) });
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-var $l = "(max-width:1100px)", eu = 0;
-function tu({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i, reload: a, refreshing: o }) {
-	let [s] = (0, Z.useState)(() => `board-tabs-${++eu}`), [l, u] = (0, Z.useState)(r), d = (0, Z.useRef)(null), f = (0, Z.useRef)(null), p = (0, Z.useRef)(l);
+var vu = "(max-width:1100px)", yu = 0;
+function bu({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i, reload: a, refreshing: o }) {
+	let [s] = (0, Z.useState)(() => `board-tabs-${++yu}`), [l, u] = (0, Z.useState)(r), d = (0, Z.useRef)(null), f = (0, Z.useRef)(null), p = (0, Z.useRef)(l);
 	(0, Z.useEffect)(() => {
 		u(r);
 	}, [r]), (0, Z.useEffect)(() => {
-		let t = Jl(e);
-		t && Xn("downloads", t), Xn("network", Yl(e)), Xn("maintenance", Xl(e));
-========
-var hu = "(max-width:1100px)", gu = 0;
-function _u({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i, reload: a, refreshing: o }) {
-	let [s] = (0, Z.useState)(() => `board-tabs-${++gu}`), [l, u] = (0, Z.useState)(r), d = (0, Z.useRef)(null), f = (0, Z.useRef)(null), p = (0, Z.useRef)(l);
-	(0, Z.useEffect)(() => {
-		u(r);
-	}, [r]), (0, Z.useEffect)(() => {
-		let t = uu(e);
-		t && Zn("downloads", t), Zn("network", du(e)), Zn("maintenance", fu(e));
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		let t = pu(e);
+		t && Zn("downloads", t), Zn("network", mu(e)), Zn("maintenance", hu(e));
 	}, [e]), (0, Z.useLayoutEffect)(() => {
 		let e = f.current, t = d.current, n = () => t.style.setProperty("--settings-nav-height", `${e.offsetHeight}px`);
 		n();
@@ -9527,11 +7726,7 @@ function _u({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i
 		if (!e || !t) return;
 		let n = parseFloat(getComputedStyle(e).top);
 		if (!Number.isFinite(n) || e.getBoundingClientRect().top > n + 1) return;
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-		let r = matchMedia($l).matches ? e.getBoundingClientRect().bottom + 8 : n;
-========
-		let r = matchMedia(hu).matches ? e.getBoundingClientRect().bottom + 8 : n;
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		let r = matchMedia(vu).matches ? e.getBoundingClientRect().bottom + 8 : n;
 		window.scrollTo(0, Math.max(0, window.scrollY + t.getBoundingClientRect().top - r));
 	}, [l]);
 	let m = (e) => {
@@ -9539,25 +7734,15 @@ function _u({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i
 			replace: !0,
 			state: Vn.navigation.location.state
 		});
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	}, [h, g] = (0, Z.useState)(() => matchMedia($l).matches);
+	}, [h, g] = (0, Z.useState)(() => matchMedia(vu).matches);
 	(0, Z.useEffect)(() => {
-		let e = matchMedia($l), t = () => g(e.matches);
-========
-	}, [h, g] = (0, Z.useState)(() => matchMedia(hu).matches);
-	(0, Z.useEffect)(() => {
-		let e = matchMedia(hu), t = () => g(e.matches);
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+		let e = matchMedia(vu), t = () => g(e.matches);
 		return e.addEventListener("change", t), () => e.removeEventListener("change", t);
 	}, []);
 	let _ = {
 		data: e,
 		receipt: t
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-	}, v = (t) => /* @__PURE__ */ (0, $.jsx)(Ql, {
-========
-	}, v = (t) => /* @__PURE__ */ (0, $.jsx)(mu, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+	}, v = (t) => /* @__PURE__ */ (0, $.jsx)(_u, {
 		data: e,
 		sections: t,
 		reload: a,
@@ -9576,20 +7761,12 @@ function _u({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i
 				"media_sources",
 				"library_count",
 				"mount_dependencies"
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			]), /* @__PURE__ */ (0, $.jsx)(Fc, { ..._ })] })
-========
-			]), /* @__PURE__ */ (0, $.jsx)(Wc, { ..._ })] })
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			]), /* @__PURE__ */ (0, $.jsx)(qc, { ..._ })] })
 		},
 		{
 			id: "sources",
 			title: y.subscriptions,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			body: (e) => /* @__PURE__ */ (0, $.jsx)(Gl, {
-========
-			body: (e) => /* @__PURE__ */ (0, $.jsx)(su, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			body: (e) => /* @__PURE__ */ (0, $.jsx)(uu, {
 				..._,
 				active: e,
 				issues: v(["entry_links"])
@@ -9616,11 +7793,7 @@ function _u({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i
 		...x ? [{
 			id: "network",
 			title: y.network,
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			body: () => /* @__PURE__ */ (0, $.jsx)(bl, {
-========
-			body: () => /* @__PURE__ */ (0, $.jsx)(Ml, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			body: () => /* @__PURE__ */ (0, $.jsx)(Fl, {
 				..._,
 				issues: v(b)
 			})
@@ -9638,11 +7811,7 @@ function _u({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i
 				"update_job",
 				"automatic_updates",
 				"facts"
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-			]), /* @__PURE__ */ (0, $.jsx)(Ls, {
-========
-			]), /* @__PURE__ */ (0, $.jsx)(Us, {
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+			]), /* @__PURE__ */ (0, $.jsx)(Ks, {
 				..._,
 				active: e,
 				reopenTutorial: n
@@ -9661,7 +7830,7 @@ function _u({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i
 			ref: f,
 			className: "ui-board-local-nav",
 			"data-section-nav": "",
-			children: /* @__PURE__ */ (0, $.jsx)(gt, {
+			children: /* @__PURE__ */ (0, $.jsx)(_t, {
 				group: "configuration",
 				label: J("settings:configurationPage.sectionsLabel"),
 				value: C[w].id,
@@ -9683,11 +7852,7 @@ function _u({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i
 				active: r === w
 			}, a = Ut(e);
 			return /* @__PURE__ */ (0, $.jsxs)("div", {
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-				...ql(i),
-========
-				...lu(i),
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+				...fu(i),
 				children: [/* @__PURE__ */ (0, $.jsxs)("header", {
 					className: "flex min-w-0 flex-col gap-1",
 					children: [/* @__PURE__ */ (0, $.jsx)("h2", {
@@ -9704,12 +7869,6 @@ function _u({ data: e, receipt: t, reopenTutorial: n, section: r, diagnostics: i
 		})]
 	});
 }
-<<<<<<<< HEAD:web/dist/peach-app.configuration-page-C1cIzm5q.js
-export { Zl as ConfigurationPage };
+export { gu as ConfigurationPage };
 
-//# debugId=73cda814-b392-4a85-8c06-de2d2a12c6e4
-========
-export { pu as ConfigurationPage };
-
-//# debugId=0be3f71d-df46-4c26-a860-1f30e12664b9
->>>>>>>> 795b8e123 (feat(web): 完善通知操作与配置反馈):web/dist/peach-app.configuration-page-CG2ZfQqM.js
+//# debugId=e19b61e8-259e-4f15-8413-0a3889ab4707

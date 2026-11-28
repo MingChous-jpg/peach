@@ -4830,8 +4830,8 @@
     "desktopAlerts": {
       "startup": "Peach ran into a startup problem. Check startup diagnostics.",
       "service": "The Peach service is still unavailable. Check system diagnostics.",
-      "database": "Peach cannot read the media library database. Check system diagnostics.",
-      "mounts": "A media folder is still unavailable. Check your mounts.",
+      "database": "Peach cannot read the library database. Check system diagnostics.",
+      "mounts": "A library directory is still unavailable. Check your mounts.",
       "capacity": "Storage limits paused some background processing. Check your storage settings."
     },
     "listSeparator": ", ",

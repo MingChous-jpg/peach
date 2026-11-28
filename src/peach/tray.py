@@ -1199,6 +1199,15 @@ def show_message(title: str, message: str, *, error: bool = False) -> None:
         print(f"{title}: {message}")
 
 
+def _announce_desktop_faults(manager: ServiceManager, gate: SetupGate, alerts: desktop_alerts.FaultMonitor,
+                             notify: Callable[[str, str], None], *, action_in_progress: bool) -> None:
+    if action_in_progress:
+        return
+    allowed = not gate.waiting and desktop_alerts.enabled(gate.config.directory("state"))
+    for issue in alerts.observe(manager.desktop_faults(), allowed=allowed):
+        notify(tray_text(f"tray.desktopAlerts.{issue}"), "Peach")
+
+
 class PeachTray:
     def __init__(
         self,
@@ -1630,10 +1639,8 @@ class PeachTray:
                     self._action_lock.release()
             if down:
                 self.revive_services()
-            if not self._action_lock.locked():
-                allowed = not self.gate.waiting and desktop_alerts.enabled(self.gate.config.directory("state"))
-                for issue in self._desktop_alerts.observe(self.manager.desktop_faults(), allowed=allowed):
-                    self.icon.notify(tray_text(f"tray.desktopAlerts.{issue}"), "Peach")
+            _announce_desktop_faults(self.manager, self.gate, self._desktop_alerts, self.icon.notify,
+                                     action_in_progress=self._action_lock.locked())
             self.icon.update_menu()
             self.poll_build_age()
 
@@ -1989,10 +1996,7 @@ def run_macos_menu_bar(manager: "ServiceManager", gate: "SetupGate | None" = Non
             gate.poll()
             for spec in manager.specs:
                 manager.healthy(spec)
-            if not action_lock.locked():
-                allowed = not gate.waiting and desktop_alerts.enabled(gate.config.directory("state"))
-                for issue in alerts.observe(manager.desktop_faults(), allowed=allowed):
-                    notify(tray_text(f"tray.desktopAlerts.{issue}"), "Peach")
+            _announce_desktop_faults(manager, gate, alerts, notify, action_in_progress=action_lock.locked())
             updates.follow(gate.config.directory("state"))
 
     def refresh_certificate() -> bool:

@@ -383,6 +383,16 @@ html:has([data-selection-dock]) {
 .peach-react [data-error-details-toggle]:hover:not(:disabled,[aria-disabled="true"]){background:var(--control-hover);color:var(--ink)}
 .peach-react [data-error-details-toggle]:active:not(:disabled,[aria-disabled="true"]){background:var(--hover);color:var(--ink)}
 
+.peach-react[data-notification-menu] [data-notification-quiet-action] {
+  --color-button-ghost-background: transparent;
+  --color-button-ghost-foreground: var(--color-text-secondary);
+  --color-button-ghost-hover: var(--color-background-tertiary-default);
+  --color-button-ghost-active: var(--color-background-primary-active);
+}
+.peach-react [data-smb-encryption] {
+  --color-background-tertiary-default: var(--color-border-button-default);
+}
+
 /* 玻璃浮层上分段控件选中的那一格（`components/segmented.tsx` 的 `SEGMENT_GLASS`）：
  * 白填充垫底、斜光一道、整圈 rim 描边，与浮层上其余「当前在哪儿」的那块同一副料。 */
 .peach-react [data-glass-segment][data-selected] {

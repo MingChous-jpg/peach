@@ -351,7 +351,7 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
                       </FolderFieldLine>
                       {login ? <Checkbox isSelected={clearingLogin} onChange={value => edit(index, { smb_clear: value })}>{t('settings:smbShare.removeAccount')}</Checkbox> : null}
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <Switch className="[--color-background-tertiary-default:var(--color-border-button-default)]"
+                        <Switch data-smb-encryption=""
                           isSelected={row.smb_encrypt || false} isDisabled={clearingLogin}
                           onChange={value => edit(index, { smb_encrypt: value })}>{t('settings:smbShare.requireEncryption')}</Switch>
                         <Button className="ml-auto" variant="secondary" {...busyProps(action.busy === `smb-${index}`)}

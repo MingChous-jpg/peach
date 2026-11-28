@@ -24,7 +24,7 @@ export function useFieldValidation<Field extends string>() {
           .filter(shell => getComputedStyle(shell).animationName === 'field-shake');
         // 重试时错误状态可能没变，重新挂上同一段 CSS 动效。
         for (const shell of shells) shell.style.animationName = 'none';
-        if (shells.length) getComputedStyle(shells[0]).animationName;
+        void shells[0]?.offsetWidth;
         for (const shell of shells) shell.style.removeProperty('animation-name');
       });
       return false;
@@ -38,7 +38,8 @@ export function downloadAddressError(raw: string) {
   const address = trimDownloadAddress(raw);
   if (!address) return '';
   const candidate = address.includes('://') ? address : `http://${address}`;
-  if (!/^https?:\/\/[^/?#@\\\s]+\/?$/i.test(candidate) || /[\x00-\x1f]/.test(candidate)) return 'errors.downloads.addressFormat';
+  const containsControl = Array.from(address).some(character => character.charCodeAt(0) < 32);
+  if (!/^https?:\/\/[^/?#@\\\s]+\/?$/i.test(candidate) || containsControl) return 'errors.downloads.addressFormat';
   try {
     const url = new URL(candidate);
     if (!url.hostname) return 'errors.downloads.addressFormat';

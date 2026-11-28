@@ -670,12 +670,6 @@ html.board-high-contrast [data-notification-menu][data-notification-menu]{backgr
 [data-notification-menu] [data-notification-cover-front]{--card-ratio:.75;aspect-ratio:var(--card-ratio)}
 [data-notification-menu] [data-notification-presentation="recommendation"] [data-notification-artwork]{width:100%;aspect-ratio:2/1}
 [data-notification-menu] [data-notification-author-avatar] [class~="favatar"]{width:100%;height:100%}
-[data-notification-menu] [data-notification-quiet-action]{
-  --color-button-ghost-background:transparent;
-  --color-button-ghost-foreground:var(--color-text-secondary);
-  --color-button-ghost-hover:var(--color-background-tertiary-default);
-  --color-button-ghost-active:var(--color-background-primary-active)
-}
 .peach-react[data-notification-menu] [data-notification-byline] [data-media-avatar]{width:30px;height:30px}
 .peach-react[data-notification-menu] [data-notification-byline] [data-media-avatars]{
   width:calc(32px + 24px * (var(--media-avatar-count) - 1));max-width:none;height:32px;margin:0
