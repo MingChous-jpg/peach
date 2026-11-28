@@ -152,6 +152,7 @@ describe('配置表单与行间距', () => {
         } }));
         await page.reload();
         const form = page.getByRole('form', { name: '云下载', exact: true });
+        await form.locator('[data-settings-field="token"] input').fill('fixture-clouddrive-token');
         await form.getByRole('button', { name: '检查连接', exact: true }).click();
         await page.locator('#toasts [data-sonner-toast][data-type=success]').filter({ hasText: 'CloudDrive2 连接检查通过' }).waitFor();
         await settle(page);

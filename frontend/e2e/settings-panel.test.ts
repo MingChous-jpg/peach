@@ -264,7 +264,9 @@ describe('设置面板', () => {
       assert.equal((await stored(page)).homeGlow.strength, expected, '拉条改的强度没有落盘');
 
       await page.locator('#homeGlowSetting').click();
-      await page.locator('#homeGlowControls').waitFor({ state: 'hidden', timeout: 5_000 });
+      await page.locator('#homeGlowControls [data-glow-setting]').waitFor({ state: 'hidden', timeout: 5_000 });
+      assert.ok(await page.locator('#sidebarGlowTitle').isVisible());
+      assert.ok(await page.locator('#homeGlowSetting').isVisible());
       assert.equal((await stored(page)).homeGlow.on, false);
       assert.deepEqual(opened.problems, []);
     } finally {

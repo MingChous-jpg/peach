@@ -539,13 +539,16 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
         await openPanel(opened.page);
         for (const section of ['外观与导航', '浏览与播放', 'JAV 与新作', '搜索与推荐', '内容显示']) {
           await opened.page.locator(PANEL).getByRole('tab', { name: section, exact: true }).click();
-          const subheadings = ({ '浏览与播放': ['作品列表', '首页', '播放'], 'JAV 与新作': ['作品显示', '新作显示'] } as
+          const subheadings = ({ '浏览与播放': ['作品列表', '首页', '播放', '播放控制'], 'JAV 与新作': ['作品显示', '新作显示'] } as
             Record<string, string[] | undefined>)[section];
           if (subheadings) {
             const headings = await opened.page.locator(`${PANEL} [data-setting-group]:not([hidden]) [data-settings-subheading]`)
-              .evaluateAll((nodes) => nodes.map((node) => ({ text: node.textContent, padding: getComputedStyle(node).padding,
-                left: node.getBoundingClientRect().left - node.parentElement!.getBoundingClientRect().left })));
-            assert.deepEqual(headings, subheadings.map((text) => ({ text, padding: '16px 0px 6px', left: 12 })));
+              .evaluateAll((nodes) => nodes.map((node) => ({
+                text: node.textContent,
+                left: node.getBoundingClientRect().left - node.parentElement!.getBoundingClientRect().left
+                  + parseFloat(getComputedStyle(node).paddingLeft),
+              })));
+            assert.deepEqual(headings, subheadings.map((text) => ({ text, left: 12 })));
           }
           const rows = await opened.page.locator(`${PANEL} [data-setting-group]:not([hidden]) [data-setting-row]`)
           .evaluateAll((nodes) => nodes.map((row) => {
@@ -711,7 +714,7 @@ describe('设计决定：设置、口味、统计与筛选玻璃', () => {
             overflow: node.scrollWidth > node.clientWidth,
             cards: cards.map((card) => ({ radius: getComputedStyle(card).borderTopLeftRadius,
               left: card.getBoundingClientRect().left - group.left, right: group.right - card.getBoundingClientRect().right })),
-            headings: [...node.querySelectorAll('h4')].map((heading) => heading.textContent),
+            headings: [...node.querySelectorAll('[data-glow-group] > [data-settings-subheading]')].map((heading) => heading.textContent),
           };
         });
         assert.equal(shown.right, 0);
