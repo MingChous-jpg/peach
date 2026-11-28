@@ -183,6 +183,22 @@ class ReleaseUpdateTests(unittest.TestCase):
             self.assertEqual(result["state"], "error")
             self.assertIsNone(result["latest_version"])
 
+    def test_only_a_smaller_delta_from_the_running_version_is_offered(self):
+        from peach.update_packages import TOOL_PATHS
+
+        row = release("1.0.0")
+        prefix = "Peach-1.0.0-windows-x64"
+        row["assets"] += [{"name": f"{prefix}-tools-{tool}.zip", "state": "uploaded"} for tool in TOOL_PATHS]
+        row["assets"] += [{"name": f"{prefix}-update.zip", "state": "uploaded", "size": 100},
+                          {"name": f"{prefix}-from-0.8.0.zip", "state": "uploaded", "size": 20}]
+        self.assertNotIn("delta", self.check([row]))
+        match = {"name": f"{prefix}-from-0.9.0.zip", "state": "uploaded", "size": 50}
+        row["assets"].append(match)
+        self.assertEqual(self.check([row])["delta"]["size"], 50)
+        self.assertTrue(self.check([row])["delta"]["url"].endswith(match["name"]))
+        match["size"] = 100
+        self.assertNotIn("delta", self.check([row]))
+
     def test_github_can_report_current_and_ahead_when_r2_is_unavailable(self):
         def transport(github_version):
             def answer(request, *_args):

@@ -117,6 +117,8 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/io.github.longmeidao.pea
 3. 仓库变量 `SPARKLE_APPCAST_ENABLED` 为 `true` 时，每个版本标签在 GitHub Release 公开后运行 `sparkle-appcast` 作业。官方 `generate_appcast` 生成两个架构的 appcast，`scripts/sparkle_appcast.py` 补写迁移号，并从 `CHANGELOG.md` 写入英文和简体中文更新日志。核对版本、下载地址、大小、更新日志和签名后，上传到 `https://downloads.peach.video/sparkle/macos-<架构>.xml`。没有 appcast 时，Sparkle 的检查会报更新源不可用。
 4. 第一个带公钥的版本须手动安装一次；之后的版本才能经 Sparkle 更新。在真机按 ADR-0130「未取得的证据」逐项验收。
 
+发布作业为每个架构从上一份公开且签名有效的磁盘映像生成 Sparkle 增量包。作业先实际应用补丁并检查重建应用的签名，再签名、上传、回读补丁，最后发布引用该补丁的 appcast。没有可用补丁时，appcast 继续提供完整磁盘映像。
+
 ### Windows 应用内更新的发布签名
 
 Windows 独立包使用内置公钥校验每个版本 `SHA256SUMS.txt` 的 Ed25519 签名。带公钥的客户端只安装签名校验通过的版本。首把公钥由 [v0.59.0 GitHub 发布作业](https://github.com/peach-mitao/peach/actions/runs/44229158206/job/134549781184) 输出，实际清单和签名已在 GitHub 与 R2 验过。取舍见 [ADR-0137](adr/0137-release-sums-ed25519-signature.md)。
@@ -168,7 +170,9 @@ GitLab 演练通过 R2 暂存传递媒体工具、Windows 发行目录、macOS �
 
 上传期间的完成构建保存在 `CI_BUILDS_DIR/.peach-upload-resume/` 的独立身份目录。R2 部分上传失败后，同机重试核对备份大小与 SHA-256，继续传到原作业前缀；完整上传清单登记后回收本组备份。机器更换且没有完整远端清单时需重新构建，不拼接未知来源文件。
 
-Windows 轻量安装器缺少本地工具包时，先从 R2 下载当前版本的工具；连接失败或内容校验失败时，尝试 GitHub 的同版本文件。两个来源均须匹配安装器内置清单的大小与 SHA-256，不能混用其他版本。发布完成后，用 `scripts/smoke_split_update.py` 的 `--prepare-with-app --online` 在空缓存中运行实际制品，核对联网取得的工具能否重建完整程序。GitLab Release 的下载表使用 R2，资产区另列 GitGud 副本，文档链接指向对应版本标签。
+Windows 轻量安装器缺少本地工具包时，从 GitHub 或 R2 下载同版本工具。两个来源均须匹配安装器内置清单的大小与 SHA-256。新装会在首次使用时下载识别模型，更新时复用或更新已安装的模型。发布完成后，用 `scripts/smoke_split_update.py` 的 `--prepare-with-app --online --defer-face-models` 在空缓存中运行实际制品，核对必要工具和模型延迟安装。GitLab Release 的下载表使用 R2，资产区另列 GitGud 副本，文档链接指向对应版本标签。
+
+Windows 发布时从上一份公开应用更新包生成按文件复用的增量包，并逐文件核对重建内容。支持增量的版本优先下载和本机版本匹配、且比应用更新包更小的签名补丁。本机文件缺失或摘要不符时自动改下同版本应用更新包。首次升级到支持增量的版本仍用原有更新方式。
 
 已装的独立包用自己的代码读新版本的发布条目与更新包，发版时改不了。`build-windows` 拆包后运行 `scripts/update_compat.py`，用 0.48.0 起每个已发布版本标签里的更新代码原样读这一版：选不中新版本、读不了工具清单，或清单里有旧版不认得、运行时又补不齐的工具时，作业失败，不上传任何文件。本机测试用合成制品跑同一道核对，检出须带发布标签。客户端只准备自己认得、清单里也有的工具；应用更新包用不了时改下同版本完整包。0.47.3 及更早的版本读不了 0.48 起的清单，需手动运行一次完整安装包。依据见 [ADR-0120](adr/0120-standalone-update-client-compatibility.md)。
 

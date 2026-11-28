@@ -19,8 +19,8 @@ API_URL = "https://api.github.com/repos/peach-mitao/peach/releases?per_page=100"
 DOWNLOADS_BASE = "https://downloads.peach.video"
 DOWNLOADS_API = DOWNLOADS_BASE + "/releases.json"
 #: 检查结果的形状；改了就让缓存的旧结果作废、后台按新规则重查一次。v2 起带更新说明 `notes`，
-#: v3 起 `notes` 只有每版的重点。
-LISTING_RULE = 'source-aware-v3'
+#: v3 起 `notes` 只有每版的重点，v4 支持匹配本版的增量更新。
+LISTING_RULE = 'source-aware-v4'
 #: 有新版本时最多列出几版的更新说明，更早的看 Release 页。
 NOTES_LIMIT = 10
 #: Release 正文里中文那一段的折叠块，标题与 `scripts/changelog.py` 的 `CHINESE_SUMMARY` 相同。
@@ -78,6 +78,17 @@ def _version(value: object) -> tuple[int, ...] | None:
     return tuple(map(int, value.removeprefix("v").split(".")))
 
 
+def _delta_asset(uploaded: dict, version: str, update: dict) -> dict | None:
+    from .update_delta import name
+
+    candidate = uploaded.get(name(version, __version__))
+    if candidate:
+        size, total = candidate.get("size"), update.get("size")
+        if type(size) is int and type(total) is int and 0 < size < total:
+            return candidate
+    return None
+
+
 def _release_candidates(rows: list, endpoint: str, system: str = "win32", machine: str = "") -> list[tuple]:
     """从一个公开发行源选择本机平台的完整包，并构造受信任的下载地址。
 
@@ -105,6 +116,8 @@ def _release_candidates(rows: list, endpoint: str, system: str = "win32", machin
                 continue
             complete_tools = all(prefix + f"-tools-{tool}.zip" in uploaded for tool in TOOL_PATHS)
             asset = uploaded.get(prefix + "-update.zip", full) if complete_tools else full
+            if asset is not full and (delta := _delta_asset(uploaded, tag.removeprefix("v"), asset)):
+                asset = {**asset, "delta": delta}
         if endpoint == DOWNLOADS_API:
             if not all(re.fullmatch(r"sha256:[0-9a-f]{64}", item.get("digest") or "") for item in (asset, full)):
                 continue
@@ -254,6 +267,10 @@ def check(*, transport=None, system: str | None = None, machine: str | None = No
             extra = {"one_click": docker_update.status()} if state == "available" else {}
             return dict(result, latest_version=latest, state=state, release_url=release_url, **extra,
                         **(_message("imageAvailable") if state == "available" else message))
+        delta = asset.get("delta")
+        if delta:
+            result["delta"] = {"url": f"{directory}/{delta['name']}", "size": delta["size"],
+                               "digest": delta.get("digest")}
         return dict(result, latest_version=tag.removeprefix("v"), state=state, **message,
                     asset_url=f"{directory}/{asset['name']}",
                     asset_size=asset.get("size", 0), asset_digest=asset.get("digest"),

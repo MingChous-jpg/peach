@@ -106,8 +106,31 @@ def verify(path: Path, *, version: str, dmg: Path, url_prefix: str, head: int) -
     return {"version": version, "signature": signature}
 
 
-def publish(feeds: list[Path]) -> list[dict]:
-    """appcast 按 releases.json 的方式短缓存覆盖上传，再从公开入口完整下载核对。"""
+def add_delta(feed: Path, version: str, base: str, delta: Path, url_prefix: str, signature: str) -> None:
+    if not signature or _version(base) >= _version(version):
+        raise ValueError("Invalid Sparkle delta signature or source version")
+    tree = ET.parse(feed)
+    item = _item(tree, version)
+    key = f"{{{SPARKLE}}}deltas"
+    deltas = item.find(key)
+    if deltas is None:
+        deltas = ET.SubElement(item, key)
+    source = f"{{{SPARKLE}}}deltaFrom"
+    for entry in deltas.findall("enclosure"):
+        if entry.get(source) == base:
+            deltas.remove(entry)
+    ET.SubElement(deltas, "enclosure", {
+        "url": url_prefix + delta.name,
+        "length": str(delta.stat().st_size),
+        "type": "application/octet-stream",
+        source: base,
+        f"{{{SPARKLE}}}edSignature": signature,
+    })
+    tree.write(feed, encoding="utf-8", xml_declaration=True)
+
+
+def publish(feeds: list[Path], deltas: tuple[Path, ...] = ()) -> list[dict]:
+    """先上传并回读增量包，再更新引用它们的公开 appcast。"""
     from release_r2 import rclone_environment, verify_download
     environment = rclone_environment()
     executable = environment.get("PEACH_RCLONE") or shutil.which("rclone")
@@ -118,14 +141,16 @@ def publish(feeds: list[Path]) -> list[dict]:
     with tempfile.TemporaryDirectory(prefix="peach-sparkle-") as directory:
         configuration = Path(directory) / "rclone.conf"
         configuration.touch()
-        for feed in feeds:
-            target = f"peach:{environment['PEACH_R2_BUCKET']}/sparkle/{feed.name}"
-            subprocess.run([executable, "copyto", str(feed), target, "--checksum", "--config", str(configuration),
+        files = [(file, f"deltas/{file.name}") for file in deltas] + [(feed, feed.name) for feed in feeds]
+        for file, relative in files:
+            target = f"peach:{environment['PEACH_R2_BUCKET']}/sparkle/{relative}"
+            subprocess.run([executable, "copyto", str(file), target, "--checksum", "--config", str(configuration),
                             "--header-upload", "Cache-Control: public, max-age=60"], env=environment, check=True)
-            item = {"name": feed.name, "size": feed.stat().st_size,
-                    "sha256": hashlib.sha256(feed.read_bytes()).hexdigest()}
+            with file.open("rb") as stream:
+                item = {"name": file.name, "size": file.stat().st_size,
+                        "sha256": hashlib.file_digest(stream, "sha256").hexdigest()}
             # 公开入口缓存一分钟，裸地址可能还是上传前的旧文件或 404：带上本次摘要，取回刚写进 R2 的那份。
-            verify_download(f"{base}/sparkle/{feed.name}?sha256={item['sha256']}", item)
+            verify_download(f"{base}/sparkle/{relative}?sha256={item['sha256']}", item)
             published.append(item)
     return published
 
@@ -140,7 +165,9 @@ def main(argv=None) -> int:
         if name == "verify":
             command.add_argument("--dmg", type=Path, required=True)
             command.add_argument("--url-prefix", required=True)
-    commands.add_parser("publish").add_argument("feeds", type=Path, nargs="+")
+    upload = commands.add_parser("publish")
+    upload.add_argument("feeds", type=Path, nargs="+")
+    upload.add_argument("--delta", type=Path, action="append", default=[])
     args = parser.parse_args(argv)
     head = migration_head(ROOT / "migrations")
     try:
@@ -151,7 +178,7 @@ def main(argv=None) -> int:
         elif args.command == "verify":
             result = verify(args.appcast, version=args.version, dmg=args.dmg, url_prefix=args.url_prefix, head=head)
         else:
-            result = publish(args.feeds)
+            result = publish(args.feeds, args.delta)
     except (OSError, ValueError, ET.ParseError, subprocess.CalledProcessError) as error:
         print(t("sparkle_appcast.failed", error=error), file=sys.stderr)
         return 1

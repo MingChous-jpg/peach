@@ -40,6 +40,14 @@ def build_requirements() -> list[str]:
     return [f"{name}=={packages[name]['version']}" for name in sorted(names)]
 
 
+def _source_entry(archive: zipfile.ZipFile, name: str, content: bytes) -> None:
+    entry = zipfile.ZipInfo(name)
+    entry.compress_type = zipfile.ZIP_DEFLATED
+    entry.create_system = 3
+    entry.external_attr = 0o100644 << 16
+    archive.writestr(entry, content)
+
+
 def corresponding_source(destination: Path, work: Path, facts: dict) -> None:
     checkout = work / "source"
     if not (checkout / ".git").exists():
@@ -57,7 +65,7 @@ def corresponding_source(destination: Path, work: Path, facts: dict) -> None:
         for path in (BRIDGE / "bridge.py", BRIDGE / "pyproject.toml", BRIDGE / "uv.lock",
                      ROOT / "scripts/build_amane_runtime.py", ROOT / "scripts/amane_bridge.spec",
                      ROOT / "pyproject.toml", ROOT / "uv.lock", ROOT / "LICENSE"):
-            output.write(path, "peach/" + path.relative_to(ROOT).as_posix())
+            _source_entry(output, "peach/" + path.relative_to(ROOT).as_posix(), path.read_bytes())
         lock = tomllib.loads((BRIDGE / "uv.lock").read_text(encoding="utf-8"))
         for package in lock["package"]:
             if package["name"] != "certifi":
@@ -67,7 +75,7 @@ def corresponding_source(destination: Path, work: Path, facts: dict) -> None:
                 content = response.read()
             if "sha256:" + hashlib.sha256(content).hexdigest() != source["hash"]:
                 raise ValueError(t("build_amane_runtime.sourceMismatch", name=package['name']))
-            output.writestr("dependencies/" + source["url"].rsplit("/", 1)[1], content)
+            _source_entry(output, "dependencies/" + source["url"].rsplit("/", 1)[1], content)
     facts["source_sha256"] = hashlib.sha256(archive.read_bytes()).hexdigest()
     (destination / "NOTICE-amane.md").write_text(
         "# amane 独立运行时\n\n"
