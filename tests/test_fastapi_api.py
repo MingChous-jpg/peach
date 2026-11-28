@@ -567,7 +567,9 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(denied.status_code, 401)
             accepted = await self.client.get("/api/diagnostics?t=secret")
             self.assertEqual(accepted.status_code, 200)
-            self.assertEqual(accepted.json(), report)
+            self.assertEqual(accepted.json(), {
+                **report, 'runtime_diagnostics': self.app.state.runtime_diagnostics.snapshot(),
+            })
             shared.assert_called_once_with(self.settings, self.app.state.mount_reachability.summary(),
                                            known_corruption=False)
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app, client=("192.0.2.10", 1234)),
@@ -586,6 +588,27 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
                           BuildInfo("c0ffee1234", __version__, "2026-09-07T00:00:00")):
             served = (await self.client.get("http://127.0.0.1/healthz")).json()
         self.assertEqual(served["build_commit"], "c0ffee1234")
+
+    async def test_diagnostics_export_contains_resource_and_first_media_body_samples(self):
+        from io import BytesIO
+        from zipfile import ZipFile
+        from peach.settings_file import PeachConfig
+        from peach.support_bundle import bundle_bytes
+
+        runtime = self.app.state.runtime_diagnostics
+        runtime.collect()
+        video = await self.client.get('/stream?id=1&t=secret', headers={'Range': 'bytes=0-3'})
+        self.assertEqual(video.content, b'0123')
+        snapshot = runtime.snapshot()
+        self.assertEqual(snapshot['status'], 'available')
+        server = snapshot['resource_samples'][-1]['processes']['server']
+        self.assertGreater(server['rss_bytes'], 0)
+        playback = snapshot['media_first_body_samples'][-1]
+        self.assertEqual((playback['route'], playback['source'], playback['http_status']), ('range', 'local', 206))
+        config = PeachConfig(data_root=self.root, path=self.root / 'config.toml')
+        payload = bundle_bytes(report={'runtime_diagnostics': snapshot}, config=config, include_scraping=False)
+        with ZipFile(BytesIO(payload)) as bundle:
+            self.assertEqual(json.loads(bundle.read('report.json'))['runtime_diagnostics'], snapshot)
 
     async def test_background_issues_reads_app_and_contract_services_behind_auth(self):
         from peach.metadata_amane import bridge_python
@@ -2195,6 +2218,31 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
             {"k": "landscape", "n": 1},
         ])
 
+    async def test_home_and_facets_follow_media_root_replacement_without_deleting_assets(self):
+        from contextlib import closing
+        from dataclasses import replace
+        from peach import settings_file
+        with closing(sqlite3.connect(self.db)) as connection, connection:
+            connection.execute("UPDATE asset SET path=? WHERE id=1", (r"R:\Large\Small\one.mp4",))
+            connection.executemany(
+                """INSERT INTO asset(id,location,path,name,medium,first_seen)
+                   VALUES(?,?,?,?,'video','2026-08-14')""",
+                [(2, 'local', r'R:\Large\Old\two.mp4', 'two.mp4'),
+                 (3, 'online', 'https://example.com/three', 'three.mp4')])
+        config = replace(settings_file.active(), present=True, data_root=self.root,
+                         directories={'database': '.'}, locations={'local': (r'R:\Large',)})
+        with patch.object(settings_file, 'active', return_value=config) as active:
+            first = (await self.client.get('/api/items?t=secret')).json()
+            self.assertEqual(first['total'], 3)
+            self.assertEqual((await self.client.get('/api/facets?t=secret')).status_code, 200)
+            active.return_value = replace(config, locations={'local': (r'R:\Large\Small',)})
+            current = (await self.client.get('/api/items?t=secret')).json()
+            self.assertEqual({row['id'] for row in current['items']}, {1, 3})
+            self.assertEqual(current['total'], 2)
+            facets = (await self.client.get('/api/facets?t=secret')).json()
+            self.assertEqual({entry['k']: entry['n'] for entry in facets['locations']}, {'local': 1, 'online': 1})
+            self.assertEqual((await self.client.get('/api/item?id=2&t=secret')).status_code, 200)
+
     async def test_global_facets_supply_recommendations_for_an_untagged_detail(self):
         connection = sqlite3.connect(self.db)
         connection.execute(
@@ -3697,9 +3745,10 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plan.json()["segment_seconds"], 6)
         self.assertIn("/stream/hls/1/index.m3u8?session=hls-test", plan.json()["src"])
 
-        playlist = await self.client.get(
-            "/stream/hls/1/index.m3u8?session=hls-test&t=secret",
-        )
+        with patch.object(self.app.state.hls_service, 'plan', side_effect=AssertionError('recomputed plan')):
+            playlist = await self.client.get(
+                "/stream/hls/1/index.m3u8?session=hls-test&t=secret",
+            )
         self.assertEqual(playlist.status_code, 200)
         self.assertEqual(playlist.headers["content-type"], "application/vnd.apple.mpegurl")
         self.assertEqual(playlist.text.count("#EXTINF:"), 3)

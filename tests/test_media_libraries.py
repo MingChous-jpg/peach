@@ -54,6 +54,25 @@ class MediaLibraryTests(unittest.TestCase):
             self.assertEqual(loaded.library_names, {root: name})
             self.assertEqual(loaded.library_icons, {root: "star"})
 
+    def test_replaced_root_keeps_only_the_subfolder_and_online_in_all_libraries(self):
+        with sqlite3.connect(":memory:") as db:
+            db.execute("CREATE TABLE asset (id INTEGER, location TEXT, path TEXT)")
+            db.executemany("INSERT INTO asset VALUES (?,?,?)", [
+                (1, "local", r"R:\Media\Small\one.mp4"), (2, "local", r"R:\Media\two.mp4"),
+                (3, "local", r"R:\Media\SmallExtra\three.mp4"), (4, "online", "https://example.com/four"),
+                (5, "115", r"R:\Media\Small\five.mp4"),
+            ])
+            config = SimpleNamespace(present=True, locations={"local": (r"R:\Media",)})
+            def visible():
+                clause, params = media_libraries.catalog_predicate(config)
+                return [row[0] for row in db.execute("SELECT id FROM asset a WHERE " + clause + " ORDER BY id", params)]
+            self.assertEqual(visible(), [1, 2, 3, 4])
+            config.locations = {"local": (r"R:\Media\Small",)}
+            self.assertEqual(visible(), [1, 4])
+            config.locations = {}
+            self.assertEqual(visible(), [4])
+            self.assertEqual(db.execute("SELECT COUNT(*) FROM asset").fetchone()[0], 5)
+
 
 class MediaIdentityTests(unittest.TestCase):
     def setUp(self):

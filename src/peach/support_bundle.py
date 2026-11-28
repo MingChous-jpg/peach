@@ -322,6 +322,33 @@ def _archive_scraping(archive, config, entries, *, progress, cancelled, include_
     return state
 
 
+def _shared_report_fields(report):
+    """诊断包保留系统检查与近期样本，媒体挂载明细留在本机诊断页。"""
+    if not report:
+        return {}
+    checks = {key: {field: value.get(field) for field in ("status", "reason", "action")}
+              for key, value in report.get("checks", {}).items() if key != "media_mounts"}
+    detail_fields = {'database': ('state',), 'schema': ('schema', 'version', 'pending', 'mismatched', 'unknown_versions'),
+                     'security': ('exposed', 'protected'), 'port': ('port', 'state'), 'tasks': ('id', 'finished_at')}
+    for key, names in detail_fields.items():
+        if key in checks:
+            details = report['checks'][key].get('details', {})
+            checks[key]['details'] = {name: details[name] for name in names if name in details}
+    mounts = report.get('checks', {}).get('media_mounts', {}).get('details', {})
+    source_fields = ('source', 'status', 'reason', 'last_check_at', 'elapsed_s', 'last_success_at', 'cooldown_until')
+    facts = {
+        'checks': checks,
+        'mounts': {'state': mounts.get('state'), 'sources': [
+            {key: row.get(key) for key in ('state', 'online', 'message', 'checked_at')}
+            for row in mounts.get('sources', []) if isinstance(row, dict)]},
+        'sources': [{key: row.get(key) for key in source_fields}
+                    for row in report.get('sources', []) if isinstance(row, dict)],
+    }
+    if 'runtime_diagnostics' in report:
+        facts['runtime_diagnostics'] = report['runtime_diagnostics']
+    return facts
+
+
 def bundle_to(destination, *, report: dict | None = None, config=None, browser: dict | None = None,
               progress=lambda **values: None, cancelled=lambda: False, include_scraping=True):
     facts = {"created_at": datetime.now(timezone.utc).isoformat(), "system": error_reporting.system_facts()}
@@ -353,25 +380,7 @@ def bundle_to(destination, *, report: dict | None = None, config=None, browser: 
             processing_directory, generated_directory = root / 'state', root / 'generated'
         except Exception:
             pass
-    if report:
-        # 报告分享仅保留系统检查，库清单、媒体挂载明细和来源原文留在本机页面。
-        facts["checks"] = {key: {field: value.get(field) for field in ("status", "reason", "action")}
-                           for key, value in report.get("checks", {}).items()
-                           if key not in ("media_mounts",)}
-        detail_fields = {'database': ('state',), 'schema': ('schema', 'version', 'pending', 'mismatched', 'unknown_versions'),
-                         'security': ('exposed', 'protected'), 'port': ('port', 'state'), 'tasks': ('id', 'finished_at')}
-        for key, names in detail_fields.items():
-            if key in facts['checks']:
-                details = report['checks'][key].get('details', {})
-                facts['checks'][key]['details'] = {name: details[name] for name in names if name in details}
-        mounts = report.get('checks', {}).get('media_mounts', {}).get('details', {})
-        facts['mounts'] = {'state': mounts.get('state'), 'sources': [
-            {key: row.get(key) for key in ('state', 'online', 'message', 'checked_at')}
-            for row in mounts.get('sources', []) if isinstance(row, dict)]}
-        source_fields = ('source', 'status', 'reason', 'last_check_at', 'elapsed_s',
-                         'last_success_at', 'cooldown_until')
-        facts['sources'] = [{key: row.get(key) for key in source_fields}
-                            for row in report.get('sources', []) if isinstance(row, dict)]
+    facts.update(_shared_report_fields(report))
     entries = []
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for index, directory in enumerate(dict.fromkeys(directories)):

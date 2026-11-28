@@ -394,6 +394,33 @@ def _translation_filter(language, trash):
     ], [language]
 
 
+def catalog_root_predicate(contract):
+    config = settings_file.active()
+    # 独立账本（例如 serve --db）沿用自身范围，避免套用默认账本的媒体根目录。
+    if contract.db_path.absolute() != (config.directory('database') / 'ledger.db').absolute():
+        return "1", []
+    return media_libraries.catalog_predicate(config)
+
+
+def _catalog_storage_filters(contract, args, *, trash):
+    from .web_folders import folder_filter
+
+    where, parameters = folder_filter(contract, args)
+    if location_filter := args.get("loc"):
+        locations = [item for item in location_filter.split(",") if item]
+        where.append("a.location IN (%s)" % ",".join("?" * len(locations)))
+        parameters.extend(locations)
+    if library := args.get("library"):
+        clause, values = media_libraries.predicate(settings_file.active(), library)
+        where.append(clause)
+        parameters.extend(values)
+    elif not trash:
+        clause, values = catalog_root_predicate(contract)
+        where.append(clause)
+        parameters.extend(values)
+    return where, parameters
+
+
 def catalog_filter(contract: WebContract, args):
     """视频列表与侧栏使用同一组筛选条件。"""
     trash = args.get("state") == "trash"
@@ -406,19 +433,11 @@ def catalog_filter(contract: WebContract, args):
         conditions, parameters = _column_filter_predicate(contract, columns)
         where.extend(conditions)
         par.extend(parameters)
-    from .web_folders import folder_filter
-    folder_where, folder_params = folder_filter(contract, args)
-    where.extend(folder_where)
-    par.extend(folder_params)
-    if args.get("library"):
-        clause, values = media_libraries.predicate(settings_file.active(), args["library"])
-        where.append(clause)
-        par.extend(values)
+    storage_where, storage_parameters = _catalog_storage_filters(contract, args, trash=trash)
+    where.extend(storage_where)
+    par.extend(storage_parameters)
     if trash:
         where.append("a.disposal='trash'")
-    if args.get("loc"):
-        locs = [x for x in args["loc"].split(",") if x]
-        where.append("a.location IN (%s)" % ",".join("?" * len(locs))); par += locs
     entity_where, entity_parameters = _catalog_entity_filters(contract, args)
     where.extend(entity_where)
     par.extend(entity_parameters)
@@ -1757,6 +1776,10 @@ def _facet_scope(contract, connection, jav, state, filters, asset_id, scope_kind
     scope_params: list[object] = []
     if filters and filters.get("library") and asset_id is None:
         library_clause, library_params = media_libraries.predicate(settings_file.active(), filters["library"])
+        scope += "AND " + library_clause + " "
+        scope_params.extend(library_params)
+    elif asset_id is None and not (scope_kind or scope_name) and state != "trash":
+        library_clause, library_params = catalog_root_predicate(contract)
         scope += "AND " + library_clause + " "
         scope_params.extend(library_params)
     if asset_id is not None:

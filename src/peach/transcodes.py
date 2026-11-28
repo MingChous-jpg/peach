@@ -176,7 +176,7 @@ class TranscodeService:
         profile = self._profile_for(source, session, registry, stat)
         return profile is None or not self._browser_compatible(source, profile, decode)
 
-    def remuxes(self, source: Path, *, session: str = "", registry=None,
+    def remuxes(self, source: Path, *, session: str = "", registry=None, stat=None,
                 decode: frozenset[str] = frozenset()) -> bool:
         """MP4 里浏览器解得了的视频，只因音轨或 `hev1` 标签放不了：整片换封装就行，不用重编码。
 
@@ -189,14 +189,14 @@ class TranscodeService:
         suffix = source.suffix.lower()
         if suffix not in {".mp4", ".m4v"} | REMUX_SUFFIXES or self.resolver.ffprobe() is None:
             return False
-        profile = self._profile_for(source, session, registry)
+        profile = self._profile_for(source, session, registry, stat)
         if suffix in REMUX_SUFFIXES:
             return bool(profile and video_decodes(profile, decode))
         return bool(profile and profile.video_codec == "hevc" and video_decodes(profile, decode)
                     and not profile.decode_order_timestamps
                     and not self._browser_compatible(source, profile, decode))
 
-    def hls_mode(self, source: Path, *, session: str = "", registry=None) -> str:
+    def hls_mode(self, source: Path, *, session: str = "", registry=None, stat=None) -> str:
         """分片所需处理：兼容视频保留码流，音轨单独判断。
 
         返回 `copy`（音视频都复制）、`audio`（视频复制、音轨转 AAC）或 `transcode`（视频重编码）。
@@ -204,14 +204,14 @@ class TranscodeService:
         """
         if self.resolver.ffprobe() is None:
             return "transcode"
-        profile = self._profile_for(source, session, registry)
+        profile = self._profile_for(source, session, registry, stat)
         if (profile is None or profile.video_codec != "h264"
                 or profile.pixel_format not in DIRECT_MP4_PIXEL_FORMATS
                 or profile.decode_order_timestamps):
             return "transcode"
         return "copy" if profile.audio_codec in {"", "aac", "mp3"} else "audio"
 
-    def original_playable(self, source: Path, *, session: str = "", registry=None,
+    def original_playable(self, source: Path, *, session: str = "", registry=None, stat=None,
                           decode: frozenset[str] = frozenset()) -> bool:
         """值不值得先让浏览器试原文件：MP4、M4V、MKV 里视频解得了、音轨浏览器认、时间戳没错乱。
 
@@ -221,7 +221,7 @@ class TranscodeService:
         """
         if source.suffix.lower() not in {".mp4", ".m4v", ".mkv"} or self.resolver.ffprobe() is None:
             return False
-        profile = self._profile_for(source, session, registry)
+        profile = self._profile_for(source, session, registry, stat)
         return bool(profile and video_decodes(profile, decode)
                     and profile.audio_codec in ORIGINAL_AUDIO_CODECS
                     and not profile.decode_order_timestamps)
@@ -239,12 +239,12 @@ class TranscodeService:
         return bool(profile and profile.decode_order_timestamps
                     and self._decodes_in_browser(source, profile, decode))
 
-    def media_duration(self, source: Path, *, session: str = "", registry=None) -> float:
+    def media_duration(self, source: Path, *, session: str = "", registry=None, stat=None) -> float:
         """ffprobe 报的总时长（秒）；账本没记时长的片源靠它切片。探测不到返回 0。"""
         if self.resolver.ffprobe() is None:
             return 0.0
         try:
-            profile = self._profile_for(source, session, registry)
+            profile = self._profile_for(source, session, registry, stat)
         except OSError:
             return 0.0
         return profile.duration if profile is not None else 0.0

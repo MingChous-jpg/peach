@@ -18,6 +18,8 @@ Entries are written for users to scan: one sentence each, saying where something
 
 ### Added / 新增
 
+- **Settings**: Export recent server and child-process resource samples and media first-response timings in local diagnostics. / **配置**：本机诊断可导出近期服务进程与子进程的资源记录，以及媒体首段响应耗时。
+
 - **Settings**: Record slow page loads, playback planning, startup and buffering in local diagnostics. / **配置**：本机诊断记录页面加载、播放计划、起播和缓冲耗时。
 
 - **Interface**: Learn AI Assistant, folder mode, and JAV views in the tutorial, or finish the tutorial directly (#563). / **界面**：新手教程加入 AI 助手、文件夹模式和 JAV 视图导览，并支持直接结束整套教程（#563）。
@@ -26,9 +28,15 @@ Entries are written for users to scan: one sentence each, saying where something
 
 ### Changed / 变更
 
+- **Desktop**: Reduce Windows installer and application size by dropping an unused OpenCV video plugin. / **桌面**：移除未使用的 OpenCV 视频插件，缩小 Windows 安装包和解压后的应用体积。
+- **Library**: Compute viewing-history analysis when the Taste page is opened. / **馆藏**：打开口味页时再计算观看历史分析，减少服务启动时的后台工作。
+
 - **Interface**: Switch JAV Discover between cards and list, use shared controls in Online Catalog, and open performer profiles directly from the new releases row (#891). / **界面**：JAV 发现支持卡片和列表，在线目录复用列表控件，新作横排的署名可直接打开艺人资料页（#891）。
 
 ### Fixed / 修复
+
+- **Library**: Hide items from removed media roots on Home while keeping their records and viewing history. / **馆藏**：从首页隐藏已移除媒体目录中的条目，保留原记录和观看历史。
+- **Playback**: Reuse the playback plan and file status when opening segmented streams (#873). / **播放**：打开分片播放时复用起播计划和文件状态（#873）。
 
 - **Playback**: Repair missing MP4 timestamp tables when only a few frames cannot be decoded (#176). / **播放**：MP4 只有极少数帧无法解码时仍可修复缺失的时间戳表（#176）。 <!-- release-highlight -->
 - **Interface**: Align the JAV New Releases avatar rows with Home and move the card and list switch to the lower filter row (#891). / **界面**：JAV 新作的艺人与厂牌横排和首页对齐，卡片与列表切换移回筛选栏下排（#891）。

@@ -268,7 +268,7 @@ class MediaResponseLifecycleTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_last_hls_disconnect_reaps_its_generator(self):
         with mock.patch.object(routes_media, "_hls_plan", return_value=(
-                None, self.source, [(0, 6)], False)), \
+                SimpleNamespace(location="local"), self.source, [(0, 6)], "copy")), \
                 mock.patch.object(self.service, "_attempts", return_value=self.attempts(60)), \
                 mock.patch("peach.segments.asyncio.create_subprocess_exec", self.owned_spawn):
             task, messages, sent = self.request("/stream/hls/1/0.ts", b"session=one&t=secret")
@@ -309,7 +309,7 @@ class MediaResponseLifecycleTests(unittest.IsolatedAsyncioTestCase):
             return registered
 
         with mock.patch.object(routes_media, "_hls_plan", return_value=(
-                None, self.source, [(0, 6)], False)), \
+                SimpleNamespace(location="local"), self.source, [(0, 6)], "copy")), \
                 mock.patch.object(self.service, "_attempts", return_value=attempts), \
                 mock.patch.object(sessions, "register", observed), \
                 mock.patch("peach.segments.asyncio.create_subprocess_exec", self.owned_spawn):
@@ -328,6 +328,8 @@ class MediaResponseLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.children), 1)
         self.assertEqual([one["status"] for one in sent if one["type"] == "http.response.start"], [200])
         self.assertEqual(b"".join(one.get("body", b"") for one in sent), b"segment")
+        sample = self.app.state.runtime_diagnostics.snapshot()["media_first_body_samples"][-1]
+        self.assertEqual((sample["route"], sample["source"]), ("hls-segment", "local"))
         self.assertFalse(self.app.state.stream_sessions._processes)
         self.assertEqual(self.service._generation_locks, {})
 

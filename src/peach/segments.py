@@ -167,11 +167,12 @@ class HlsSegmentService:
             self._semaphore = asyncio.Semaphore(self._limit)
         return self._semaphore
 
-    def fingerprint(self, source: Path) -> tuple:
+    def fingerprint(self, source: Path, *, stat=None) -> tuple:
         from . import media_io
         try:
             # 起播与每个分片请求都问这一句：网盘答不上按期限当作读不到，不挂住 HLS 线程池。
-            stat = media_io.bounded(media_io.mount_key(source), source.stat)
+            if stat is None:
+                stat = media_io.bounded(media_io.mount_key(source), source.stat)
         except OSError:
             return (str(source), 0, 0)
         return (str(source), stat.st_size, int(stat.st_mtime))
@@ -194,9 +195,9 @@ class HlsSegmentService:
         self._codecs[key] = codec
         return codec
 
-    def plan(self, source: Path, duration: float) -> list[tuple[float, float]] | None:
+    def plan(self, source: Path, duration: float, *, stat=None) -> list[tuple[float, float]] | None:
         """返回分片计划；读不到关键帧就返回 None，由调用方回退标准 Range。"""
-        key = (*self.fingerprint(source), self.segment_seconds, round(duration, 3))
+        key = (*self.fingerprint(source, stat=stat), self.segment_seconds, round(duration, 3))
         cached = self._plans.get(key)
         if cached is not None:
             self._plans.move_to_end(key)

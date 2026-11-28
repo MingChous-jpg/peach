@@ -32,6 +32,7 @@ from .taste_browsing import q_taste_signals
 from .web_catalog import (
     FACETS_TABLES,
     catalog_filter,
+    catalog_root_predicate,
     column_page,
     q_editions,
     q_facets,
@@ -251,15 +252,19 @@ def _get_facets(contract, args):
     )
     # 首页与侧栏几组枚举筛选（来源、时长、画幅、产地、媒体库）的组合有限，按账本版本缓存；
     # 实体、详情、搜索词、标签与时长区间的键空间不封闭，照旧走 TTL 缓存。
+    if 'library' in filters:
+        library = repr(media_libraries.predicate(settings_file.active(), filters['library']))
+    elif state != 'trash' and asset_id is None:
+        library = repr(catalog_root_predicate(contract))
+    else:
+        library = ''
     if column:
-        return contract.cached_lru(f"column-facets{'-jav' if jav else ''}:{scope_key}", compute)
+        return contract.cached_lru(f"column-facets{'-jav' if jav else ''}:{scope_key}:{library}", compute)
     if (not (scope_kind or scope_name or asset_id is not None) and state in FACET_STATES
             and set(filters) <= FACET_ENUM_FILTERS):
-        library = (repr(media_libraries.predicate(settings_file.active(), filters['library']))
-                   if 'library' in filters else '')
         return contract.cached_until_changed(
-            f"facets{'-jav' if jav else ''}:{scope_key}", compute, library, tables=FACETS_TABLES)
-    return contract.cached(f"facets{'-jav' if jav else ''}:{scope_key}", compute)
+            f"facets{'-jav' if jav else ''}:{scope_key}:{library}", compute, tables=FACETS_TABLES)
+    return contract.cached(f"facets{'-jav' if jav else ''}:{scope_key}:{library}", compute)
 
 
 def _get_suggest(contract, args):

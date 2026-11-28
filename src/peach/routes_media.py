@@ -190,7 +190,7 @@ def _needs_conversion(state, asset_id: int, source: Path, session: str,
 
 
 def _hls_plan(state, asset_id: int, session: str = "", conversion: bool | None = None,
-              force_transcode: bool = False):
+              force_transcode: bool = False, *, located=None):
     """解析 HLS 的片源路径与分片计划；任何一步不成立就返回 None 走 Range。
 
     要重编码的片源按固定 6 秒切，时长先看账本，账本没记或记成负数就用 ffprobe 报的；
@@ -204,27 +204,29 @@ def _hls_plan(state, asset_id: int, session: str = "", conversion: bool | None =
     `conversion` 是起播时已经得出的结论。给不出时按片源本身判：播放列表和分片端点走的
     就是这条，它们不看重建好的 MP4 头，理由见 `_needs_conversion`。
     """
-    asset = state.media_engine.asset(asset_id)
-    # 播放列表和分片端点本身就是 HLS 路径，按 ADR-0016 显式要计划，不受默认值影响。
-    choice = state.media_engine.stream_plan(asset_id, mode="hls")
-    source = state.media_engine.filesystem.file_for(asset, thumbnail=False)
+    if located is None:
+        asset = state.media_engine.asset(asset_id)
+        source, source_stat = state.media_engine.filesystem.located(asset)
+    else:
+        asset, source, source_stat = located
     duration = asset.duration if asset.duration and asset.duration > 0 else 0.0
     needs_conversion = (conversion if conversion is not None else state.transcode_service.requires_conversion(
-        source, session=session, registry=state.stream_sessions))
+        source, session=session, registry=state.stream_sessions, stat=source_stat))
     if force_transcode or needs_conversion:
         duration = duration or state.transcode_service.media_duration(
-            source, session=session, registry=state.stream_sessions)
+            source, session=session, registry=state.stream_sessions, stat=source_stat)
         mode = ("transcode" if force_transcode else state.transcode_service.hls_mode(
-            source, session=session, registry=state.stream_sessions))
+            source, session=session, registry=state.stream_sessions, stat=source_stat))
         if mode != "transcode" and duration > 0:
-            plan = state.hls_service.plan(source, duration)
+            plan = state.hls_service.plan(source, duration, stat=source_stat)
             if plan:
                 return asset, source, plan, mode
         plan = state.hls_service.conversion_plan(duration) if duration > 0 else []
         return (asset, source, plan, "transcode") if plan else None
-    if choice.protocol != "hls" or duration <= 0:
+    # 播放列表和分片端点显式请求 HLS，不受默认播放方式影响。
+    if state.media_engine.plan_for(asset, mode="hls").protocol != "hls" or duration <= 0:
         return None
-    plan = state.hls_service.plan(source, duration)
+    plan = state.hls_service.plan(source, duration, stat=source_stat)
     return None if not plan else (asset, source, plan, "copy")
 
 
@@ -378,9 +380,10 @@ def stream(request: Request, id: int, session: str = "", decode: str = "", origi
     started = time.monotonic()
     state = request.app.state
     from .error_reporting import local_event
-    local_event('playback-request', asset_id=id, method=request.method,
-                range=request.headers.get('range', '')[:80], user_agent=request.headers.get('user-agent', '')[:512])
+    byte_range = request.headers.get('range', '')
+    initial = request.method == 'GET' and (not byte_range or byte_range.startswith('bytes=0-'))
     asset = state.media_engine.asset(id)
+    request.scope['peach.media_source'] = asset.location
     # 拖一次进度条就是一串 Range 请求，片源在网盘上时每次 stat 都是一趟网络往返：确认存在时
     # 取到的那一次 stat 一路传给头修复查询、画像缓存和文件响应，一个请求只问一次。
     path, source_stat = state.media_engine.filesystem.located(asset)
@@ -427,10 +430,11 @@ def stream(request: Request, id: int, session: str = "", decode: str = "", origi
     if transcoded:
         response.headers["X-Peach-Transcoded"] = "1"
     response.headers["Cache-Control"] = "no-store"
-    local_event('playback-source', asset_id=id, mime_type=response.headers.get('content-type', ''),
-                transcoded=transcoded, session_present=bool(session),
-                locate_ms=round((located - started) * 1000),
-                elapsed_ms=round((time.monotonic() - started) * 1000))
+    elapsed = round((time.monotonic() - started) * 1000)
+    if (initial and session) or elapsed >= 300:
+        local_event('playback-source', asset_id=id, mime_type=response.headers.get('content-type', ''),
+                    transcoded=transcoded, session_present=bool(session), initial_range=initial,
+                    locate_ms=round((located - started) * 1000), elapsed_ms=elapsed)
     return response
 
 
@@ -444,7 +448,7 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", de
     if session and state.stream_sessions.is_cancelled(session):
         return JSONResponse({"error": "stream cancelled"}, status_code=410)
     asset = state.media_engine.asset(id)
-    plan = state.media_engine.stream_plan(id, mode=mode or "auto")
+    plan = state.media_engine.plan_for(asset, mode=mode or "auto")
     # 只有真的能读出关键帧才宣告 HLS，否则客户端会拿到一个必然 404 的播放列表。
     source_path, source_stat = state.media_engine.filesystem.located(asset)
     located = time.monotonic()
@@ -465,15 +469,16 @@ def stream_plan(request: Request, id: int, session: str = "", mode: str = "", de
     conversion = _needs_conversion(state, id, source_path, session, capabilities, stat=source_stat)
     reason = plan.reason
     if conversion and state.transcode_service.remuxes(
-            source_path, session=session, registry=state.stream_sessions, decode=capabilities):
+            source_path, session=session, registry=state.stream_sessions, decode=capabilities, stat=source_stat):
         # 视频浏览器解得了，只差音轨、`hev1` 标签或容器（`.ts` 一类）：`/stream` 整片换封装，不重编码视频。
         conversion, reason = False, "remux"
     original_trial = conversion and state.transcode_service.original_playable(
-        source_path, session=session, registry=state.stream_sessions, decode=capabilities)
+        source_path, session=session, registry=state.stream_sessions, decode=capabilities, stat=source_stat)
     original_mime = "video/x-matroska" if source_path.suffix.lower() == ".mkv" else "video/mp4"
-    resolved = (_hls_plan(state, id, session, conversion)
+    resolved = (_hls_plan(state, id, session, conversion, located=(asset, source_path, source_stat))
                 if conversion or plan.protocol == "hls" else None)
     if resolved and session:
+        state.hls_session_plans.put(session, id, resolved)
         result = {
             "id": id,
             "protocol": "hls",
@@ -560,6 +565,7 @@ def hls_playlist(request: Request, id: int, session: str = "", transcode: bool =
         return PlainTextResponse("hls unavailable", status_code=404)
     if resolved is None:
         return PlainTextResponse("hls unavailable", status_code=404)
+    request.scope['peach.media_source'] = resolved[0].location
     query = f"?session={quote(session, safe='')}" + ("&transcode=1" if transcode else "")
     playlist = build_hls_playlist(
         resolved[2], lambda index: f"/stream/hls/{id}/{index}.ts{query}",
@@ -601,7 +607,8 @@ async def _hls_segment(request: Request, id: int, index: int, session: str, tran
             )
         if resolved is None:
             return JSONResponse({"error": "hls unavailable"}, status_code=404)
-        _, source, plan, processing = resolved
+        asset, source, plan, processing = resolved
+        request.scope['peach.media_source'] = asset.location
         if index < 0 or index >= len(plan):
             return JSONResponse({"error": "invalid segment"}, status_code=416)
         start, duration = plan[index]
