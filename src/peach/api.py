@@ -333,15 +333,12 @@ def _restore_task_center(contract) -> None:
         LOGGER.info("task center requeued %s followup(s)", len(requeued))
 
 
-#: 开机在后台先算一遍的聚合：复核、垃圾复核、关注的全部条目与筛选项各要几秒到
-#: 十几秒，都按账本版本号缓存（`WebContract.cached_until_changed`），算好一次就一直用到
-#: 账本或文件真的变了。排在前面的是每页都碰到的几份：形状名单、作品分组快照（目录、
-#: 索引、筛选项都建在它上面）、统计与搜索推荐池，重启后第一个打开页面的人不再等它们一起冷算。
-#: 口味分析读取观看历史，并在打开口味页时按输入版本载入或计算。
+#: 首页与导航共用的聚合在休息时先准备，常用页面首次打开即可使用。
 WARM_AGGREGATES = (("/api/entity/shapes", {}), ("/api/items", {"limit": "60"}), ("/api/stats", {}),
-                   ("/api/search/recommendations", {}),
-                   ("/api/review", {}), ("/api/ads", {}),
-                   ("/api/follow", {}))
+                   ("/api/search/recommendations", {}))
+#: 独立页面的聚合平时按需加载。资源充足时可在本机启用它们的后台预计算。
+OPTIONAL_AGGREGATES = (("/api/taste", {"window": "all"}), ("/api/review", {}),
+                       ("/api/ads", {}), ("/api/follow", {}))
 #: 关停时最多等在算的那份预热这么久（秒）：比存储卷探测的期限长一点，正常都等得到它放下连接；
 #: 等不到就不再等，免得一份卡住的预热让服务停不下来。
 WARMUP_STOP_SECONDS = 15.0
@@ -444,7 +441,9 @@ async def _warm_ledger_aggregates(ledger_ready: bool, contract, stopping: asynci
     """走和真实请求同一条分派，缓存键一致，页面第一次打开就是现成的。"""
     if not ledger_ready:
         return
-    for path, args in WARM_AGGREGATES:
+    from . import background_work
+    optional = await asyncio.to_thread(background_work.enabled, contract.follow_state_root)
+    for path, args in WARM_AGGREGATES + (OPTIONAL_AGGREGATES if optional else ()):
         if stopping.is_set():
             return
         try:

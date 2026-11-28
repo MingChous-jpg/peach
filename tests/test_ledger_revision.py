@@ -319,12 +319,23 @@ class LedgerRevisionTests(unittest.TestCase):
         import asyncio
         from peach import api
         insert_asset(self.db_path, 1)
-        # 只看每页都碰到的那几份；口味、复核、关注那几份另有后台线程，不在这条测试里起。
-        pages = [entry for entry in api.WARM_AGGREGATES if entry[0] not in {"/api/taste", "/api/review", "/api/ads", "/api/follow"}]
-        with mock.patch.object(api, "WARM_AGGREGATES", tuple(pages)):
-            asyncio.run(api._warm_ledger_aggregates(True, self.contract, asyncio.Event()))
+        asyncio.run(api._warm_ledger_aggregates(True, self.contract, asyncio.Event()))
         for key in ("entity-shapes", "catalog-group-rows", "search-recommendations:"):
             self.assertIn(key, self.contract.cache)
+
+    def test_startup_only_warms_optional_pages_after_opt_in(self):
+        import asyncio
+        from peach import api, background_work
+
+        self.contract.follow_state_root = self.db_path.parent / "state"
+        with mock.patch.object(api.web_contract, "dispatch_api_get") as dispatch:
+            asyncio.run(api._warm_ledger_aggregates(True, self.contract, asyncio.Event()))
+            self.assertEqual([call.args[1:] for call in dispatch.call_args_list], list(api.WARM_AGGREGATES))
+            dispatch.reset_mock()
+            background_work.save(self.contract.follow_state_root, True)
+            asyncio.run(api._warm_ledger_aggregates(True, self.contract, asyncio.Event()))
+            self.assertEqual([call.args[1:] for call in dispatch.call_args_list],
+                             list(api.WARM_AGGREGATES + api.OPTIONAL_AGGREGATES))
 
     def test_a_commit_during_a_versioned_computation_keeps_the_result(self):
         def derive():

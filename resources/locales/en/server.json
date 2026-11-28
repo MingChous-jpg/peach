@@ -1804,6 +1804,9 @@
       "choiceRequired": "Choose a media processing mode",
       "qualityRequired": "Quality limit only accepts {{choices}}"
     },
+    "backgroundWork": {
+      "invalidPrecompute": "Background computation must be on or off."
+    },
     "retentionSettings": {
       "choiceInvalid": "{{key}} only accepts {{choices}}.",
       "empty": "No retention settings to save."
