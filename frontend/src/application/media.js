@@ -77,7 +77,7 @@ export function hasReturnSurface(){
     ||!$('#index').hidden||!$('#stats').hidden;
 }
 
-export async function openItem(id,push=true,queue=null,anchor=null,queuePush=false,queueRequest=null,returnPosition=null){
+export async function openItem(id,push=true,queue=null,anchor=null,queuePush=false,queueRequest=null,returnPosition=null,resume=null){
   if(queueRequest?.cancelled)return;
   if(!queueRequest)cancelQueueRequest();
   if(push&&!queue){
@@ -86,7 +86,7 @@ export async function openItem(id,push=true,queue=null,anchor=null,queuePush=fal
     const position=opener instanceof HTMLElement&&opener!==document.body
       ? {left:window.scrollX,top:window.scrollY,anchor:opener}:null;
     writeShell({detailReturnPath:location.pathname+location.search});
-    requestOverlay('/assets/'+(+id),'item',()=>openItem(id,false,null,anchor,false,null,position));
+    requestOverlay('/assets/'+(+id),'item',()=>openItem(id,false,null,anchor,false,null,position,resume));
     return;
   }
   releaseHoverPreviews();
@@ -124,7 +124,7 @@ export async function openItem(id,push=true,queue=null,anchor=null,queuePush=fal
     helpers:mediaState.itemDetailHelpers,actions,
     grid:{helpers:catalogState.gridHelpers,actions:catalogState.gridActions},
     layout:catalogGridLayout(),selectMode,selected:new Set(selected),seekSeconds:preferencesState.appSettings.seekSeconds,
-    resume:push||id==null?null:urlResume(),
+    resume:resume??(push||id==null?null:urlResume()),
   },returnPosition);
   scheduleStickySurfaces();
 }

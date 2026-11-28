@@ -633,7 +633,26 @@ def q_items(contract: WebContract, args, *, playback_queue=False):
         # 为它单独再发一次请求只是把同一条 WHERE 又跑一遍。
         cnt, total_bytes, work_total = (
             _catalog_totals(contract, where, par, args) if include_total else (None, None, None))
-    # 卡片要显示出镜者和高权重标签，不能只有番号 —— 一次批量取，别 N+1
+    attach_catalog_card_identity(contract, rows)
+    sources = dict(_download_source_names(contract))
+    for r in rows:
+        r["cost"] = cost_for(r['location'], r.get('path'))
+        r["has_thumb"] = contract.has_snapshot(r["snapshot_path"])
+        r['has_local_poster'] = (contract.poster_root / f"{r['id']}_4.jpg").is_file()
+        attach_artwork_fields(contract, r)
+        # 卡片上的出镜者称谓、规范番号、版本徽章与详情页使用同一份投影。
+        attach_jav_display_fields(r, r.get("tags", ()), r.pop("_entity_kinds", ()),
+                                  sources.get(r["id"], ()))
+        r.pop("snapshot_path", None)
+        r.pop("path", None)                     # 路径不外发，串流走 id
+    attach_saved_follow_cards(contract, rows)
+    shown = orientation_member(args)
+    attach_multipart_groups(contract, rows, shown)
+    attach_edition_groups(contract, rows, shown)
+    return {"total": cnt, "work_total": work_total, "bytes": total_bytes, "items": rows, "has_more": has_more}
+
+def attach_catalog_card_identity(contract: WebContract, rows: list[dict]) -> None:
+    """批量投影馆藏卡片的署名和经过隐藏规则筛选的摘要标签。"""
     if rows:
         ids = [r["id"] for r in rows]
         qm = ",".join("?" * len(ids))
@@ -677,22 +696,19 @@ def q_items(contract: WebContract, args, *, playback_queue=False):
                 r["creator"] = r["creator_entity"]["name"]
             r["performer_total"] = len(refs) or len(all_performers)
             r["_entity_kinds"] = tuple(canonical)
-    sources = dict(_download_source_names(contract))
-    for r in rows:
-        r["cost"] = cost_for(r['location'], r.get('path'))
-        r["has_thumb"] = contract.has_snapshot(r["snapshot_path"])
-        r['has_local_poster'] = (contract.poster_root / f"{r['id']}_4.jpg").is_file()
-        attach_artwork_fields(contract, r)
-        # 卡片上的出镜者称谓、规范番号、版本徽章与详情页使用同一份投影。
-        attach_jav_display_fields(r, r.get("tags", ()), r.pop("_entity_kinds", ()),
-                                  sources.get(r["id"], ()))
-        r.pop("snapshot_path", None)
-        r.pop("path", None)                     # 路径不外发，串流走 id
-    attach_saved_follow_cards(contract, rows)
-    shown = orientation_member(args)
-    attach_multipart_groups(contract, rows, shown)
-    attach_edition_groups(contract, rows, shown)
-    return {"total": cnt, "work_total": work_total, "bytes": total_bytes, "items": rows, "has_more": has_more}
+
+
+def attach_studio_refs(contract: WebContract, rows: list[dict]) -> None:
+    refs: dict[str, dict] = {}
+    for row in rows:
+        studio = row.get("studio")
+        if not studio:
+            continue
+        if studio not in refs:
+            refs[studio] = {"name": studio, "has_logo": contract.has_logo(studio),
+                            "logo_version": contract.logo_version(studio)}
+        row["studio_ref"] = refs[studio]
+
 
 def con_tags(contract: WebContract, ids, qm):
     with contract.read_connection() as c:

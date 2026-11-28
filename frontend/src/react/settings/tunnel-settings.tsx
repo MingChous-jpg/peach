@@ -3,7 +3,7 @@
  * 临时链接没有稳定域名和独立身份层，服务端会在 `open` 模式下拒绝启动。命名隧道多一份
  * 隧道令牌：它只往服务端去，回来的只有「存过没有」，这里任何时候都不显示令牌本身。
  * 模式选择只在源码开发环境出现，独立包收到的 `named_available` 是 false。 */
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type MouseEvent } from 'react';
 import { Radio } from 'react-aria-components';
 
 import { Button } from '@/components/base/buttons/button';
@@ -18,9 +18,10 @@ import { SEGMENT, SEGMENTED_TRACK, SegmentedRadioGroup as RadioGroup } from '../
 import { CONFIGURATION_KEY, fetchConfiguration } from './configuration';
 import { ExternalLink, ErrorText, Footer, Help, Section, Stack } from './section';
 import { busyProps, useAction } from './use-action';
-import { bodyFieldErrors, codedText } from '../../core/server-text';
+import { bodyFieldErrors, codedText, serverLabel } from '../../core/server-text';
 import { pollUntil } from '../../polling';
 import { t } from '../../i18n';
+import { useFieldValidation } from './field-validation';
 
 /** 连接握手在服务端进行，页面按固定间隔重问，直到拿到入口或失败原因；读失败退避，页面不可见时暂停。 */
 const POLL_INTERVAL = 2000;
@@ -34,7 +35,19 @@ const HELP: Record<TunnelState['mode'], string> = {
   named: t('settings:remoteAccess.namedHelp'),
 };
 
-type FieldErrors = Partial<Record<'hostname' | 'mode', string>>;
+type Field = 'hostname' | 'mode' | 'token';
+type FieldErrors = Partial<Record<Field, string>>;
+
+function hostnameError(value: string, required = false) {
+  if (!value.trim() && !required) return '';
+  const host = value.trim().replace(/\.+$/, '').replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '').replace(/\.+$/, '');
+  if (!host) return serverLabel('errors.tunnel.hostnameRequired', '');
+  if (host.length > 253 || !/^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)+$/i.test(host)) {
+    return serverLabel('errors.tunnel.invalidHostname', '', { value });
+  }
+  return '';
+}
 
 export function TunnelSettings({ revision: initialRevision, initial, receipt, blocked = false }: {
   revision: string;
@@ -51,7 +64,8 @@ export function TunnelSettings({ revision: initialRevision, initial, receipt, bl
   const [mode, setMode] = useState<TunnelState['mode']>(initial.mode);
   const [hostname, setHostname] = useState(initial.hostname);
   const [token, setToken] = useState('');
-  const [fields, setFields] = useState<FieldErrors>({});
+  const validation = useFieldValidation<Field>();
+  const fields = validation.errors;
   const action = useAction();
   const active = state.state === 'starting' || state.state === 'running';
   const named = state.named_available && mode === 'named';
@@ -75,8 +89,12 @@ export function TunnelSettings({ revision: initialRevision, initial, receipt, bl
   }, [state.state]);
 
   /** 开关和保存走同一个端点：形态与开关状态一次提交，服务端据此构造启动计划。 */
-  const send = (key: 'save' | 'toggle', enabled: boolean, done: (next: TunnelState) => void) => {
-    setFields({});
+  const send = (form: HTMLFormElement | null, key: 'save' | 'toggle', enabled: boolean, done: (next: TunnelState) => void) => {
+    if (!validation.check(form, {
+      hostname: named && !active ? hostnameError(hostname, enabled && !state.hostname) : '',
+      token: named && enabled && !active && !state.token_set && !token.trim()
+        ? serverLabel('errors.tunnel.tokenRequired', '') : '',
+    })) return;
     void action.run(key, (signal) => apiSend<TunnelState & { revision: string }>(
       '/api/configuration/tunnel',
       { revision, enabled, mode, hostname, token }, 'POST', signal,
@@ -91,16 +109,16 @@ export function TunnelSettings({ revision: initialRevision, initial, receipt, bl
     }, (cause) => {
       const payload = cause instanceof ApiError ? cause.body as { detail?: unknown } : null;
       const errors = bodyFieldErrors<FieldErrors>(payload) || bodyFieldErrors<FieldErrors>(payload?.detail);
-      if (errors) setFields(errors); else action.setError(errorMessage(cause));
+      if (errors) validation.check(form, errors); else action.setError(errorMessage(cause));
     });
   };
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    send('save', active, () => receipt(t('settings:shared.settingsSaved')));
+    send(event.currentTarget, 'save', active, () => receipt(t('settings:shared.settingsSaved')));
   };
 
-  const toggle = () => send('toggle', !active, (next) => receipt(
+  const toggle = (event: MouseEvent<HTMLButtonElement>) => send(event.currentTarget.form, 'toggle', !active, (next) => receipt(
     next.enabled ? t('settings:cloudflareTunnel.started') : t('settings:cloudflareTunnel.stopped'),
   ));
 
@@ -110,7 +128,7 @@ export function TunnelSettings({ revision: initialRevision, initial, receipt, bl
       <Stack>
         {state.named_available
           ? <RadioGroup aria-label={t('settings:cloudflareTunnel.modeLabel')} value={mode} isDisabled={active || blocked}
-              onChange={(next) => setMode(next as TunnelState['mode'])} className={SEGMENTED_TRACK}>
+              onChange={(next) => { setMode(next as TunnelState['mode']); validation.clear(); }} className={SEGMENTED_TRACK}>
               {MODES.map(([value, label]) => (
                 <Radio key={value} value={value} className={SEGMENT}>{label}</Radio>
               ))}
@@ -118,15 +136,16 @@ export function TunnelSettings({ revision: initialRevision, initial, receipt, bl
           : null}
         <Help>{HELP[named ? 'named' : 'quick']}</Help>
         {named ? <>
-          <Input id="tunnel-hostname" label={t('settings:remoteAccess.hostname')} autoComplete="off" maxLength={253}
-            value={hostname} onChange={setHostname} isDisabled={active || blocked} validationBehavior="aria"
+          <Input id="tunnel-hostname" data-settings-field="hostname" label={t('settings:remoteAccess.hostname')} autoComplete="off" maxLength={253}
+            value={hostname} onChange={value => { setHostname(value); validation.update('hostname'); }} isDisabled={active || blocked} validationBehavior="aria"
+            onBlur={() => { if (hostname.trim()) validation.update('hostname', hostnameError(hostname)); }}
             isInvalid={Boolean(fields.hostname)}
             hint={fields.hostname || t('settings:remoteAccess.hostnameHelp')} />
-          <Input id="tunnel-token" type="password" label={t('settings:remoteAccess.tunnelToken')} autoComplete="off" maxLength={2048}
-            value={token} onChange={setToken} isDisabled={active || blocked} validationBehavior="aria"
-            hint={state.token_set
+          <Input id="tunnel-token" data-settings-field="token" type="password" label={t('settings:remoteAccess.tunnelToken')} autoComplete="off" maxLength={2048}
+            value={token} onChange={value => { setToken(value); validation.update('token'); }} isDisabled={active || blocked} validationBehavior="aria"
+            isInvalid={Boolean(fields.token)} hint={fields.token || (state.token_set
               ? t('settings:cloudflareTunnel.tokenSaved')
-              : t('settings:cloudflareTunnel.tokenHint')} />
+              : t('settings:cloudflareTunnel.tokenHint'))} />
         </> : null}
         {!state.available
           ? <Note tone="warning" title={t('settings:cloudflareTunnel.binaryMissing')}>{t('settings:cloudflareTunnel.binaryMissingHelp')}</Note>

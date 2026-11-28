@@ -88,7 +88,7 @@ export function JunkCount({ route, page, failed, pickAll, sorts, onSort, onNavig
           {pickAll && pickAll.loaded.length ? <SelectAllButton label={t('cleanup:junk.selectAll', { count: pickAll.loaded.length })}
             picked={pickAll.picked} total={pickAll.loaded.length} onChange={pickAll.onChange} /> : null}
           {/* 同回收站的「清空回收站」那一档：危险操作用实底红键，件数写在确认框里。 */}
-          {onDisposeAll ? <Button size="small" variant="danger" data-junk-dispose-all="" onClick={onDisposeAll}>
+          {onDisposeAll ? <Button size="small" variant="secondary" data-junk-dispose-all="" onClick={onDisposeAll}>
             {t('shell:batchJunk.disposeAll')}</Button> : null}
         </span>
         <span data-entity-sorts="">

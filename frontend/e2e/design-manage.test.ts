@@ -509,7 +509,7 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
     } finally { await opened.close(); }
   });
 
-  it('输入框失败态只把框线换成 danger 色：填充照静止态，原因用说明文字的灰', { timeout: 60_000 }, async () => {
+  it('输入框失败态保留原填充，边框和原因使用错误色', { timeout: 60_000 }, async () => {
     const opened = await openPlaylistsPage(browser);
     const { page } = opened;
     try {
@@ -530,11 +530,11 @@ describe('设计决定：数据管理、索引页与资料页头', () => {
         return {
           fill: group.backgroundColor, outline: group.outlineColor, width: group.outlineWidth,
           reason: getComputedStyle(root.querySelector(':scope > [slot="errorMessage"]')!).color,
-          danger: probe('--color-border-error-default'), secondary: probe('--color-text-secondary'),
+          danger: probe('--color-border-error-default'), errorText: probe('--color-text-error-primary'),
         };
       });
       assert.deepEqual([looks.fill, looks.outline, looks.width, looks.reason],
-        [resting, looks.danger, '1px', looks.secondary]);
+        [resting, looks.danger, '1px', looks.errorText]);
     } finally { await opened.close(); }
   });
 

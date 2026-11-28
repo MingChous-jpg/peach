@@ -104,8 +104,12 @@ it('设置保存后清空 API key，移除需再保存才生效', async () => {
     enabled: true, api_key_set: true }] };
   const posts: unknown[] = [];
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
-    if (init?.method === 'POST') posts.push(JSON.parse(String(init.body)));
-    return { ok: true, json: async () => initial };
+    if (init?.method !== 'POST') return { ok: true, json: async () => initial };
+    type EditorRow = typeof initial.indexers[number] & { api_key?: string };
+    const body = JSON.parse(String(init.body)) as { indexers: EditorRow[] };
+    posts.push(body);
+    const indexers = body.indexers.map(({ api_key, ...row }) => ({ ...row, api_key_set: Boolean(api_key || row.api_key_set) }));
+    return { ok: true, json: async () => ({ ...initial, indexers }) };
   }));
   const host = await mount(<QueryClientProvider client={queryClient}><IndexerSettings receipt={vi.fn()} /></QueryClientProvider>);
   // 等待期间骨架也带同一个分区标题，等的是表单本身。
@@ -122,6 +126,10 @@ it('设置保存后清空 API key，移除需再保存才生效', async () => {
   expect(posts[1]).toEqual({ indexers: [] });
   // 新添的一行默认启用：填完地址就能搜，不必再记得去勾一下。
   await click(buttonNamed('添加索引器', host));
+  await submit(section(host, '资源搜索'));
+  expect(posts).toHaveLength(2);
+  await type(named(host, '索引器 1 名称'), '新测试源');
+  await type(named(host, '索引器 1 Torznab 地址'), 'http://indexer.test/another/api');
   await submit(section(host, '资源搜索'));
   expect((posts[2] as { indexers: { enabled: boolean }[] }).indexers[0]?.enabled).toBe(true);
 });

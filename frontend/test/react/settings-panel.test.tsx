@@ -9,6 +9,7 @@ import { notifyManager } from '@tanstack/react-query';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 import { normalizeHomeGlow } from '@peach/appearance';
+import { NOTIFICATION_DEFAULTS } from '../../src/appearance/settings';
 
 import type { BatchDockApi, BatchDockHost } from '../../src/react/batch-dock/batch-dock-api';
 import type { ShellActions } from '../../src/react/router/shell-actions';
@@ -118,7 +119,8 @@ const settings = (): PanelSettings => ({
   feedHideExcerpts: true, hoverDelaySeconds: 5, hoverPreview: true, touchGestures: true, holdRate: 2, swipeMinutes: 20, doubleTapPercent: 35, autoFullscreen: false, detailAutoplay: false, autoChineseSubtitles: false, afterPlayback: 'next', resumeRestartPercent: 5, miniplayer: true, seekSeconds: 10,
   relatedLimit: 24, searchHistoryLimit: 10, followInitialDays: 30, avatarRefreshDays: 90, faviconRefreshDays: 365,
   feedNewRows: true, homeShortsLimit: 18, homeTiers: true, homePreviewOnly: false, containHomeScroll: false,
-  completionPrompt: true, searchRecommendations: true, ingestNotices: true, showFeedbackButton: true,
+  completionPrompt: true, searchRecommendations: true, ingestNotices: true, ingestToasts: true, browserNotices: false, showFeedbackButton: true,
+  notificationLimits: { ...NOTIFICATION_DEFAULTS },
 });
 
 /** 壳 `settingsHost()` 交进来的那一份。 */
@@ -180,6 +182,37 @@ function watchReports() {
 }
 
 describe('设置面板与壳的接缝', () => {
+  it.each([true, false])('搜索记录条数在数据库响应后显示保存结果，保存成功=%s', async (success) => {
+    const answer = pending<{ ok: boolean; status: number; json(): Promise<unknown> }>();
+    const writes: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url, init) => {
+      if (init?.body) { writes.push(JSON.parse(init.body)); return answer.answer }
+      return { ok: true, status: 200, json: async () => ({ searchHistoryLimit: 10 }) };
+    }));
+    const current = await setup();
+    current.host.syncRemote = (saved) => {
+      if (typeof saved.searchHistoryLimit !== 'number') return;
+      current.value.searchHistoryLimit = saved.searchHistoryLimit;
+      current.host.store.save();
+    };
+    const panel = await open(current, '搜索与推荐');
+    const field = () => panel.querySelector<HTMLInputElement>('#searchHistoryLimitSetting input[type=number]')!;
+    const receipt = () => panel.querySelector('[data-settings-save-status]')?.textContent?.trim();
+    await act(async () => {
+      const input = field();
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '12');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(writes).toEqual([{ searchHistoryLimit: 12 }]);
+    expect([current.value.searchHistoryLimit, receipt(), field().disabled]).toEqual([10, '正在保存…', true]);
+    await answer.release({ ok: success, status: success ? 200 : 500,
+      json: async () => success ? { searchHistoryLimit: 12 } : { error: '保存失败' } });
+    await settle();
+    expect([current.value.searchHistoryLimit, receipt(), field().value]).toEqual(success ? [12, '已保存', '12'] : [10, '未能保存', '10']);
+    if (!success) expect(field().closest('[data-setting-row]')?.querySelector('[role=alert]')?.textContent).toContain('保存失败');
+  });
+
   it.each([true, false])('名称偏好等待数据库回执，保存成功=%s 时才更新全局显示', async (success) => {
     const answer = pending<{ ok: boolean; status: number; json(): Promise<unknown> }>();
     const writes: unknown[] = [];
@@ -246,8 +279,8 @@ describe('设置面板与壳的接缝', () => {
     const panel = await open(current, 'JAV 与新作');
     expect([...panel.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent))
       .toEqual(['外观与导航', '浏览与播放', 'JAV 与新作', '搜索与推荐', '内容显示']);
-    expect(panel.querySelector('#javImageSetting')?.closest('section')?.hidden).toBe(false);
-    expect(panel.querySelector('#detailAutoplaySetting')?.closest('section')?.hidden).toBe(true);
+    expect(panel.querySelector('#javImageSetting')?.closest<HTMLElement>('[data-setting-group]')?.hidden).toBe(false);
+    expect(panel.querySelector('#detailAutoplaySetting')?.closest<HTMLElement>('[data-setting-group]')?.hidden).toBe(true);
     expect(panel.querySelector('#videoThumbnailSetting')).toBeNull();
     expect(panel.querySelector('#followScheduleSetting')).toBeNull();
     /* 分卷与版次折叠在首页和资料页网格上都生效，归「浏览与播放」；新作数量归「JAV 与新作」。 */
@@ -256,7 +289,11 @@ describe('设置面板与壳的接缝', () => {
       .toEqual(['settings-group-1', 'settings-group-1', 'settings-group-2']);
     const headings = (index: number) => [...panel.querySelectorAll(`#settings-group-${index} [data-settings-subheading]`)]
       .map((node) => node.textContent);
-    expect([headings(1), headings(2)]).toEqual([['作品列表', '首页', '播放'], ['作品显示', '新作显示']]);
+    expect([headings(1), headings(2), headings(3)]).toEqual([['作品列表', '首页', '播放', '播放控制'], ['作品显示', '新作显示'], ['推荐', '搜索记录']]);
+    const playbackCards = ['#batchSizeSetting', '#homeShortsSetting', '#detailAutoplaySetting', '#seekSecondsSetting']
+      .map(selector => panel.querySelector(selector)?.closest('[data-setting-card]'));
+    expect(playbackCards.filter(Boolean)).toHaveLength(4);
+    expect(new Set(playbackCards).size).toBe(4);
     /* 转码方式是运行 Peach 那台电脑的服务配置，在 Peach 配置里，弹窗里没有这一行（ADR-0103）。 */
     expect(panel.querySelector('#playbackAccelerationSetting')).toBeNull();
     const entry = panel.querySelector<HTMLButtonElement>('[data-settings-service] button')!;
@@ -382,6 +419,7 @@ describe('设置面板与壳的接缝', () => {
     current.save.mockClear();
     await choose(field, '随机播放');
     expect([current.value.afterPlayback, current.save.mock.calls.length, effects(current.changed)]).toEqual(['shuffle', 1, []]);
+    expect(panel.querySelector('[data-settings-save-status]')?.textContent?.trim()).toBe('已保存');
 
     const input = panel.querySelector<HTMLInputElement>('#resumeRestartSetting input[type=number]')!;
     await act(async () => {

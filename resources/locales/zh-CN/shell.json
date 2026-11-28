@@ -1,4 +1,42 @@
 {
+  "notifications": {
+    "title": "通知中心",
+    "unread": "通知中心，{{count}} 条未读通知",
+    "readAll": "全部标为已读",
+    "markedRead": "已将 {{count, number}} 条通知标为已读",
+    "cardsHidden": "已隐藏 {{count, number}} 张卡片",
+    "readAndHidden": "已将 {{read, number}} 条通知标为已读，已隐藏 {{hidden, number}} 张卡片",
+    "actionNeeded": "待处理",
+    "settingsSuggestion": "设置建议",
+    "lanPassword": "局域网设备访问 Peach 时无需密码。设置访问密码后，连接时需要登录。",
+    "openNetwork": "打开访问设置",
+    "ingested": "已入库 · {{name}}",
+    "ingestedMany": "{{count, number}} 项已入库",
+    "empty": "此分类暂无通知。",
+    "partUnavailable": "部分结果未能加载。",
+    "all": "全部",
+    "updates": "更新",
+    "watch": "观看",
+    "categories": "通知分类",
+    "resume": "继续观看",
+    "playbackProgress": "播放进度",
+    "recommendation": "推荐",
+    "recommendationReason": "根据馆藏口味推荐",
+    "summary": "{{total}} · {{unread}}",
+    "totalCount": "{{count, number}} 条通知",
+    "unreadCount": "{{count, number}} 条未读",
+    "markItem": "将这条标为已读",
+    "hideItem": "隐藏这条",
+    "loading": "正在加载通知…",
+    "issuesUnavailable": "待处理事项未能加载",
+    "castByline": "{{name}} 等 {{count, number}} 人",
+    "ingestedState": "已入库",
+    "viewWork": "查看作品",
+    "viewTask": "查看任务",
+    "viewTasks": "打开任务中心",
+    "viewPost": "查看帖子",
+    "viewStartup": "查看诊断"
+  },
   "holdToConfirm": {
     "label": "按住{{action}}",
     "instruction": "按住鼠标、空格键或回车键 2 秒确认，提前松开取消。"
@@ -420,6 +458,14 @@
   },
   "glowPicker": {
     "title": "配色"
+  },
+  "browserNotice": {
+    "title": "Peach",
+    "download": "1 项下载已入库。",
+    "completed": "后台任务已完成。",
+    "failed": "后台任务失败，请打开 Peach 查看。",
+    "multiple": "{{count}} 项后台结果已就绪。",
+    "multipleFailed": "有 {{count}} 项后台结果，其中有任务需要处理。"
   },
   "ingestToast": {
     "burst": "{{count, number}} 部作品已入库",

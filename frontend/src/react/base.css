@@ -245,22 +245,25 @@
   outline-offset: -1px;
 }
 
-/* 输入框的失败态：填充照静止态，只把框线换成 danger 色，聚焦时那圈 ring 也是 danger 色。
- * BoardUI 默认整块铺粉底、下面的原因写红字；Peach 的失败态统一按 Vercel Fieldset 只让框线变色，
- * 原因照常写在框下，用说明文字的颜色。上游副本不改（`boardui/ORIGIN.md`），在这里统一压过去。 */
-.peach-react [data-input-size] > div[data-rac][data-invalid] {
+/* 失败态保留中性填充，框线、焦点和错误提示沿用 BoardUI 的错误色。 */
+.peach-react [data-input-size] > div[data-rac][data-invalid],
+.peach-react [data-settings-field][data-invalid] > button[aria-haspopup="listbox"] {
   background-color: var(--color-background-tertiary-default);
+}
+
+.peach-react [data-input-size] > div[data-rac][data-invalid] {
   color: var(--color-foreground-icon-tertiary);
   outline: 1px solid var(--color-border-error-default);
   outline-offset: -1px;
 }
 
-.peach-react [data-input-size] > div[data-rac][data-invalid][data-focus-within] {
-  --tw-ring-color: var(--color-border-error-default);
+.peach-react [data-settings-field][data-invalid] > button[aria-haspopup="listbox"] {
+  border-color: var(--color-border-error-default);
 }
 
-.peach-react [data-input-size] > [slot="errorMessage"] {
-  color: var(--color-text-secondary);
+.peach-react [data-input-size] > div[data-rac][data-invalid][data-focus-within],
+.peach-react [data-settings-field][data-invalid] > button[aria-haspopup="listbox"]:focus-visible {
+  --tw-ring-color: var(--color-border-error-default);
 }
 
 .peach-react [data-input-size] input[aria-invalid="true"]::placeholder {

@@ -78,7 +78,7 @@ export function JunkActions({ state, compact }: { state: ReturnType<typeof useJu
         {...busyProps(busy === 'reveal')} onClick={reveal}>{compact ? null : t('cleanup:junk.reveal')}</Button>
       <Button variant="secondary" size={size} data-junk-action={decision.operation} title={decision.label}
         {...busyProps(busy === decision.operation)} onClick={operate(decision.operation)}>{decision.label}</Button>
-      <Button variant="danger" size={size} data-junk-action="dispose" title={t('cleanup:duplicates.moveToTrash')}
+      <Button variant="secondary" size={size} data-junk-action="dispose" title={t('cleanup:duplicates.moveToTrash')}
         {...busyProps(busy === 'dispose')} onClick={operate('dispose')}>{t('cleanup:duplicates.moveToTrash')}</Button>
       <span data-junk-state="" aria-live="polite" className="basis-full text-caption-1-regular text-text-secondary empty:hidden">
         {status}</span>

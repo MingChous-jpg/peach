@@ -1266,6 +1266,33 @@ class SourcePreflightTests(unittest.TestCase):
         self.assertEqual([row['source'] for row in state['results']], default_sources())
         self.assertEqual(state['failed'], state['total'] - 1)
 
+    def test_check_all_retries_only_failed_target_and_retains_other_checks(self):
+        from peach.jobs import BackgroundJob
+        from peach.source_preflight import default_sources
+        from peach.web_scraping import w_scraping_check_all
+
+        job = BackgroundJob('test-source-retry', task_key='source-check')
+        contract = SimpleNamespace(follow_secrets_root=Path('/unused'), source_check_job=job)
+
+        def check(_root, source, *, targets=None, preflight=False):
+            rows = [{'target': 'page', 'ok': True, 'checked_at': 1}]
+            if source == 'javdb':
+                rows.append({'target': 'cdn', 'ok': targets is not None, 'reason': 'timeout', 'checked_at': 2})
+            return {'results': [row for row in rows if targets is None or row['target'] in targets]}
+
+        with patch('peach.source_preflight.check_source', side_effect=check) as probe:
+            w_scraping_check_all(contract, {})
+            job.thread.join(10)
+            probe.reset_mock()
+            w_scraping_check_all(contract, {'retry_failed': True})
+            job.thread.join(10)
+        probe.assert_called_once_with(Path('/unused'), 'javdb', preflight=True, targets={'cdn'})
+        result = job.snapshot()
+        self.assertEqual([row['source'] for row in result['results']], default_sources())
+        item = next(row for row in result['results'] if row['source'] == 'javdb')
+        self.assertEqual([(row['target'], row['checked_at'], row['outcome']) for row in item['results']],
+                         [('page', 1, 'ok'), ('cdn', 2, 'ok')])
+
     def test_http_only_transport_does_not_launch_or_fix_browser_route(self):
         from peach.scraping_access import SourcePaused, fix_to_browser, fixed_to_browser
         with tempfile.TemporaryDirectory() as temporary:

@@ -16,11 +16,12 @@ export function ProxyModeSelect({ mode, onChange, labelledBy }: {
   </Select>;
 }
 
-export function ProxyAddressField({ id, value, onChange, saved = false, required, error }: {
-  id: string; value: string; onChange(value: string): void; saved?: boolean; required?: boolean; error?: ReactNode;
+export function ProxyAddressField({ id, value, onChange, saved = false, required, error, onBlur }: {
+  id: string; value: string; onChange(value: string): void; saved?: boolean; required?: boolean; error?: ReactNode; onBlur?(): void;
 }) {
   return <Input id={id} type="password" label={t('settings:peachProxy.url')} autoComplete="off" spellCheck="false"
-    value={value} onChange={onChange} placeholder={saved ? t('settings:peachProxy.savedPlaceholder') : 'http://127.0.0.1:7890'}
+    data-settings-field={id} value={value} onChange={onChange} onBlur={onBlur}
+    placeholder={saved ? t('settings:peachProxy.savedPlaceholder') : 'http://127.0.0.1:7890'}
     validationBehavior="aria" isRequired={required} isInvalid={Boolean(error)} hint={error} />;
 }
 

@@ -25,7 +25,7 @@ import { WantMagnets } from '../wants/want-magnets';
 import type { DownloadsSnapshot } from '../bundle';
 import { DOWNLOADS_KEY, DOWNLOADS_URL } from '../activity/downloads-panel';
 import { queryClient } from '../query';
-import { fetchJavDetail, fetchJavReviews, javDetailKey, nextReviewPage, type JavDetail, type JavDetailProps, type JavEntityRef, type JavReviews } from './jav-detail';
+import { fetchJavDetail, fetchJavPart, fetchJavReviews, javDetailKey, nextReviewPage, type JavDetail, type JavDetailProps, type JavEntityRef, type JavReviews } from './jav-detail';
 import { cachedReviews, rememberReviews, reviewsFresh } from './review-cache';
 import { serverLabel } from '../../core/server-text';
 import { t } from '../../i18n';
@@ -39,7 +39,7 @@ export function JavDetailPage(props: JavDetailProps) {
   }, staleTime: 6 * 3600_000 });
   const retry = () => { refresh.current = true; void result.refetch() };
   return <div data-jav-detail="" data-item-detail="" data-stage-grid="">
-    {result.data ? <Work key={props.code} {...props} item={result.data} retry={retry} retrying={result.isFetching} /> : <div data-jav-failure="" data-detail-failure="">
+    {result.data ? <Work key={props.code} {...props} item={result.data} /> : <div data-jav-failure="" data-detail-failure="">
       <Close close={props.actions.close} />
       {result.error ? <DetailFailure detail={`${props.code} · ${errorMessage(result.error)}`} busy={result.isFetching} onRetry={retry} /> : null}
     </div>}
@@ -49,7 +49,19 @@ export function JavDetailPage(props: JavDetailProps) {
 const Close = ({ close }: { close(): void }) => <button type="button" data-stage-close="" id="closeStage"
   aria-label={t('catalog:shared.close')} title={t('catalog:shared.close')} onClick={close} dangerouslySetInnerHTML={{ __html: icon('x') }} />;
 
-function Work({ code, item, actions, readOnly, retry, retrying }: JavDetailProps & { item: JavDetail; retry(): void; retrying: boolean }) {
+function Work({ code, item, actions, readOnly }: JavDetailProps & { item: JavDetail }) {
+  const part = useAction();
+  const retryPart = (key: 'metadata' | 'preview') => { void part.run(key, signal => fetchJavPart(item.code, key, signal), next => {
+    queryClient.setQueryData<JavDetail>(javDetailKey(code), current => {
+      if (!current) return current;
+      if (key === 'preview') return { ...current, preview_state: next.preview_state,
+        preview_video_url: next.preview_video_url, preview_message: next.preview_message };
+      if (next.identity_ambiguous) return { ...current, ...next,
+        preview_state: 'unavailable', preview_video_url: undefined, preview_message: undefined };
+      if (current.state === 'ready' && next.state === 'partial') return { ...current, message: next.message };
+      return { ...current, ...next };
+    });
+  }) };
   useEffect(() => { actions.canonicalCode?.(item.code) }, [actions, item.code]);
   useEffect(() => { if (item.state === 'ready') void queryClient.invalidateQueries({ queryKey: ['jav-discoveries', 'external'] }) }, [item.code, item.state]);
   // 没有封面时仍停在封面那一格（说明与重试），不自动跳到样张：样张第一张常是来源的封面小图，放大满屏是糊的。
@@ -77,7 +89,7 @@ function Work({ code, item, actions, readOnly, retry, retrying }: JavDetailProps
         onClick={() => setPreview(preview === -2 ? -1 : -2)}><Glyph name={preview === -2 ? 'image' : 'play'} />{preview === -2 ? t('catalog:detailMedia.viewImages') : t('catalog:javDetail.sampleVideo')}</button>
         // 预告没取到：说在预告本来出现的位置，点一下就重取，原因在悬停提示里。
         : item.preview_message ? <button type="button" data-jav-preview-toggle="" data-unavailable="" title={item.preview_message}
-          aria-label={t('catalog:javDetail.retryPreview', { reason: item.preview_message })} {...busyProps(retrying)} onClick={retry}>
+          aria-label={t('catalog:javDetail.retryPreview', { reason: item.preview_message })} {...busyProps(part.busy === 'preview')} disabled={part.busy === 'metadata'} onClick={() => retryPart('preview')}>
           <Glyph name="play" />{t('catalog:javDetail.sampleVideoFailed')}</button> : null}
       {preview === -2 && item.preview_video_url ? <PreviewVideo key={item.preview_video_url} src={item.preview_video_url} />
         : <JavPicture key={item.code} item={item} image={preview === -1 ? 'cover' : String(preview)} />}
@@ -100,7 +112,9 @@ function Work({ code, item, actions, readOnly, retry, retrying }: JavDetailProps
         <span data-detail-tag="" data-tag-cat={tag.category} key={tag.name}><button type="button" data-tag={tag.name}
           title={tagLabel(tag.name)} onClick={() => actions.openTag(tag.name)}>{tagLabel(tag.name)}</button></span>)}</div> : null}
       {item.summary ? <p data-jav-summary="" data-long-text="" lang={textLang(item.summary)}>{item.summary}</p> : null}
-      {item.message ? <Note tone="neutral" action={<Button variant="secondary" {...busyProps(retrying)} onClick={retry}>{t('catalog:shared.retryNow')}</Button>}>{item.message}</Note> : null}
+      {item.message ? <Note tone="neutral" action={<Button variant="secondary" {...busyProps(part.busy === 'metadata')}
+        disabled={part.busy === 'preview'} onClick={() => retryPart('metadata')}>{t('catalog:shared.retryNow')}</Button>}>{item.message}</Note> : null}
+      {part.error ? <Note tone="error">{part.error}</Note> : null}
       <div data-jav-actions="">
         {item.source_url ? <ButtonLink data-button-link="" variant="secondary" trailingIcon={RiExternalLinkLine}
           href={item.source_url} target="_blank" rel="noopener noreferrer"><span data-external-link-label="">{t('catalog:shared.viewOnSite')}</span></ButtonLink> : null}

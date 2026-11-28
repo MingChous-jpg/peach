@@ -202,7 +202,7 @@ export function UninstallSettings(
         </Disclosure>
       </Stack>
       <Footer status={status ? <p role={accepted ? 'status' : undefined}>{status}</p> : null}>
-        <Button variant="danger" disabled={!uninstall.available || Boolean(accepted)} onClick={remove}>{t('settings:uninstall.title')}</Button>
+        <Button variant="secondary" disabled={!uninstall.available || Boolean(accepted)} onClick={remove}>{t('settings:uninstall.title')}</Button>
       </Footer>
     </Section>
   );

@@ -170,7 +170,7 @@ function FolderTree({ scope, selected, current, go, reportedError }: {
   return <section aria-label={t('catalog:catalogFolders.navigation')} className="catalog-folder-navigation flex min-h-0 min-w-0 flex-col gap-3">
     <Input aria-label={t('catalog:catalogFolders.search')} placeholder={t('catalog:catalogFolders.search')} leadingIcon={RiSearchLine} value={search}
       onChange={setSearch} size="small" />
-    {failed ? <Note tone="error" action={<Button variant="secondary" size="small" onClick={() => { void roots.refetch(); branches.forEach(branch => { if (branch.error) void branch.refetch() }) }}>{t('catalog:shared.retryNow')}</Button>}>{errorMessage(failed)}</Note> : null}
+    {failed ? <Note tone="error" action={<Button variant="secondary" size="small" onClick={() => { if (roots.error) void roots.refetch(); branches.forEach(branch => { if (branch.error) void branch.refetch() }) }}>{t('catalog:shared.retryNow')}</Button>}>{errorMessage(failed)}</Note> : null}
     <div className="folder-tree-frame relative flex min-h-0 flex-col overflow-hidden rounded-3xl"><div ref={scroll} className="folder-tree-scroller">
       {roots.error ? null : roots.isPending ? <div data-skeleton="" aria-busy="true" aria-label={t('catalog:catalogFolders.loadingTree')} className="flex flex-col gap-2">{Array.from({ length: 8 }, (_, i) => <div key={i} className="flex h-8 items-center gap-2 px-3"><span className="skeleton-sheen size-4" /><span className="skeleton-sheen h-4 flex-1" /></div>)}</div>
         : deferredSearch ? <div className="flex flex-col gap-1">{searchQuery.isPending ? <div data-skeleton="" aria-busy="true" className="h-8 skeleton-sheen" aria-label={t('catalog:catalogFolders.searching')} />

@@ -165,7 +165,7 @@ it('关闭容量保护隐藏限制并保存开关，重新开启保留原设置'
   const policy = { enabled: true, minimum_free_gib: 8, data_max_gib: 80, cache_max_gib: 20,
     auto_clean: true, external_cache_path: '/cache', external_cache_max_gib: 100 };
   const storage = { ...measured, budget: { policy, last_check: null, error: '' } };
-  const fetcher = fetchMock(200, storage);
+  const fetcher = fetchMock(200, { ...storage, budget: { ...storage.budget, policy: { ...policy, enabled: false } } });
   vi.stubGlobal('fetch', fetcher);
   const host = await mount(<StorageSettings initial={storage} receipt={vi.fn()} />);
   await click(host.querySelector('[aria-label="启用容量保护"]'));

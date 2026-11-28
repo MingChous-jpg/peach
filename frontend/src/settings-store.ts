@@ -13,8 +13,8 @@ export interface SettingsStore<T extends object> {
   /** 每次 `save()` 或 `notify()` 加一。 */
   version(): number;
   subscribe(listener: () => void): () => void;
-  /** 写进 localStorage，再通知订阅者。 */
-  save(): void;
+  /** 写进 localStorage，再通知订阅者；返回是否落盘。 */
+  save(): boolean;
   /** 值不在这份对象里、但面板要跟着重画时（高对比度、SFW 这两样各有自己的键）只通知不落盘。 */
   notify(): void;
 }
@@ -34,8 +34,10 @@ export function createSettingsStore<T extends object>(key: string, value: T): Se
       return () => { listeners.delete(listener) };
     },
     save() {
-      try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* 仍通知使用当前设置的页面和实例同步。 */ }
+      let persisted = true;
+      try { localStorage.setItem(key, JSON.stringify(value)) } catch { persisted = false }
       notify();
+      return persisted;
     },
     notify,
   };

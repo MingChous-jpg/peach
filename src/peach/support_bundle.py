@@ -394,6 +394,8 @@ def bundle_to(destination, *, report: dict | None = None, config=None, browser: 
             except OSError as error:
                 entries.append({'name': '<logs>', 'status': type(error).__name__})
         if processing_directory is not None:
+            from . import startup_diagnostics
+            facts["startup_diagnostics"] = startup_diagnostics.snapshot(processing_directory)
             try:
                 _archive_state(archive, processing_directory, entries)
             except OSError as error:

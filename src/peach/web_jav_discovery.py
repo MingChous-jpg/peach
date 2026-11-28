@@ -273,18 +273,6 @@ def _ranked(contract, scope, sort, descending, limit):
         tables=contract.ledger_tables_except(RANKING_UNREAD_TABLES), allow_stale=False)
 
 
-def _attach_studio_refs(contract, rows):
-    refs = {}
-    for row in rows:
-        studio = row.get("studio")
-        if not studio:
-            continue
-        if studio not in refs:
-            refs[studio] = {"name": studio, "has_logo": contract.has_logo(studio),
-                            "logo_version": contract.logo_version(studio)}
-        row["studio_ref"] = refs[studio]
-
-
 def q_jav_discoveries(contract, args):
     """口味采用 IDF/MMR；只读，资料补齐由 `w_jav_discovery_metadata` 起，进度另有轮询。"""
     scope = "library" if args.get("scope") == "library" else "external"
@@ -317,7 +305,7 @@ def q_jav_discoveries(contract, args):
             row["cover_version"] = contract.cover_version(row["code"])
             row["poster_box"] = contract.poster_box(row["code"])
             row.update(web_feeds.cover_state_fields(states, row["code"]))
-    _attach_studio_refs(contract, picked)
+    web_catalog.attach_studio_refs(contract, picked)
     response = {"scope": scope, "items": picked, "candidate_total": total, "sort": sort,
                 "ranking_method": "mmr" if sort == "taste" else "field-sort",
                 "direction": "asc" if args.get("direction") == "asc" else "desc",
@@ -394,7 +382,7 @@ def q_jav_releases(contract, args):
         picked = shown[(page - 1) * size:page * size]
         wanted = wants.wanted_keys(connection, (web_catalog.normalise_code_key(row["code"]) for row in picked))
     states = feed_followup.cover_states(contract, picked)
-    _attach_studio_refs(contract, picked)
+    web_catalog.attach_studio_refs(contract, picked)
     for row in picked:
         row["wanted"] = web_catalog.normalise_code_key(row["code"]) in wanted
         row.update(has_cover=contract.has_cover(row["code"]), cover_frame=contract.cover_frame(row["code"]),

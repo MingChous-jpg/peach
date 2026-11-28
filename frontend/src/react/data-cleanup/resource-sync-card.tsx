@@ -178,7 +178,7 @@ export function ResourceSyncCard(
         <ScanResult scan={state} />
         {changes
           ? <Note tone="neutral" title={t('cleanup:resourceSync.toClean')} action={
-              <Button variant="danger" disabled={!canApply} {...busyProps(cleaning)} onClick={() => { if (canApply) runApply(state) }}>
+              <Button variant="secondary" disabled={!canApply} {...busyProps(cleaning)} onClick={() => { if (canApply) runApply(state) }}>
                 {cleaning ? t('cleanup:resourceSync.applyingButton') : APPLY_LABEL}
               </Button>
             }>{applyPlanText(state)}</Note>

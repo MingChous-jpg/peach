@@ -74,7 +74,7 @@ function OrphanActions({ item, toast }: { item: OrphanRecord; toast(message: str
   const busy = attach.isPending || purge.isPending;
   return (
     <span className="flex min-w-0 flex-wrap items-center gap-2">
-        <Button variant="danger" size="small" {...busyProps(busy)} onClick={remove}>{t('cleanup:orphans.deleteRecord')}</Button>
+        <Button variant="secondary" size="small" {...busyProps(busy)} onClick={remove}>{t('cleanup:orphans.deleteRecord')}</Button>
         {item.candidates.length
           ? <Select data-orphan-target="" aria-label={t('cleanup:orphans.targetLabel', { name: item.name })} prefix={t('cleanup:orphans.targetPrefix')} className="w-52" selectedKey={target}
               onSelectionChange={(key) => { if (key !== null) setTarget(Number(key)) }}>

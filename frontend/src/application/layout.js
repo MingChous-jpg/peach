@@ -113,15 +113,23 @@ export function probeConfigurable(){
   }).catch(()=>{});
 }
 
-export function openSettings(section='',fromRoute=false){
+export function openSettings(section='',fromRoute=false,anchor='',search=''){
   if(!fromRoute&&!isPreferencePath(location.pathname)){
     const navigation=peachHistory.navigation;
-    peachHistory.push(settingsPath(section),{settingsBackground:{pathname:location.pathname,search:location.search,state:navigation.location.state,seq:navigation.seq}});
+    peachHistory.push(settingsPath(section)+search+anchor,{settingsBackground:{pathname:location.pathname,search:location.search,state:navigation.location.state,seq:navigation.seq}});
   }else if(!fromRoute&&section){
-    shellNavigate(settingsPath(section),{replace:true,state:peachHistory.navigation.location.state});
+    shellNavigate(settingsPath(section)+search+anchor,{replace:true,state:peachHistory.navigation.location.state});
   }
   section=section||preferenceSection(location.pathname);
-  return loadSettingsPanel(layoutState.settingsHost()).then(panel=>{panel.open(section);return panel});
+  return loadSettingsPanel(layoutState.settingsHost()).then(panel=>{
+    panel.open(section);
+    if(anchor.length>1){
+      let id;
+      try{id=decodeURIComponent(anchor.slice(1))}catch{return panel}
+      panel.reveal('#'+CSS.escape(id));
+    }
+    return panel;
+  });
 }
 
 export function closeSettingsRoute(){
@@ -331,9 +339,10 @@ export function syncVideoLayoutSetting(){
 }
 
 export function setVideoLayout(value){
-  storeVideoLayout(value);
+  const persisted=storeVideoLayout(value);
   syncVideoLayoutSetting();
   repaintCatalogGrid();
+  return persisted;
 }
 
 export function toggleJavMode(){

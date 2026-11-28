@@ -68,6 +68,8 @@ export function WantMagnets({ want, readOnly, downloads, provider, toast, onSour
   const reconciliation = useAction();
   const client = useQueryClient();
   const refresh = useRef(false);
+  const retrySource = useRef('');
+  const [retrying, setRetrying] = useState('');
   const cacheCode = queryUrl ? `comment-resources:${queryUrl}:${want.code}` : `all-sources:${want.code || ''}`;
   const cached = useMemo(() => cachedResources(cacheCode, want.release_date), [cacheCode, want.release_date]);
   useEffect(() => {
@@ -78,15 +80,25 @@ export function WantMagnets({ want, readOnly, downloads, provider, toast, onSour
     observer.observe(root.current);
     return () => observer.disconnect();
   }, [visible]);
+  const queryKey = queryUrl ? ['work-resources', queryUrl, want.code] : ['want-magnets', want.id, want.code];
   const query = useQuery({
-    queryKey: queryUrl ? ['work-resources', queryUrl, want.code] : ['want-magnets', want.id, want.code],
+    queryKey,
     queryFn: async ({ signal }) => {
       const forced = refresh.current;
       const url = queryUrl || `/api/wants/magnets?id=${want.id}`;
-      const result = await apiGet<MagnetResult>(`${url}${forced ? `${url.includes('?') ? '&' : '?'}refresh=1` : ''}`, signal);
-      refresh.current = forced && result.state === 'busy';
-      rememberResources(cacheCode, result);
-      return result;
+      const source = retrySource.current;
+      let keepRetry = false;
+      const join = url.includes('?') ? '&' : '?';
+      try {
+        const result = await apiGet<MagnetResult>(url + (source ? join + 'retry_source=' + encodeURIComponent(source) : forced ? join + 'refresh=1' : ''), signal);
+        keepRetry = source !== '' && result.state === 'busy';
+        if (keepRetry) return { ...result, ...client.getQueryData<MagnetResult>(queryKey), state: 'busy' as const };
+        refresh.current = forced && result.state === 'busy';
+        rememberResources(cacheCode, result);
+        return result;
+      } finally {
+        if (!signal.aborted && source && !keepRetry) { retrySource.current = ''; setRetrying('') }
+      }
     },
     initialData: cached?.result, initialDataUpdatedAt: cached?.saved,
     enabled: visible, retry: false,
@@ -151,6 +163,8 @@ export function WantMagnets({ want, readOnly, downloads, provider, toast, onSour
   const incomplete = !query.error && query.data?.error_code === 'labels.magnetChain.incomplete';
   const result = query.data;
   const warningCount = result?.warnings?.length || 0;
+  const warningNotes = result && warningCount > 0 ? <ResourceWarningNotes result={result} busy={retrying}
+    onRetry={source => { if (!waiting) { retrySource.current = source; setRetrying(source); void query.refetch() } }} /> : null;
   return (
     <div ref={root} data-want-magnets="" data-resource-compact={compact || undefined}
       className={compact ? 'flex min-w-0 flex-col gap-3' : 'flex min-w-0 flex-col gap-3 border-t border-separator-border pt-4'}>
@@ -163,10 +177,10 @@ export function WantMagnets({ want, readOnly, downloads, provider, toast, onSour
       {/* 还没有结果时是整块面板在等，动画大一档摆在正中；已有结果时换一批，等待留在行内。 */}
       {waiting ? <ActivityStatus kind="radar" size={query.data?.items.length ? 'inline' : 'block'} label={t('catalog:wantMagnets.searching')} /> : null}
       {failure && (!incomplete || !query.data?.warnings?.length) ? <Note tone="error" title={t('catalog:wantMagnets.notFound')}>{failure}</Note> : null}
-      {result && warningCount > 0 ? compact && result.items.length ? <Disclosure
+      {warningNotes && (compact && result?.items.length ? <Disclosure
         summary={t('catalog:javBatch.sourceWarnings', { count: warningCount })} contentClassName="flex flex-col gap-2">
-        <ResourceWarningNotes result={result} />
-      </Disclosure> : <ResourceWarningNotes result={result} /> : null}
+        {warningNotes}
+      </Disclosure> : warningNotes)}
       {!onSources && sourcePages.length ? <div className="flex flex-wrap gap-2">{sourcePages.map(page =>
         <ButtonLink key={page.source} data-button-link="" variant="secondary" size="small" trailingIcon={RiExternalLinkLine}
           href={page.url} target="_blank" rel="noopener noreferrer"><ScrapeSourceLabel source={page.source} label={page.label} /></ButtonLink>)}</div> : null}

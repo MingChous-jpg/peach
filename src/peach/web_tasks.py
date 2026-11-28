@@ -15,11 +15,11 @@ from __future__ import annotations
 
 import sqlite3
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from .ingest_notices import NOTICES
 from .jobs import TaskRunMissing
-from .task_runs import ACTIVE_STATUSES, SETTLED_FOLLOWUP_LIMIT, TERMINAL_STATUSES
+from .task_runs import ACTIVE_STATUSES, SETTLED_FOLLOWUP_LIMIT, TERMINAL_STATUSES, stamp
 from .task_results import RESULT_FIELDS, result_counts
 from .user_messages import UserValueError, message_fields
 from .web_result_versions import result_versions
@@ -34,7 +34,7 @@ TASK_FOLLOWUP_LIMIT = SETTLED_FOLLOWUP_LIMIT
 NO_TABLE = "api.tasks.noTaskTable"
 
 
-def q_result_updates(contract, _args):
+def q_result_updates(contract, args):
     """每个页面常驻的轻量轮询：结果版本、入库通知与在排或在跑的任务，不组装任务列表。
 
     全局组件只用这几样，却曾每两秒取一次完整的 `/api/tasks`；任务一多，那份组装就把服务进程
@@ -51,8 +51,23 @@ def q_result_updates(contract, _args):
     versions = _throttled_versions(contract, busy)
     if library_revision is not None:
         versions = {**versions, 'library_processing': library_revision}
-    return {"ok": True, "result_versions": versions,
-            "ingest_notices": NOTICES.snapshot(), "busy": busy, "running_tasks": running}
+    result = {"ok": True, "result_versions": versions,
+              "ingest_notices": NOTICES.snapshot(), "busy": busy, "running_tasks": running}
+    if library_revision is not None and (args or {}).get("task_notices") == "1":
+        result["task_notices"] = _task_notices(contract)
+    return result
+
+
+def _task_notices(contract):
+    """浏览器只需要近期手动任务的终态，不发送任务名或详情。"""
+    cutoff = stamp(datetime.now(timezone.utc) - timedelta(minutes=2))
+    with contract.task_runs.database.read_connection() as connection:
+        rows = connection.execute(
+            "SELECT id, status, started_at, finished_at FROM task_run "
+            "WHERE status IN ('succeeded', 'failed') AND trigger='manual' AND parent_run_id IS NULL "
+            "AND finished_at >= ? ORDER BY finished_at DESC, id DESC LIMIT ?", (cutoff, RECENT_LIMIT)
+        ).fetchall()
+    return [{"id": row[0], "status": row[1], "started_at": row[2], "finished_at": row[3]} for row in rows]
 
 
 def _task_updates(contract) -> tuple[list[dict], str]:

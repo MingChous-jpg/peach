@@ -9,6 +9,8 @@
 .top .ib[hidden]{display:none}
 .ib svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;
   stroke-linecap:round;stroke-linejoin:round;display:block}
+#notificationCenter{position:relative}
+#notificationCenter>[data-notification-dot]{position:absolute;z-index:1;inset-block-start:2px;inset-inline-end:2px;width:8px;height:8px;border-radius:50%;background:var(--color-accent-500);pointer-events:none}
 .ib:hover{color:var(--ink);background:var(--hover)}
 .ib[aria-pressed="true"]{background:var(--hover);color:var(--ink)}
 .brand{display:flex;align-items:center;gap:9px;flex:none;text-decoration:none;color:inherit;height:32px}

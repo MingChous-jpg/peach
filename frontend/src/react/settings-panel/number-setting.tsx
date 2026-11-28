@@ -2,11 +2,15 @@
  *
  * 可选的那几项（悬停放大、相关推荐、搜索记录、关注自动更新）前面有一枚开关：关掉就是 0，
  * 数字框收起来；再打开时填回关掉前的那个数。那个数记在 `peach.number.<id>`，跟着这台浏览器走。
- * 提交时机跟原生数字框的 `change` 一致：失焦或回车，打字途中不提交。 */
+ * 手动输入在失焦或回车时提交，步进按钮和方向键立即提交。 */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react';
+import { Button } from '@/components/base/buttons/button';
 
 import { boundedPreference } from '../../number-setting';
-import { HOME_SHORTS_DEFAULT, HOME_SHORTS_MAX, HOME_SHORTS_MIN } from '../../appearance/settings';
+import {
+  HOME_SHORTS_DEFAULT, HOME_SHORTS_MAX, HOME_SHORTS_MIN, NOTIFICATION_DEFAULTS, NOTIFICATION_LIMIT_MAX,
+} from '../../appearance/settings';
 import { t } from '../../i18n';
 
 export type NumberUnit = 'items' | 'seconds' | 'videos' | 'entries' | 'minutes' | 'percent';
@@ -34,6 +38,10 @@ export const NUMBER_SPECS = {
   /* 关掉是 0：首页不插竖屏带，竖屏回主网格。上下限同 `appearance/settings.ts` 的归一化。 */
   homeShortsSetting: { min: HOME_SHORTS_MIN, max: HOME_SHORTS_MAX, unit: 'items', optional: true, fallback: HOME_SHORTS_DEFAULT },
   followScheduleSetting: { min: 15, max: 10080, unit: 'minutes', optional: true, fallback: 60 },
+  notificationResume: { min: 1, max: NOTIFICATION_LIMIT_MAX, unit: 'items', optional: true, fallback: NOTIFICATION_DEFAULTS.resume },
+  notificationRecommendation: { min: 1, max: NOTIFICATION_LIMIT_MAX, unit: 'items', optional: true, fallback: NOTIFICATION_DEFAULTS.recommendation },
+  notificationFollow: { min: 1, max: NOTIFICATION_LIMIT_MAX, unit: 'items', optional: true, fallback: NOTIFICATION_DEFAULTS.follow },
+  notificationTask: { min: 1, max: NOTIFICATION_LIMIT_MAX, unit: 'items', optional: true, fallback: NOTIFICATION_DEFAULTS.task },
 } as const satisfies Record<string, NumberSpec>;
 
 export type NumberSettingId = keyof typeof NUMBER_SPECS;
@@ -70,6 +78,10 @@ export function NumberSetting({ id, label, value, disabled = false, onApply }: {
   const input = useRef<HTMLInputElement | null>(null);
   const apply = useRef(onApply);
   apply.current = onApply;
+  const remember = (next: number) => {
+    remembered.current = next;
+    try { localStorage.setItem(storageKey(id), String(next)) } catch { /* 提交仍由设置的保存入口处理。 */ }
+  };
 
   /* 外面换了值（数据库对账、另一台设备改过、请求回来）就跟上；null 只禁用，不动显示。 */
   useLayoutEffect(() => {
@@ -88,9 +100,10 @@ export function NumberSetting({ id, label, value, disabled = false, onApply }: {
     }
     node.removeAttribute('aria-invalid');
     setError('');
-    remembered.current = Number(node.value);
-    localStorage.setItem(storageKey(id), String(remembered.current));
-    apply.current(remembered.current);
+    const next = Number(node.value);
+    if (next === value) return;
+    remember(next);
+    apply.current(next);
   };
   const commitRef = useRef(commit);
   commitRef.current = commit;
@@ -114,13 +127,23 @@ export function NumberSetting({ id, label, value, disabled = false, onApply }: {
       apply.current(remembered.current);
       return;
     }
-    if (node && node.value && node.checkValidity()) remembered.current = Number(node.value);
-    localStorage.setItem(storageKey(id), String(remembered.current));
+    remember(node && node.value && node.checkValidity() ? Number(node.value) : remembered.current);
     setShown(0);
     apply.current(0);
   };
 
   const blocked = disabled || value === null;
+  const number = Number(draft);
+  const canStep = !blocked && draft !== '' && Number.isInteger(number) && number >= min && number <= max;
+  const step = (delta: -1 | 1) => {
+    const next = number + delta;
+    if (!canStep || next < min || next > max) return;
+    input.current?.removeAttribute('aria-invalid');
+    setError('');
+    setDraft(String(next));
+    remember(next);
+    apply.current(next);
+  };
   const days = dayReading(Number(draft), spec.unit);
   return (
     <div data-number-setting="">
@@ -139,7 +162,22 @@ export function NumberSetting({ id, label, value, disabled = false, onApply }: {
                 setError('');
               }
             }}
-            onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commit() } }} />
+            onKeyDown={(event) => {
+              switch (event.key) {
+                case 'Enter': event.preventDefault(); commit(); break;
+                case 'ArrowUp': event.preventDefault(); step(1); break;
+                case 'ArrowDown': event.preventDefault(); step(-1); break;
+              }
+            }} />
+          <div data-number-steppers="" data-copy-interact=""
+            onPointerDown={(event) => { if (document.activeElement === input.current) event.preventDefault() }}>
+            <Button data-number-step="up" variant="ghost" size="xs" iconOnly leadingIcon={RiArrowUpSLine}
+              aria-label={t('settings:numberSetting.increment', { label })}
+              disabled={!canStep || number === max} onClick={() => step(1)} />
+            <Button data-number-step="down" variant="ghost" size="xs" iconOnly leadingIcon={RiArrowDownSLine}
+              aria-label={t('settings:numberSetting.decrement', { label })}
+              disabled={!canStep || number === min} onClick={() => step(-1)} />
+          </div>
           <span><span id={`${id}-unit`}>{unit}</span>{days ? <span aria-hidden="true">{` · ${days}`}</span> : null}</span>
         </div>
         <small id={`${id}-error`} data-number-error="" role="status" hidden={!error}>{error}</small>

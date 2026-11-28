@@ -8,16 +8,21 @@ import { useCallback } from 'react';
 
 import type { SettingsStore } from '../../settings-store';
 import { useSaveSettings } from '../settings-panel/settings-data';
+import type { SettingsSaveFeedback } from '../settings-panel/settings-panel-api';
 
 export function useCommitNavigationOrder(store: SettingsStore<{ sidebarOrder?: string[]; manageOrder?: string[] }>,
-  key: 'sidebarOrder' | 'manageOrder' = 'sidebarOrder') {
+  key: 'sidebarOrder' | 'manageOrder' = 'sidebarOrder', feedback?: SettingsSaveFeedback) {
   const save = useSaveSettings('navigation-order');
   const { mutate } = save;
   return useCallback((next: string[]) => {
     store.value[key] = next;
-    store.save();
-    mutate({ [key]: next }, { onError: () => {} });
-  }, [store, mutate, key]);
+    const persisted = store.save();
+    const report = feedback?.();
+    mutate({ [key]: next }, {
+      onSuccess: () => report?.('saved'),
+      onError: () => report?.(persisted ? 'local' : 'failed'),
+    });
+  }, [store, mutate, key, feedback]);
 }
 
 /** 把 `key` 挪到 `target` 前面或后面；挪不了（同一项、任一项不在顺序里）时是 null。 */

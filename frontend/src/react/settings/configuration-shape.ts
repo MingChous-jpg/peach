@@ -29,6 +29,7 @@ export function networkShape(data: ConfigurationData): NetworkShape {
     lan: data.network?.host === '0.0.0.0',
     proxyAddress: data.peach_proxy?.mode === 'proxy' || Boolean(data.peach_proxy?.needs_selection),
     access: data.access?.mode ?? '',
+    apiToken: Boolean(data.access && data.api_token),
     tunnelNamed: Boolean(tunnel?.named_available),
     tunnelNamedMode: Boolean(tunnel?.named_available && tunnel.mode === 'named'),
     tunnelNote: Boolean(tunnel && (!tunnel.available || tunnel.state === 'starting' || (tunnel.state === 'running' && tunnel.url))),

@@ -1,4 +1,5 @@
-import { ButtonLink } from '@/components/base/buttons/button';
+import { Button, ButtonLink } from '@/components/base/buttons/button';
+import { useId } from 'react';
 import { serverLabel } from '../../core/server-text';
 import { t } from '../../i18n';
 import { Note } from '../components/note';
@@ -11,10 +12,15 @@ export interface ResourceWarnings {
   warning_params?: (Record<string, unknown> | null)[];
   warning_sources?: string[];
   connection_checks?: string[];
+  retry_sources?: string[];
 }
 
-export function ResourceWarningNotes({ result }: { result: ResourceWarnings }) {
+export function ResourceWarningNotes({ result, onRetry, busy }: {
+  result: ResourceWarnings; onRetry?(source: string): void; busy?: string;
+}) {
+  const description = useId();
   const pending = new Set(result.connection_checks);
+  const retries = new Set(result.retry_sources);
   return result.warnings?.map((warning, index) => {
     const code = result.warning_codes?.[index] ?? '';
     const params = result.warning_params?.[index];
@@ -23,15 +29,21 @@ export function ResourceWarningNotes({ result }: { result: ResourceWarnings }) {
       ? 'javdb' : resourceSourceKey(String(params?.source || params?.label || '')));
     const informational = code === 'labels.javdbPublic.reviewPagesQueried'
       || code === 'labels.resourceSearch.allRejected' || text !== warning;
-    const action = !informational && pending.delete(source) ? (
+    const connection = !informational && pending.delete(source) ? (
       <ButtonLink variant="secondary" size="small" href={sourceConnectionPath(source)}>
         {t('manage:resourceSearch.openSourceConnection', { source: sourceDisplayName(source) })}
       </ButtonLink>
     ) : undefined;
+    const retry = onRetry && !informational && retries.delete(source) ? (
+      <Button variant="secondary" size="small" disabled={Boolean(busy)} aria-busy={busy === source}
+        aria-describedby={`${description}-${index}`}
+        onClick={() => onRetry(source)}>{t(busy === source ? 'manage:resourceSearch.searching' : 'manage:resourceSearch.retrySource')}</Button>
+    ) : undefined;
+    const action = retry && connection ? <span className="flex flex-wrap gap-2">{retry}{connection}</span> : retry ?? connection;
     return <Note key={index} tone={informational ? 'neutral' : 'error'} action={action}>
       <span className="inline-flex min-w-0 items-center gap-1.5">
-        {source ? <SiteMark source={source} /> : null}
-        <span className="min-w-0 wrap-anywhere">{serverLabel(code, text, params)}</span>
+        {source && !source.startsWith('indexer:') ? <SiteMark source={source} /> : null}
+        <span id={`${description}-${index}`} className="min-w-0 wrap-anywhere">{serverLabel(code, text, params)}</span>
       </span>
     </Note>;
   });

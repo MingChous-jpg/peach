@@ -1011,6 +1011,7 @@
       "deviceGone": "This device is no longer in the list.",
       "dockerUpdateOnly": "One-click updates are only available for the Docker image.",
       "enabledNotBoolean": "enabled must be true or false.",
+      "desktopAlertsUnavailable": "Configure desktop alerts on the computer running the Windows tray or Mac menu bar.",
       "errorLogUnwritable": "Can't write the error log.",
       "fieldNotText": "{{field}} must be text.",
       "fileManaged": "This deployment manages the service through a configuration file.",
@@ -1024,6 +1025,7 @@
       "noLocalCertificate": "This device doesn't provide a local HTTPS certificate.",
       "noUpgradeReview": "No upgrade review record yet.",
       "openDiagnosticsOnHost": "Open system diagnostics on the device running Peach.",
+      "startupCaptureUnavailable": "The local startup diagnostics could not be updated.",
       "openOnHost": "Open Settings on the device running Peach.",
       "passwordNotText": "The password must be text.",
       "passwordRequired": "Enter an access password.",
@@ -1868,6 +1870,7 @@
       "tooManyIndexers": "You can configure at most {{max}} indexers",
       "indexerNotObject": "Each indexer setting must be an object",
       "invalidIndexerKey": "Indexer ID is empty or duplicated",
+      "invalidRetrySource": "This search source is no longer available",
       "invalidIndexerName": "Indexer name must be 1 to 80 characters",
       "invalidApiKey": "API key is not valid",
       "invalidSizeRange": "Size range must be between 0 and 1 TiB, and the minimum can't exceed the maximum",
@@ -3538,6 +3541,18 @@
       "accepted": "Uninstalling. Peach will quit. You can close this page when it's done."
     },
     "backgroundIssues": {
+      "mediaCapacity": {
+        "title": "Media repairs paused for storage capacity",
+        "link": "Open repair settings"
+      },
+      "mediaMounts": {
+        "title": "Media mounts need attention",
+        "link": "Open system diagnostics"
+      },
+      "sourceAuth": {
+        "title": "Sign-in expired or required · {{source}}",
+        "link": "Open source settings"
+      },
       "pushDiscovery": {
         "title": "Couldn't add newly found files automatically",
         "link": "Open push settings"
@@ -4812,6 +4827,13 @@
     }
   },
   "tray": {
+    "desktopAlerts": {
+      "startup": "Peach ran into a startup problem. Check startup diagnostics.",
+      "service": "The Peach service is still unavailable. Check system diagnostics.",
+      "database": "Peach cannot read the library database. Check system diagnostics.",
+      "mounts": "A library directory is still unavailable. Check your mounts.",
+      "capacity": "Storage limits paused some background processing. Check your storage settings."
+    },
     "listSeparator": ", ",
     "clauseSeparator": "; ",
     "menu": {

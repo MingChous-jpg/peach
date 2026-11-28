@@ -10,6 +10,8 @@ export interface JavDetail {
   tags: string[]; has_cover: boolean; cover_version?: string; cover_url?: string;
   tag_refs?: { name: string; category: string; source_name: string }[];
   preview_video_url?: string;
+  preview_state?: 'ready' | 'missing' | 'unavailable';
+  identity_ambiguous?: boolean;
   /** 预告没取到时的原因；取到了（哪怕走的是备用来源或旧结果）就没有这一句。 */
   preview_message?: string;
   /** 本机没有封面时，上次取官方封面没取到的原因；`_code`／`_params` 给界面取当前语言。 */
@@ -29,6 +31,8 @@ export interface JavDetailProps {
 export const javDetailKey = (code: string) => ['jav-detail', code] as const;
 export const fetchJavDetail = (code: string, signal?: AbortSignal, refresh = false) =>
   apiGet<JavDetail>(`/api/jav/detail?code=${encodeURIComponent(code)}${refresh ? '&refresh=1' : ''}`, signal);
+export const fetchJavPart = (code: string, part: 'metadata' | 'preview', signal: AbortSignal) =>
+  apiGet<Partial<JavDetail>>(`/api/jav/detail?code=${encodeURIComponent(code)}&part=${part}&refresh=1`, signal);
 export const fetchJavReviews = (code: string, page: number, signal?: AbortSignal, refresh = false) =>
   apiGet<JavReviews>(`/api/jav/reviews?code=${encodeURIComponent(code)}&page=${page}${refresh ? '&refresh=1' : ''}`, signal);
 export const prefetchJavDetail = (props: JavDetailProps, signal: AbortSignal) =>

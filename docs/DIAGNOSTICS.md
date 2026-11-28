@@ -44,6 +44,14 @@
 | `json_projection_limit` | JSON 字段缩减后仍无法在大小上限内保留有效内容 |
 | `no_complete_records` | JSONL 读取范围内没有可导出的完整记录 |
 
+## 启动诊断
+
+Peach 启动时记录各阶段、耗时和首轮挂载检查计数。启动失败、中断、超过 30 秒或探测到挂载异常时，系统保留记录。托盘异常退出后自动恢复、应用更新后验证，以及脚本指定的启动也会保留结果。一次普通启动成功不会替换上一次诊断。
+
+在「配置 → 系统诊断 → 启动诊断」查看最近一次记录。诊断 ZIP 的 `report.json` 包含同一份状态、阶段和计数。Web 无法打开时，可从仍在运行的桌面菜单导出。Docker 按 [容器内导出](DOCKER.md#导出诊断报告) 操作。容器在数据卷可写之前退出时，查看容器启动日志。
+
+脚本和工作流可用 `peach doctor --startup-diagnostics workflow_probe` 保留下次启动的结果，也可在启动命令的环境传入 `PEACH_STARTUP_DIAGNOSTIC_REASON=workflow_probe`，或在 Python 中调用 `startup_diagnostics.request(state_dir, "workflow_probe")`。应在任务发现需要复现的问题，或本轮确实要验证启动时调用。命令也支持 `restart_recovery`、`update_verification` 和只读的 `status`。诊断记录保存在当前实例。
+
 ## 证据链
 
 | 环节 | 持久证据与核验 |

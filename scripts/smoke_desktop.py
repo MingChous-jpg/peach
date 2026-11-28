@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 import base64
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 import ctypes
 from ctypes import wintypes
 import hashlib
@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import shutil
 import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -239,7 +240,8 @@ def smoke_environment(data: Path) -> dict[str, str]:
     (state / 'remote-reporting.json').write_text(json.dumps({
         'usage': False, 'errors': False, 'revision': 'desktop-smoke',
     }), encoding='utf-8')
-    environment = dict(os.environ, PEACH_DATA_ROOT=str(data), PYTHONIOENCODING="utf-8")
+    environment = dict(os.environ, PEACH_DATA_ROOT=str(data), PYTHONIOENCODING="utf-8",
+                       PEACH_STARTUP_DIAGNOSTIC_REASON="workflow_probe")
     environment["LOCALAPPDATA"] = str(data.parent / "local-app-data")
     environment.pop("PYTHONPATH", None)
     environment["PATH"] = os.environ.get("SystemRoot", "/usr") + ("/System32" if os.name == "nt" else "/bin")
@@ -406,6 +408,39 @@ def complete_first_run(opener, base: str, media: Path, port: int, password: str,
         assert json.load(response)["url"]
 
 
+def assert_startup_capture(opener, base: str) -> None:
+    with opener.open(base + "/api/diagnostics/startup", timeout=10) as response:
+        report = json.load(response)
+    assert report["capture"]["reason"] == "workflow_probe", report
+    assert report["capture"]["status"] == "completed", report
+
+
+def scan_playback_fixture(executable: Path, media: Path, data: Path, environment: dict) -> int:
+    """Register the existing media fixture through the shipped scanner."""
+    fixture = media / "resume-fixture.mkv"
+    fixture.write_bytes(base64.b64decode(_AV1_SAMPLE))
+    subprocess.run([str(executable), "scan", "configured"], env=environment, check=True, timeout=60)
+    with closing(sqlite3.connect(data / "database/ledger.db")) as connection:
+        asset = connection.execute("SELECT id FROM asset WHERE name=?", (fixture.name,)).fetchone()
+    assert asset is not None, fixture
+    return asset[0]
+
+
+def playback_request(opener, base: str, path: str, body: dict | None = None, method: str | None = None) -> dict:
+    request = urllib.request.Request(base + path, method=method,
+        data=json.dumps(body).encode() if body is not None else None,
+        headers={"Origin": base, "Content-Type": "application/json"})
+    with opener.open(request, timeout=15) as response:
+        return json.load(response)
+
+
+def assert_playback_fixture_stream(opener, base: str, asset: int) -> None:
+    request = urllib.request.Request(base + f"/stream?id={asset}", headers={"Range": "bytes=0-15"})
+    with opener.open(request, timeout=15) as response:
+        assert response.status == 206
+        assert response.read(16) == base64.b64decode(_AV1_SAMPLE)[:16]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("executable", type=Path)
@@ -455,6 +490,7 @@ def main() -> int:
                     headers={"Origin": base})
                 with opener.open(login, timeout=10) as response:
                     assert response.status == 200
+                assert_startup_capture(opener, base)
                 assert_amane_runtime(opener, base, executable.parent / '_internal/tools/amane-runtime')
                 for path in ("/", "/app.css", "/dist/peach-app.js", "/dist/peach-app.css", "/api/items"):
                     with opener.open(base + path, timeout=10) as response:

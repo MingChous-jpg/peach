@@ -122,7 +122,7 @@ function WantRow({ want, readOnly, busy, onReset, onRemove, onCloudDownload, dow
           {want.phase === 'searching' || want.phase === 'given_up' ? (
             <Button variant="primary" size="small" leadingIcon={RiSearchLine} onClick={onCloudDownload}>{t('catalog:shared.searchTorrents')}</Button>
           ) : null}
-          <Button variant="danger" size="small" leadingIcon={RiDeleteBinLine} disabled={readOnly} {...busyProps(busy === `remove:${want.id}`)}
+          <Button variant="secondary" size="small" leadingIcon={RiDeleteBinLine} disabled={readOnly} {...busyProps(busy === `remove:${want.id}`)}
             onClick={onRemove}>{t('catalog:shared.remove')}</Button>
         </div>
       </div>
@@ -232,7 +232,7 @@ export function WantList({ readOnly, toast, query = '', clearQuery }: WantListPr
   const allPicked = items.length > 0 && chosen.length === items.length;
   const host = { receipt: toast };
   const removeMany: BulkAction<Want> = {
-    key: 'remove', label: t('catalog:shared.remove'), reversal: 'undo', danger: true,
+    key: 'remove', label: t('catalog:shared.remove'), reversal: 'undo',
     confirm: (rows) => ({ title: t('catalog:wants.removeMany'), body: t('catalog:wants.removeManyBody', { count: rows.length }) }),
     run: async (rows) => {
       const { previous } = await removeWants(rows.map((want) => want.id));

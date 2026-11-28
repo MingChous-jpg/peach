@@ -117,7 +117,7 @@ describe('整页配置记下的结构', () => {
   it('从配置算出几块、哪种表单，不含任何值', () => {
     expect(downloadsShape(data)).toEqual({ cloud: true, has115: false, pikpak: true, pikpakRoots: true, pikpakLoggedIn: true, browserLogin: false, localDownload: true });
     expect(networkShape(data)).toEqual({ port: false, addresses: 0, networkEditable: false, lan: false,
-      proxyAddress: true, access: 'password', tunnelNamed: true, tunnelNamedMode: true, tunnelNote: false });
+      proxyAddress: true, access: 'password', tunnelNamed: true, tunnelNamedMode: true, tunnelNote: false, apiToken: false });
     expect(maintenanceShape(data)).toMatchObject({ facts: ['版本', 'FFmpeg'], reporting: false, uninstall: false, storageRows: 0 });
   });
 

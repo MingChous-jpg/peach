@@ -166,10 +166,50 @@ def _face_models(_state, contract, _config) -> list[Issue]:
                   since=status["failed_at"], retry=status["retry_url"], retry_available=True)]
 
 
+def _media_mounts(state, _contract, _config) -> list[Issue]:
+    monitor = getattr(state, "mount_reachability", None)
+    if monitor is None:
+        return []
+    summary = monitor.summary()
+    if summary["state"] != "degraded":
+        return []
+    return [Issue("media-mounts", "labels.backgroundIssues.mediaMounts.title",
+                  "/settings/diagnostics", "labels.backgroundIssues.mediaMounts.link")]
+
+
+def _source_auth(_state, contract, _config) -> list[Issue]:
+    root = getattr(contract, "follow_secrets_root", None)
+    if root is None:
+        return []
+    from .scraping_access import SOURCES, source_checks
+    rows = []
+    for source, source_info in SOURCES.items():
+        checks = source_checks(root, source)
+        connection = checks.get("connection", {})
+        metadata = checks.get("metadata", {})
+        latest = max((connection, metadata), key=lambda check: check.get("checked_at", 0))
+        if latest.get("reason") == "auth_required":
+            rows.append(Issue(f"source-auth:{source}", "labels.backgroundIssues.sourceAuth.title",
+                              f"/sources#source-{source}", "labels.backgroundIssues.sourceAuth.link",
+                              title_params={"source": str(source_info["label"])}))
+    return rows
+
+
+def _media_capacity(state, _contract, _config) -> list[Issue]:
+    service = getattr(state, "upgrade_repairs", None)
+    if service is None or not service.media_paused():
+        return []
+    return [Issue("media-capacity", "labels.backgroundIssues.mediaCapacity.title",
+                  "/settings/maintenance#upgradeRepairs", "labels.backgroundIssues.mediaCapacity.link")]
+
+
 Provider = Callable[[Any, Any, Any], Iterable[Issue]]
 
 PROVIDERS: tuple[Provider, ...] = (
     _network,
+    _media_mounts,
+    _media_capacity,
+    _source_auth,
     _tunnel,
     _scheduler("follow_scheduler", "follow-schedule", "labels.backgroundIssues.followSchedule.title",
                "/settings/subscriptions#followScheduleSetting", "labels.backgroundIssues.followSchedule.link", "/api/follow/schedule/run"),

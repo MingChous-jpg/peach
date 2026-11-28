@@ -264,7 +264,7 @@ function TrashHead({ count, layout, sorts, actions }: CatalogFilterProps) {
     <>
       <span data-catalog-summary="">
         <Readout count={count} />
-        {count && count.total ? <Button size="small" variant="danger" data-empty-trash=""
+        {count && count.total ? <Button size="small" variant="secondary" data-empty-trash=""
           title={t('manage:manageHeader.emptyTrashTitle')} onClick={actions.emptyTrash}>{t('manage:shared.emptyTrash')}</Button> : null}
       </span>
       <span data-entity-sorts="">

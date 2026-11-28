@@ -47,7 +47,7 @@ export function CustomSources({ receipt }: { receipt(message: string): void }) {
           (signal) => apiSend<{ items: Source[] }>(URL, { ...source, enabled: !source.enabled }, 'POST', signal),
           (result) => { changed(result); receipt(source.enabled ? t('manage:customSources.sourceDisabled') : t('manage:customSources.sourceEnabled')) })}>
           {source.enabled ? t('manage:customSources.disable') : t('manage:customSources.enable')}</Button>
-        <Button variant="danger" onClick={() => confirmModal({ title: t('manage:customSources.deleteTitle'),
+        <Button variant="secondary" onClick={() => confirmModal({ title: t('manage:customSources.deleteTitle'),
           body: t('manage:customSources.deleteBody', { name: esc(source.name) }), confirmLabel: t('manage:customSources.deleteConfirm'), danger: true,
           holdToConfirm: true,
           onConfirm: async () => { changed(await apiSend<{ items: Source[] }>(URL, { action: 'delete', id: source.id }));

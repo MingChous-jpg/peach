@@ -624,11 +624,11 @@ body[data-density="dense"] .peach-react :is([data-media-trash-mark], [data-media
 .peach-react [data-media-avatars]:not([data-list-people] [data-media-avatars]):is(:hover, :has(:focus-visible)) > [data-media-avatar] {
   left: calc(5px + 30px * var(--media-avatar-index));
 }
-.peach-react [data-media-avatars] > :nth-child(1) { z-index: 5; }
-.peach-react [data-media-avatars] > :nth-child(2) { z-index: 4; }
-.peach-react [data-media-avatars] > :nth-child(3) { z-index: 3; }
-.peach-react [data-media-avatars] > :nth-child(4) { z-index: 2; }
-.peach-react [data-media-avatars] > :nth-child(5) { z-index: 1; }
+.peach-react [data-media-avatars] > :nth-child(1) { --media-avatar-index: 0; z-index: 5; }
+.peach-react [data-media-avatars] > :nth-child(2) { --media-avatar-index: 1; z-index: 4; }
+.peach-react [data-media-avatars] > :nth-child(3) { --media-avatar-index: 2; z-index: 3; }
+.peach-react [data-media-avatars] > :nth-child(4) { --media-avatar-index: 3; z-index: 2; }
+.peach-react [data-media-avatars] > :nth-child(5) { --media-avatar-index: 4; z-index: 1; }
 .peach-react [data-media-avatars] > :is(:hover, :focus-visible) {
   z-index: 6;
   box-shadow: 0 0 0 2px var(--ink-2);

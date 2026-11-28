@@ -18,7 +18,7 @@ import {
 
 import { GlowPresetGrid } from '../components/glow-preset-grid';
 import { useOverlayScrollbar } from '../components/overlay-scrollbar';
-import type { SettingsPanelHost } from './settings-panel-api';
+import type { SettingsEditorHost } from './settings-panel-api';
 import { Icon } from './icon';
 import { DialRow } from './legacy-controls';
 import { t } from '../../i18n';
@@ -31,7 +31,7 @@ const FIELDS: readonly [Field, string, number][] = [
 ];
 
 
-function StopRow({ host, spot, index, glow }: { host: SettingsPanelHost; spot: Spot; index: number; glow: HomeGlow }) {
+function StopRow({ host, spot, index, glow }: { host: SettingsEditorHost; spot: Spot; index: number; glow: HomeGlow }) {
   const label = GLOW_SPOT_LABELS[index];
   const row = useRef<HTMLDivElement | null>(null);
   const toggle = useRef<HTMLButtonElement | null>(null);
@@ -51,7 +51,7 @@ function StopRow({ host, spot, index, glow }: { host: SettingsPanelHost; spot: S
     const current = host.store.value.homeGlow;
     current[spot].color = glowColor(hex, current[spot].color);
     current.preset = 'custom';
-    host.store.save();
+    host.saveLocal();
     host.changed('glow');
     closeAnchoredMenu();
     toggle.current?.focus();
@@ -85,15 +85,16 @@ function StopRow({ host, spot, index, glow }: { host: SettingsPanelHost; spot: S
   );
 }
 
-export function GlowSettings({ host }: { host: SettingsPanelHost }) {
+export function GlowSettings({ host }: { host: SettingsEditorHost }) {
   const glow = host.store.value.homeGlow;
   const native = isNativeGlass(glow.preset);
   return (
-    <section data-glow-setting="" id="homeGlowControls" aria-label={t('settings:sidebarGlow.controlsLabel')} hidden={!glow.on}>
-      <section data-glow-group=""><h4 data-settings-subheading="">{t('settings:sidebarGlow.palette')}</h4>
+    <div data-glow-setting="" hidden={!glow.on}>
+      <section data-glow-group="" aria-labelledby="sidebarGlowPaletteTitle">
+        <h5 data-settings-subheading="" id="sidebarGlowPaletteTitle" data-copy-key="settings.sidebarGlow.palette">{t('settings:sidebarGlow.palette')}</h5>
         <div data-setting-card="" data-glow-card="">
         <p data-glow-current="">{t('settings:sidebarGlow.currentPalette')}<b data-glow-preset-name="">{glowPresetName(glow.preset)}</b></p>
-        <GlowPresetGrid store={host.store} label={t('settings:sidebarGlow.palette')} />
+        <GlowPresetGrid store={{ ...host.store, save: host.saveLocal }} label={t('settings:sidebarGlow.palette')} />
         <p data-glow-native-note="" hidden={!native}>{t('settings:sidebarGlow.nativeGlassNote')}</p>
         <div data-glow-fields="">
           {/* 拖动中只改参数、只排一帧重画；落盘留给松手那一下。其余玻璃面跟着走的只有速度，
@@ -101,20 +102,21 @@ export function GlowSettings({ host }: { host: SettingsPanelHost }) {
           {FIELDS.map(([field, label, max]) => (
             <DialRow key={field} field={field} label={label} max={max} value={glow[field]} hidden={native && field !== 'speed'}
               onStep={(value) => { host.store.value.homeGlow[field] = value; host.changed('glowFrame') }}
-              onSettle={() => { host.store.save(); if (field === 'speed') host.changed('glow') }} />
+              onSettle={() => { host.saveLocal(); if (field === 'speed') host.changed('glow') }} />
           ))}
         </div>
         <div data-glow-actions="">
-          <button type="button" className="geist-button" data-glow-reset=""
-            onClick={() => { host.store.value.homeGlow = normalizeHomeGlow(null); host.store.save(); host.changed('glow') }}>{t('settings:shared.reset')}</button>
+          <button type="button" className="geist-button" data-glow-reset="" data-copy-interact=""
+            onClick={() => { host.store.value.homeGlow = normalizeHomeGlow(null); host.saveLocal(); host.changed('glow') }}>{t('settings:shared.reset')}</button>
         </div>
         </div>
       </section>
-      <section data-glow-group="" data-glow-colours="" hidden={native}><h4 data-settings-subheading="">{t('settings:sidebarGlow.customColors')}</h4>
+      <section data-glow-group="" data-glow-colours="" aria-labelledby="sidebarGlowColorsTitle" hidden={native}>
+        <h5 data-settings-subheading="" id="sidebarGlowColorsTitle" data-copy-key="settings.sidebarGlow.customColors">{t('settings:sidebarGlow.customColors')}</h5>
         <div data-setting-card="" data-glow-colour-card=""><div data-glow-stops="">
           {HOME_GLOW_SPOTS.map((spot, index) => <StopRow key={spot} host={host} spot={spot as Spot} index={index} glow={glow} />)}
         </div></div>
       </section>
-    </section>
+    </div>
   );
 }

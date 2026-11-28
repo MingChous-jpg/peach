@@ -12,6 +12,7 @@ import { LinkButton } from '@/components/base/buttons/link-button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { Input } from '@/components/base/input/input';
 import { Select, SelectItem } from '@/components/base/select/select';
+import { Switch } from '@/components/base/switch/switch';
 import { ConnectionStatus } from '../components/connection-status';
 
 import { ApiError, apiSend, errorMessage } from '../../api';
@@ -75,7 +76,7 @@ const pickFolder = async (initial: string) =>
 
 interface MediaRow {
   transport: 'smb' | 'filesystem';
-  smb_username?: string; smb_password?: string; smb_encrypt?: boolean; smb_clear?: boolean; smb_password_saved?: boolean;
+  smb_username?: string; smb_password?: string; smb_encrypt?: boolean; smb_clear?: boolean;
   path: string; location: string; root: string; root_id?: string; library_id: string; library: string; library_icon: string;
   library_color: string; library_policy: Preset; library_stages: string; cost: SourceCost | ''; change_mode?: string;
 }
@@ -100,7 +101,6 @@ function initialRows(data: ConfigurationData): MediaRow[] {
     return known.map((row) => ({
       transport: row.transport === 'smb' || row.path.startsWith('smb://') ? 'smb' : 'filesystem',
       smb_username: row.smb_username, smb_password: '', smb_encrypt: row.smb_encrypt,
-      smb_password_saved: row.smb_password_saved,
       path: row.path, location: row.location, root: row.root, library: row.library || '', library_icon: row.library_icon || '',
       library_color: row.library_color || '', library_policy: row.library_policy || 'auto', library_stages: row.library_stages || '',
       root_id: row.root_id, library_id: row.library_id || randomId(),
@@ -215,11 +215,18 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
     });
   };
 
+  // 读数与登录信息都属于已保存的目录身份和路径。
+  const mountOf = (row: MediaRow) => data.media_sources?.find(source => source.root_id === row.root_id && source.path === row.path);
+  const savedSmbLogin = (row: MediaRow) => {
+    const source = row.transport === 'smb' ? mountOf(row) : undefined;
+    return source?.smb_username || source?.smb_password_saved ? source : undefined;
+  };
+
   const save = () => {
     void action.run('save', (signal) => apiSend<SaveResult>(CONFIGURATION_URL, {
       revision: revision.current,
       media_dirs: rows.map((row) => row.path),
-      ...(data.media_sources ? { media_sources: rows } : {}),
+      ...(data.media_sources ? { media_sources: rows.map(row => row.smb_clear && !savedSmbLogin(row) ? { ...row, smb_clear: false } : row) } : {}),
       port: String(data.port),
       scan_now: scanNow,
     }, 'POST', signal), (result) => {
@@ -246,8 +253,6 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
     );
   }
 
-  // 挂载状态是已保存的那份配置的读数，只标在路径没改过的行上。
-  const mountOf = (row: MediaRow) => data.media_sources?.find(source => source.root_id === row.root_id && source.path === row.path);
   const cloud = rows.some((row) => isCloudSource(row.location));
   const missing = cloud ? (data.mount_dependencies ?? []).filter((dependency) => !dependency.available) : [];
   return (
@@ -287,9 +292,12 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
                     onChange={(value) => editLibrary(first, { library_stages: AUTO_STAGES.filter(stage => value.includes(stage)).join(',') })} />
                   : null}
                 <div data-library-folders="" role="group" aria-label={t('settings:mediaLibraries.directoriesLabel', { name })}>
-                {members.map(({ row, index }) => (
+                {members.map(({ row, index }) => {
+                  const login = savedSmbLogin(row);
+                  const clearingLogin = Boolean(login && row.smb_clear);
+                  return (
                   <FolderRow key={index} label={t('settings:mediaLibraries.directoryLabel', { index: index + 1 })} path={row.path}
-                    onPath={(path) => edit(index, { path, transport: path.startsWith('smb://') ? 'smb' : row.transport })} error={rowErrors[index]} inputRef={inputRef(index)}
+                    onPath={(path) => edit(index, { path, transport: path.startsWith('smb://') ? 'smb' : row.transport, smb_clear: false })} error={rowErrors[index]} inputRef={inputRef(index)}
                     picking={picking === index} onPick={() => void pick(index)}
                     onRemove={rows.length > 1 ? () => remove(index) : undefined}
                     status={mountOf(row) ? <MountBadge online={mountOf(row)?.online} /> : null}>
@@ -297,7 +305,7 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
                     <SourceSelect index={index} value={row.transport === 'smb' ? 'smb' : row.location} options={sourceOptions}
                       onChange={(source) => {
                         const smb = source === 'smb';
-                        edit(index, { transport: smb ? 'smb' : 'filesystem', location: smb ? 'local' : source, cost: smb || source === 'local' ? 'free' : '',
+                        edit(index, { transport: smb ? 'smb' : 'filesystem', location: smb ? 'local' : source, cost: smb || source === 'local' ? 'free' : '', smb_clear: false,
                           path: smb ? (row.path.startsWith('smb://') ? row.path : 'smb://')
                             : row.path.startsWith('smb://') ? '' : row.path });
                         setSmbResults(current => { const next = { ...current }; delete next[index]; return next; });
@@ -332,33 +340,36 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
                     {row.transport === 'smb' ? <div className="flex w-full flex-col gap-2">
                       <FolderFieldLine>
                         <FolderField label={t('settings:smbShare.account')} className="w-full @lg:flex-1">
-                          {/* 勾了「移除账号」保存时只清凭据，账号、密码与加密都不读：一起禁用。 */}
                           <Input aria-label={t('settings:smbShare.accountLabel', { index: index + 1 })} value={row.smb_username || ''}
-                            autoComplete="off" isDisabled={row.smb_clear} onChange={value => edit(index, { smb_username: value })} />
+                            autoComplete="off" isDisabled={clearingLogin} onChange={value => edit(index, { smb_username: value })} />
                         </FolderField>
                         <FolderField label={t('settings:smbShare.password')} className="w-full @lg:flex-1">
                           <Input aria-label={t('settings:smbShare.passwordLabel', { index: index + 1 })} type="password" value={row.smb_password || ''}
-                            autoComplete="new-password" placeholder={row.smb_password_saved ? t('settings:smbShare.keepPassword') : ''}
-                            isDisabled={row.smb_clear} onChange={value => edit(index, { smb_password: value })} />
+                            autoComplete="new-password" placeholder={login?.smb_password_saved ? t('settings:smbShare.keepPassword') : ''}
+                            isDisabled={clearingLogin} onChange={value => edit(index, { smb_password: value })} />
                         </FolderField>
                       </FolderFieldLine>
-                      <Checkbox isSelected={row.smb_encrypt || false} isDisabled={row.smb_clear} onChange={value => edit(index, { smb_encrypt: value })}>{t('settings:smbShare.requireEncryption')}</Checkbox>
-                      <Checkbox isSelected={row.smb_clear || false} onChange={value => edit(index, { smb_clear: value })}>{t('settings:smbShare.removeAccount')}</Checkbox>
-                      <Button className="self-start" variant="secondary" {...busyProps(action.busy === `smb-${index}`)}
-                        onClick={() => void action.run(`smb-${index}`, signal => apiSend<{ readable: boolean; directories: string[] }>(
-                          '/api/configuration/smb/test', row, 'POST', signal), result => {
-                          const message = t('settings:smbShare.readable');
-                          setSmbResults(current => ({ ...current, [index]: { message, directories: result.directories } }));
-                          checked(message);
-                        }, cause => {
-                          const message = errorMessage(cause);
-                          setSmbResults(current => ({ ...current, [index]: { message, directories: [] } }));
-                          checkFailed(t('settings:connectionCheck.action', { service: 'SMB' }), message);
-                        })}>{t('settings:smbShare.testConnection')}</Button>
+                      {login ? <Checkbox isSelected={clearingLogin} onChange={value => edit(index, { smb_clear: value })}>{t('settings:smbShare.removeAccount')}</Checkbox> : null}
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <Switch data-smb-encryption=""
+                          isSelected={row.smb_encrypt || false} isDisabled={clearingLogin}
+                          onChange={value => edit(index, { smb_encrypt: value })}>{t('settings:smbShare.requireEncryption')}</Switch>
+                        <Button className="ml-auto" variant="secondary" {...busyProps(action.busy === `smb-${index}`)}
+                          onClick={() => void action.run(`smb-${index}`, signal => apiSend<{ readable: boolean; directories: string[] }>(
+                            '/api/configuration/smb/test', row, 'POST', signal), result => {
+                            const message = t('settings:smbShare.readable');
+                            setSmbResults(current => ({ ...current, [index]: { message, directories: result.directories } }));
+                            checked(message);
+                          }, cause => {
+                            const message = errorMessage(cause);
+                            setSmbResults(current => ({ ...current, [index]: { message, directories: [] } }));
+                            checkFailed(t('settings:connectionCheck.action', { service: 'SMB' }), message);
+                          })}>{t('settings:smbShare.testConnection')}</Button>
+                      </div>
                       {smbResults[index] ? <Help>{smbResults[index].message}</Help> : null}
                       {smbResults[index]?.directories.length ? <Select aria-label={t('settings:smbShare.subdirectoryLabel', { index: index + 1 })} placeholder={t('settings:smbShare.openSubdirectory')}
                         selectedKey={null} onSelectionChange={key => { if (key) {
-                          edit(index, { path: row.path.replace(/\/$/, '') + '/' + encodeURIComponent(String(key)) });
+                          edit(index, { path: row.path.replace(/\/$/, '') + '/' + encodeURIComponent(String(key)), smb_clear: false });
                           setSmbResults(current => ({ ...current, [index]: { message: t('settings:smbShare.testSubdirectory'), directories: [] } }));
                         } }}>
                         {smbResults[index].directories.map(name => <SelectItem key={name} id={name}>{name}</SelectItem>)}
@@ -366,7 +377,8 @@ function MediaForm({ data, receipt }: ConfigurationGroupProps) {
                       <Help>{t('settings:smbShare.help')}</Help>
                     </div> : null}
                   </FolderRow>
-                ))}
+                  );
+                })}
                 {/* 每个媒体库自己的「添加文件夹」：新文件夹直接挂进这一库，共用它的名称、颜色与处理方式，来源与读取策略先沿用这一库第一个文件夹。 */}
                 <div className="flex">
                   <Button variant="secondary" aria-label={t('settings:mediaLibraries.addDirectoryLabel', { name })} onClick={() => {

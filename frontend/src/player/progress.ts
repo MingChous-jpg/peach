@@ -95,7 +95,9 @@ function syncPosition(key: string, position: Position) {
 export function playbackPosition(key: string, item: PlayerItem, restartPercent = 0, preferred?: Position): number {
   const duration = realDuration(item.duration);
   const ratio = Number(item.leave_ratio);
-  const time = (preferred ?? storedPosition(key))?.seconds ?? (ratio > 0 && ratio < 1 ? ratio * duration : 0);
+  const local = storedPosition(key);
+  const newest = preferred && (!local || preferred.updated_at >= local.updated_at) ? preferred : local;
+  const time = newest?.seconds ?? (ratio > 0 && ratio < 1 ? ratio * duration : 0);
   return restartPercent > 0 && duration > 0 && time >= duration * (1 - restartPercent / 100) ? 0 : time;
 }
 

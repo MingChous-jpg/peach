@@ -3,7 +3,7 @@
  * Peach 与 qBittorrent 可以不同机：这里只填下载器地址、账号和「下载器保存目录 →
  * Peach 媒体库目录」的映射。下载完成后由服务端按这张映射登记，Peach 通过本地挂载或
  * SMB 或 WebDAV 盘符读取同一个目录。密码只往本机凭据文件写，读接口只回「存没存过」。 */
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type MouseEvent } from 'react';
 import { spinnerHtml } from '@peach/legacy/ui';
 
 import { Button } from '@/components/base/buttons/button';
@@ -23,8 +23,15 @@ import {
 } from './section';
 import { busyProps, useAction } from './use-action';
 import { useCheckReceipt } from './use-check-receipt';
+import { downloadAddressError, invalidDownloadPath, trimDownloadAddress, useFieldValidation } from './field-validation';
 
 const CHECK_URL = '/api/configuration/downloads/qbittorrent/check';
+const addressError = (value: string) => {
+  const code = downloadAddressError(value);
+  return code ? serverLabel(code, '', { label: 'qBittorrent' }) : '';
+};
+const pathError = (value: string) => invalidDownloadPath(value)
+  ? serverLabel('errors.downloads.localTargetInvalid', '') : '';
 
 /** 只挑 qBittorrent 自己的问题：品牌名在两种语言里都不变，按它认。 */
 const qbProblems = (state: DownloadSettingsState): string[] =>
@@ -60,6 +67,9 @@ export function LocalDownloadSettings({ state, settle, receipt }: {
   const [report, setReport] = useState<QbittorrentCheckReport | null>(null);
   const [failure, setFailure] = useState('');
   const action = useAction();
+  const validation = useFieldValidation<'address' | 'savePath' | 'mediaRoot'>();
+  const { errors } = validation;
+  const mediaRootErrorId = useId();
 
   useEffect(() => {
     setAddress(saved.address);
@@ -79,7 +89,25 @@ export function LocalDownloadSettings({ state, settle, receipt }: {
     clear_qbittorrent_password: clearPassword,
   };
 
-  const check = () => {
+  const validate = (form: HTMLFormElement | null, checking: boolean) => {
+    const hasAddress = Boolean(trimDownloadAddress(address));
+    const keepDisconnected = !checking && !hasAddress && (Boolean(saved.address) || clearPassword);
+    const next = {
+      address: !keepDisconnected && !hasAddress ? serverLabel('labels.downloadsQbittorrent.addressMissing', '') : addressError(address),
+      savePath: pathError(savePath),
+      mediaRoot: !keepDisconnected && !mediaRoot ? serverLabel('labels.downloadsQbittorrent.mediaRootMissing', '')
+        : mediaRoot && !localRoots.some(item => item.root.toLowerCase() === mediaRoot.toLowerCase())
+          ? serverLabel('errors.downloads.notLocalRoot', '', { root: mediaRoot, known: localRoots.map(item => item.root) }) : '',
+    };
+    setFailure('');
+    if (validation.check(form, next)) return true;
+    setReport(null);
+    return false;
+  };
+
+  const check = (event: MouseEvent<HTMLButtonElement>) => {
+    const form = event.currentTarget.form;
+    if (!validate(form, true)) return;
     const revision = savePathRevision.current;
     void action.run('check', (signal) => apiSend<QbittorrentCheckReport>(
       CHECK_URL, body, 'POST', signal), (next) => {
@@ -97,6 +125,7 @@ export function LocalDownloadSettings({ state, settle, receipt }: {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!validate(event.currentTarget, false)) return;
     void action.run('save', (signal) => apiSend<DownloadSaveResult>(
       '/api/configuration/downloads', body, 'POST', signal), (next) => {
       const { report: _cloud, qbittorrent_report: checked, ...settings } = next;
@@ -119,7 +148,9 @@ export function LocalDownloadSettings({ state, settle, receipt }: {
         <Help>{t('settings:localDownload.help')}</Help>
         <Input label={t('settings:localDownload.address')} placeholder={t('settings:localDownload.addressPlaceholder')}
           autoComplete="off" maxLength={200} value={address} isDisabled={!state.available}
-          onChange={setAddress} />
+          data-settings-field="address" validationBehavior="aria" isInvalid={Boolean(errors.address)} hint={errors.address}
+          onBlur={() => { if (address.trim()) validation.update('address', addressError(address)); }}
+          onChange={value => { setAddress(value); validation.update('address'); }} />
         <Input label={t('settings:localDownload.username')} autoComplete="username" maxLength={200} value={username}
           isDisabled={!state.available} onChange={setUsername} />
         <Input label={t('settings:localDownload.password')} type="password" autoComplete="current-password" maxLength={400}
@@ -129,13 +160,18 @@ export function LocalDownloadSettings({ state, settle, receipt }: {
           onChange={setClearPassword}>{t('settings:localDownload.clearPassword')}</Checkbox> : null}
         <Input label={t('settings:localDownload.savePath')} placeholder={t('settings:localDownload.savePathPlaceholder')}
           autoComplete="off" maxLength={500} value={savePath} isDisabled={!state.available}
-          hint={t('settings:localDownload.savePathHint')} onChange={value => { savePathRevision.current++; setSavePath(value) }} />
+          data-settings-field="savePath" validationBehavior="aria" isInvalid={Boolean(errors.savePath)}
+          hint={errors.savePath || t('settings:localDownload.savePathHint')}
+          onBlur={() => validation.update('savePath', pathError(savePath))}
+          onChange={value => { savePathRevision.current++; setSavePath(value); validation.update('savePath'); }} />
         <div className="flex flex-col gap-1">
           <FieldLabel>{t('settings:localDownload.mediaRoot')}</FieldLabel>
           {localRoots.length ? (
             <Select aria-label={t('settings:localDownload.mediaRoot')} selectedKey={mediaRoot || null}
+              aria-describedby={errors.mediaRoot ? mediaRootErrorId : undefined}
+              data-settings-field="mediaRoot" validationBehavior="aria" isInvalid={Boolean(errors.mediaRoot)}
               isDisabled={!state.available} placeholder={t('settings:localDownload.mediaRootPlaceholder')}
-              onSelectionChange={(key) => setMediaRoot(key === null ? '' : String(key))}>
+              onSelectionChange={(key) => { setMediaRoot(key === null ? '' : String(key)); validation.update('mediaRoot'); }}>
               {localRoots.map((row) => (
                 <SelectItem key={row.root} id={row.root} textValue={t('shell:format.withNote', { text: row.label, note: row.root })}>
                   {row.label} · {row.root}
@@ -143,14 +179,18 @@ export function LocalDownloadSettings({ state, settle, receipt }: {
               ))}
             </Select>
           ) : (
-            <Help>{t('settings:localDownload.noLocalRoots', { section: t('navigation:configurationSections.library') })}</Help>
+            errors.mediaRoot
+              ? <ErrorText>{t('settings:localDownload.noLocalRoots', { section: t('navigation:configurationSections.library') })}</ErrorText>
+              : <Help>{t('settings:localDownload.noLocalRoots', { section: t('navigation:configurationSections.library') })}</Help>
           )}
+          {errors.mediaRoot && localRoots.length ? <ErrorText id={mediaRootErrorId}>{errors.mediaRoot}</ErrorText> : null}
           <Help>{t('settings:localDownload.mediaRootHelp')}</Help>
         </div>
         {failure ? <ErrorText>{failure}</ErrorText> : null}
       </Stack>
       {report ? (
         <Stack divided>
+          <h4 className="text-body-medium text-text-primary" data-copy-key="settings.connectionCheck.results">{t('settings:connectionCheck.results')}</h4>
           <FactList>
             <Fact term={t('settings:localDownload.version')}>{report.version || t('settings:shared.notFound')}</Fact>
             <Fact term="WebAPI">{report.webapi_version || t('settings:shared.notFound')}</Fact>

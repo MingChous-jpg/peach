@@ -1,7 +1,7 @@
 (function() {
 	try {
 		var e = typeof globalThis < "u" ? globalThis : typeof window < "u" ? window : typeof global < "u" ? global : typeof self < "u" ? self : {}, t = new e.Error().stack;
-		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "abda3904-3910-4d9a-8b32-3874b5199644", e._sentryDebugIdIdentifier = "sentry-dbid-abda3904-3910-4d9a-8b32-3874b5199644");
+		t && (e._sentryDebugIds = e._sentryDebugIds || {}, e._sentryDebugIds[t] = "252a269b-a412-4023-a25a-041f79c6fff3", e._sentryDebugIdIdentifier = "sentry-dbid-252a269b-a412-4023-a25a-041f79c6fff3");
 	} catch {}
 })();
 import { Button as e, Checkbox as t, DUPLICATES_KEY as n, EmptyState as r, FilterActionButton as i, FilterGlassRows as a, FilterSearch as o, Gg as ee, H7 as te, ImageWithFallback as s, JZ as ne, KEEP_LABELS as c, KEPT_DUPLICATES_KEY as l, LOC as u, M6 as re, MEDIA_SOURCES_KEY as d, MEDIA_SOURCE_ICONS as f, Note as p, QueryErrorNote as m, SelectAllButton as ie, SelectionDock as ae, SortKeys as oe, SourceLabel as se, SourceMark as h, TRASH_KEY as ce, __toESM as le, batchOperate as g, bulkCloudPreferences as ue, busyProps as de, cardClass as _, cloudLocations as fe, confirmModal as pe, coverUrl as v, duplicateVictims as y, duplicatesSkeleton as me, enterPageSelection as b, errorMessage as he, exitPageSelection as ge, fetchDuplicates as _e, fetchKeptDuplicates as ve, fetchMediaSources as ye, fmtDur as x, fmtSize as S, groupKey as C, keepGroup as be, keepGroups as w, mixedCloudPreferences as xe, queryClient as T, qx as Se, require_jsx_runtime as E, require_react as D, runBulkAction as Ce, spriteGlyph as O, t as k, useMutation as we, usePageSelection as Te, useQuery as A, useQueueSort as Ee, useRectangleSelection as De, useWorkContextMenu as Oe, victimBytes as j } from "./peach-app.js";
@@ -305,6 +305,7 @@ function W({ openItem: ee, toast: s, failure: f }) {
 				size: S(j(e, r))
 			}) + k("shell:bulkAction.canUndo"),
 			confirmLabel: k("cleanup:duplicates.moveToTrash"),
+			danger: t === "all",
 			holdToConfirm: !0,
 			onConfirm: () => (D(n), W.mutateAsync(r))
 		});
@@ -324,6 +325,7 @@ function W({ openItem: ee, toast: s, failure: f }) {
 				size: S(j([e], r))
 			}) + k("shell:bulkAction.canUndo"),
 			confirmLabel: k("cleanup:duplicates.moveToTrash"),
+			danger: r.length === e.files.length,
 			holdToConfirm: !0,
 			onConfirm: () => (D(t), W.mutateAsync(r))
 		});
@@ -557,7 +559,7 @@ function W({ openItem: ee, toast: s, failure: f }) {
 										children: k("cleanup:duplicates.unkeep")
 									}) : /* @__PURE__ */ (0, P.jsxs)(P.Fragment, { children: [
 										/* @__PURE__ */ (0, P.jsx)(e, {
-											variant: "danger",
+											variant: "secondary",
 											size: "small",
 											...$(a("files")),
 											disabled: E !== "" || !n.files.some((e) => F.has(e.id)),
@@ -608,7 +610,7 @@ function W({ openItem: ee, toast: s, failure: f }) {
 											children: k("cleanup:duplicates.keepAll")
 										}),
 										/* @__PURE__ */ (0, P.jsx)(e, {
-											variant: "danger",
+											variant: "secondary",
 											size: "small",
 											...$(a("all")),
 											onClick: () => Q({
@@ -666,4 +668,4 @@ function W({ openItem: ee, toast: s, failure: f }) {
 }
 export { W as DuplicatesPage };
 
-//# debugId=abda3904-3910-4d9a-8b32-3874b5199644
+//# debugId=252a269b-a412-4023-a25a-041f79c6fff3

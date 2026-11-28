@@ -423,7 +423,7 @@ describe('设计决定：作品卡、管理页与复核', () => {
     }
   });
 
-  it('批量条的键是行内字形、计数是 --ink-2；批量条与清空回收站两颗危险键读同一组红', { timeout: 90_000 }, async () => {
+  it('批量条的键是行内字形、计数是 --ink-2；删除入口使用中性色', { timeout: 90_000 }, async () => {
     const opened = await openCatalogFixture(browser, {
       items: catalogVideos(2),
       trash: catalogVideos(2, 91_300).map(item => ({ ...item, disposal: 'trash' })),
@@ -439,23 +439,10 @@ describe('设计决定：作品卡、管理页与复核', () => {
       await settle(page);
       const read = await page.evaluate(() => {
         const dock = document.querySelector('[data-batch-dock] [data-selection-dock]')!;
-        /* 两颗危险键的静止面与悬停层各自读出来，再与直接解析 token 的探针比：同一份定义才会三者一致。 */
-        const probe = (token: string) => {
-          const node = document.createElement('div');
-          node.style.background = `var(${token})`;
-          document.body.append(node);
-          const value = getComputedStyle(node).backgroundImage;
-          node.remove();
-          return value;
+        const paint = (key: Element) => {
+          const style = getComputedStyle(key);
+          return [style.backgroundImage, getComputedStyle(key, '::before').backgroundImage, style.color];
         };
-        /* 渐变里各个色标换成像素再比：BoardUI 危险键用 oklch 写、`--board-red` 用 rgb 写，字面不同不等于颜色不同。 */
-        const stops = (gradient: string) => (gradient.match(/(?:rgba?|oklch|oklab|hsla?)\([^)]*\)/g) ?? []).map((color) => {
-          const context = document.createElement('canvas').getContext('2d')!;
-          context.fillStyle = color;
-          context.fillRect(0, 0, 1, 1);
-          return [...context.getImageData(0, 0, 1, 1).data].join(',');
-        });
-        const paint = (key: Element) => [getComputedStyle(key).backgroundImage, getComputedStyle(key, '::before').backgroundImage].map(stops);
         return {
           // 与文字同行的字形取 `--icon-inline`（1.2em），按所在文字字号算出应有的边长。
           glyphs: [...dock.querySelectorAll('button svg')].map((svg) => {
@@ -466,16 +453,14 @@ describe('设计决定：作品卡、管理页与复核', () => {
           count: getComputedStyle(dock.querySelector('[role="status"]')!).color,
           batch: paint(dock.querySelector('[data-batch-action="delete"]')!),
           empty: paint(document.querySelector('#trashFilter [data-empty-trash]')!),
-          raw: probe('--board-red'),
-          tokens: [probe('--board-red'), probe('--board-red-hover')].map(stops),
+          restore: paint(dock.querySelector('[data-batch-action="restore"]')!),
         };
       });
       assert.deepEqual(read.glyphs, [[true, true], [true, true], [true, true]], `批量条的字形没按行内字号缩放：${JSON.stringify(read.glyphs)}`);
       assert.equal(read.count, await tokenColor(page, 'body', '--ink-2'), '批量条的计数不是次级墨色');
-      assert.match(read.raw, /^linear-gradient/, `--board-red 没解析成渐变：${read.raw}`);
-      assert.ok(read.tokens[0]!.length >= 2, `--board-red 的色标没读出来：${JSON.stringify(read.tokens)}`);
-      assert.deepEqual(read.batch, read.tokens, `批量条「彻底删除」的红不是 --board-red 那一组：${JSON.stringify(read)}`);
-      assert.deepEqual(read.empty, read.tokens, `「清空回收站」的红不是 --board-red 那一组：${JSON.stringify(read)}`);
+      assert.deepEqual(read.batch, read.restore);
+      assert.deepEqual(read.empty.slice(0, 2), ['none', 'none']);
+      assert.equal(read.empty[2], await tokenColor(page, '#trashFilter', '--color-text-primary'));
     } finally {
       await opened.close();
     }
@@ -1311,7 +1296,7 @@ describe('设计决定：作品卡、管理页与复核', () => {
     }
   });
 
-  it('垃圾卡复用探索卡，键行同高居中，单击回收使用标准危险按钮', { timeout: 90_000 }, async () => {
+  it('垃圾卡复用探索卡，键行同高居中，移入回收站使用中性色', { timeout: 90_000 }, async () => {
     const opened = await openJunkWith(browser, [junkItem(9201, 'archive', '推广.zip'), junkItem(9202, 'url', '官网.url')]);
     try {
       const page = opened.page;
@@ -1339,26 +1324,8 @@ describe('设计决定：作品卡、管理页与复核', () => {
         // 计数徽标到货时玻璃带动画重新落位：跑完再量，量的是它停下的地方。
         document.querySelector('#count [data-view-glide]')?.getAnimations().forEach((one) => one.finish());
         const glide = rect(document.querySelector('#count [data-view-glide]:not([hidden])'));
-        /* 两颗危险键的静止面与悬停层各自读出来，再与直接解析 token 的探针比：同一份定义才会一致。 */
-        const probe = (token: string) => {
-          const node = document.createElement('div');
-          node.style.background = `var(${token})`;
-          document.body.append(node);
-          const value = getComputedStyle(node).backgroundImage;
-          node.remove();
-          return value;
-        };
-        /* 渐变里各个色标换成像素再比：BoardUI 危险键用 oklch 写、`--board-red` 用 rgb 写，字面不同不等于颜色不同。 */
-        const stops = (gradient: string) => (gradient.match(/(?:rgba?|oklch|oklab|hsla?)\([^)]*\)/g) ?? []).map((color) => {
-          const context = document.createElement('canvas').getContext('2d')!;
-          context.fillStyle = color;
-          context.fillRect(0, 0, 1, 1);
-          return [...context.getImageData(0, 0, 1, 1).data].join(',');
-        });
         const style = getComputedStyle(card);
-        return { edge: style.borderTopWidth, face: style.backgroundColor, keys: keys.map((key) => ({ ...key, paint: key.paint.map(stops) })),
-          links, glide, raw: probe('--board-red'),
-          red: [probe('--board-red'), probe('--board-red-hover')].map(stops),
+        return { edge: style.borderTopWidth, face: style.backgroundColor, keys, links, glide,
           actionsBottom: Math.abs(card.getBoundingClientRect().bottom - card.querySelector('[data-junk-actions]')!.getBoundingClientRect().bottom) };
       });
       const wide = await read();
@@ -1371,14 +1338,10 @@ describe('设计决定：作品卡、管理页与复核', () => {
         assert.equal(key.height, 36, `${key.action} 高 ${key.height}`);
       }
       const dispose = wide.keys.find((key) => key.action === 'dispose')!;
-      assert.match(wide.raw, /^linear-gradient/, `--board-red 没解析成渐变：${wide.raw}`);
-      assert.ok(wide.red[0]!.length >= 2, `--board-red 的色标没读出来：${JSON.stringify(wide.red)}`);
+      const decision = wide.keys.find((key) => key.action === 'dismiss-junk')!;
       assert.equal(dispose.hold, false);
-      assert.deepEqual(dispose.paint, wide.red);
-      assert.equal(dispose.ink, await tokenColor(page, '#grid [data-junk-card]', '--color-text-white'));
-      for (const key of wide.keys.filter((one) => one.action !== 'dispose')) {
-        assert.notDeepEqual(key.paint, wide.red, `${key.action} 也画成了红键`);
-      }
+      assert.deepEqual(dispose.paint, ['none', 'none']);
+      assert.deepEqual([dispose.background, dispose.ink], [decision.background, decision.ink]);
       const current = wide.links.filter((link) => link.current);
       assert.equal(current.length, 1);
       // 分类条是首页筛选条那一副：键自己不铺底，当前那一类底下垫的是那块滑动玻璃。

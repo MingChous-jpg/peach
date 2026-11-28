@@ -71,10 +71,10 @@ export function shuffleFollowFeed(){followState.controller.shuffle()}
 
 export function enterFollow(fresh=false){followState.controller.enter(fresh)}
 
-export async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=false){
+export async function openFollowDetail(id,push=true,mediaIndex=null,preserveReturn=false,resume=null){
   if(push){
     if(!location.pathname.startsWith('/posts/')&&!preserveReturn)writeShell({followDetailReturnPath:location.pathname+location.search});
-    requestOverlay(`/posts/${+id}`,'follow',()=>openFollowDetail(id,false,mediaIndex,preserveReturn));
+    requestOverlay(`/posts/${+id}`,'follow',()=>openFollowDetail(id,false,mediaIndex,preserveReturn,resume));
     return;
   }
   releaseHoverPreviews();
@@ -91,7 +91,7 @@ export async function openFollowDetail(id,push=true,mediaIndex=null,preserveRetu
   const stage=await loadStage(mediaState.stageHost);
   await stage.open({kind:'follow',id,mediaIndex,mediaView:followState.followMediaView,
     relatedLimit:preferencesState.appSettings.relatedLimit>0?+preferencesState.appSettings.relatedLimit:0,
-    helpers:followState.followFeedHelpers,actions:followState.followDetailActions,resume:push?null:urlResume()});
+    helpers:followState.followFeedHelpers,actions:followState.followDetailActions,resume:resume??(push?null:urlResume())});
   scheduleStickySurfaces();
 }
 

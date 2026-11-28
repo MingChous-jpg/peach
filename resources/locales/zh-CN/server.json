@@ -1011,6 +1011,7 @@
       "deviceGone": "这台设备已经不在列表里了",
       "dockerUpdateOnly": "只有 Docker 镜像有一键更新",
       "enabledNotBoolean": "enabled 必须是 true 或 false",
+      "desktopAlertsUnavailable": "请在运行 Windows 托盘或 Mac 菜单栏的电脑上配置桌面提醒。",
       "errorLogUnwritable": "错误日志无法写入",
       "fieldNotText": "{{field}} 必须是文字",
       "fileManaged": "此部署通过配置文件管理服务",
@@ -1024,6 +1025,7 @@
       "noLocalCertificate": "这台电脑没有提供 HTTPS 的本机证书",
       "noUpgradeReview": "暂无升级复核记录",
       "openDiagnosticsOnHost": "请在运行 Peach 的电脑上打开系统诊断",
+      "startupCaptureUnavailable": "无法更新本机启动诊断",
       "openOnHost": "请在运行 Peach 的电脑上打开配置",
       "passwordNotText": "密码需要是文字",
       "passwordRequired": "请输入访问密码",
@@ -1868,6 +1870,7 @@
       "tooManyIndexers": "最多配置 {{max}} 个索引器",
       "indexerNotObject": "索引器配置必须是对象",
       "invalidIndexerKey": "索引器编号为空或重复",
+      "invalidRetrySource": "此搜索来源已不可用",
       "invalidIndexerName": "索引器名称须为 1 到 80 个字符",
       "invalidApiKey": "API key 格式不正确",
       "invalidSizeRange": "体积区间须在 0 到 1 TiB 之间，下限不能大于上限",
@@ -3538,6 +3541,18 @@
       "accepted": "正在卸载，Peach 将退出。完成后可关闭此页。"
     },
     "backgroundIssues": {
+      "mediaCapacity": {
+        "title": "存储容量不足，媒体修复已暂停",
+        "link": "打开修复设置"
+      },
+      "mediaMounts": {
+        "title": "媒体挂载需要处理",
+        "link": "打开系统诊断"
+      },
+      "sourceAuth": {
+        "title": "来源需要重新验证 · {{source}}",
+        "link": "打开来源设置"
+      },
       "pushDiscovery": {
         "title": "自动发现新文件入库失败",
         "link": "打开推送设置"
@@ -4812,6 +4827,13 @@
     }
   },
   "tray": {
+    "desktopAlerts": {
+      "startup": "Peach 启动遇到问题，请查看启动诊断。",
+      "service": "Peach 服务持续不可用，请查看系统诊断。",
+      "database": "Peach 无法读取媒体库数据库，请查看系统诊断。",
+      "mounts": "媒体库目录持续无法访问，请检查挂载状态。",
+      "capacity": "容量保护已暂停部分后台处理，请查看容量设置。"
+    },
     "listSeparator": "、",
     "clauseSeparator": "；",
     "menu": {

@@ -1,7 +1,7 @@
 """资源搜索的只读 Web 契约；下载仍由云下载写入口接收。"""
 from .coded_text import parallel
 from .javdb_public import public_cache_scope
-from .magnet_chain import HIGH_QUALITY, edition_rank, rank_candidates, search as direct_search
+from .magnet_chain import CHAIN, HIGH_QUALITY, edition_rank, rank_candidates, search as direct_search
 from .resource_search import Filters, Indexers, Search
 from .user_messages import UserValueError
 
@@ -19,6 +19,14 @@ def _merged_error(direct: dict, indexed: dict) -> dict:
 
 def auto_resource_search(contract, args) -> dict:
     return q_resource_search(contract, args, edition_preferences=contract.downloads.config.edition_preferences)
+
+
+def _retry_indexer(credentials, source: str, code: str, filters: Filters, excluded: set[str]) -> dict:
+    indexers = [row for row in Indexers(credentials).load()
+                if row["enabled"] and f"indexer:{row['key']}" == source]
+    if not indexers:
+        raise UserValueError("errors.resourceSearch.invalidRetrySource")
+    return _SEARCH.run(indexers, code, filters, sorted(excluded), retry=True)
 
 
 def q_resource_search(contract, args, *, edition_preferences: tuple[str, ...] = ()) -> dict:
@@ -40,12 +48,20 @@ def q_resource_search(contract, args, *, edition_preferences: tuple[str, ...] = 
     skip = list(map(str, raw_skip)) if isinstance(raw_skip, (list, tuple)) else []
     excluded = set(blocked) | set(skip)
     code = str(args.get("code") or "")
+    retry_source = str(args.get("retry_source") or "")
+    if retry_source.startswith("indexer:"):
+        return _retry_indexer(service.credentials, retry_source, code, filters, excluded)
+    if retry_source and retry_source not in {source.key for source in CHAIN[:4]}:
+        raise UserValueError("errors.resourceSearch.invalidRetrySource")
     with public_cache_scope(contract.cover_root.parent / 'jav-public'):
+        options = {"retry_source": retry_source} if retry_source else {}
         direct = direct_search(
             contract.follow_secrets_root, code, min_size=filters.min_size,
             max_size=filters.max_size, goal=filters.goal, stop_on_preferred=not skip,
-            edition_preferences=edition_preferences)
+            edition_preferences=edition_preferences, **options)
     direct["items"] = [row for row in direct["items"] if row["info_hash"] not in excluded]
+    if retry_source:
+        return direct
     # manko.fun 给出高清候选时按用户指定的优先级短路，不再消耗后备索引器请求。
     if not skip and not edition_preferences and direct["items"] and direct["items"][0]["source"] == "manko.fun" \
             and direct["items"][0]["resolution"] >= HIGH_QUALITY:
@@ -75,7 +91,9 @@ def _combine_search_results(direct: dict, indexed: dict, code: str, goal: str,
         "state": "ready" if ready else indexer_state,
         "items": rank_candidates(combined, goal, code=code, edition_preferences=edition_preferences),
         "warnings": warnings, **parallel("warning", warnings),
-        "warning_sources": (direct.get("warning_sources") or [""] * len(direct["warnings"])) + [""] * len(indexer_warnings),
+        "warning_sources": (direct.get("warning_sources") or [""] * len(direct["warnings"]))
+                           + (indexed.get("warning_sources") or [""] * len(indexer_warnings)),
+        "retry_sources": [*(direct.get("retry_sources") or ()), *(indexed.get("retry_sources") or ())],
         "trace": direct["trace"] + (["indexer fallback: queried"] if indexed.get("state") != "unavailable" else []),
         "next_sources": direct["next_sources"], "reference_only": direct["reference_only"],
         # 后备索引器答复了也补不上直连来源没查成的那部分：浏览器添加据此等来源恢复，不记成无资源。

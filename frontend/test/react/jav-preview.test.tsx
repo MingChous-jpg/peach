@@ -117,7 +117,7 @@ it('没有封面而有样张时仍停在封面那格，写出取图记录的原�
   } finally { await unmount(); vi.unstubAllGlobals() }
 });
 
-it('预告没取到时在预告的位置说明，点它重取整页资料', async () => {
+it('预告没取到时在预告的位置说明，点它单独重取预告', async () => {
   const { fetcher, host, unmount } = await mountDetail({ ...missingCover, has_cover: true, preview_message: 'DMM 视频预览查询失败，请稍后重试' },
     { ...missingCover, has_cover: true });
   try {
@@ -127,7 +127,7 @@ it('预告没取到时在预告的位置说明，点它重取整页资料', asyn
     expect(tag.getAttribute('title')).toBe('DMM 视频预览查询失败，请稍后重试');
     await click(tag);
     await settle();
-    expect(String(fetcher.mock.calls[0]?.[0])).toBe('/api/jav/detail?code=EXM-002&refresh=1');
+    expect(String(fetcher.mock.calls[0]?.[0])).toBe('/api/jav/detail?code=EXM-002&part=preview&refresh=1');
   } finally { await unmount(); vi.unstubAllGlobals() }
 });
 

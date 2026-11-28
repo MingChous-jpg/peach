@@ -44,7 +44,7 @@ media = [
 sync = [
     "test_sync*.py", "test_platform.py", "test_mount.py", "test_tray*.py", "test_macos_standalone.py",
     "test_log_retention.py", "test_mdns.py", "test_netwatch.py", "test_certs.py", "test_review_mirror.py",
-    "test_runtime_prepare.py", "test_listening.py",
+    "test_runtime_prepare.py", "test_listening.py", "test_desktop_alerts.py",
 ]
 metadata = [
     "test_junk_visual.py", "test_custom_metadata.py", "test_scraping_access.py", "test_browser_transport.py", "test_metadata*.py",

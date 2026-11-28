@@ -93,8 +93,8 @@ export function Help({ role, children }: { role?: 'status'; children: ReactNode 
   return <p role={role} className="text-body-2-regular text-text-secondary">{children}</p>;
 }
 
-export function ErrorText({ children }: { children: ReactNode }) {
-  return <p role="alert" className="text-body-2-regular text-text-error-primary">{children}</p>;
+export function ErrorText({ children, id }: { children: ReactNode; id?: string }) {
+  return <p id={id} role="alert" className="text-body-2-regular text-text-error-primary">{children}</p>;
 }
 
 /** 设置页做不了、要在宿主机上照抄执行的几步：每步一句说明加一条命令（容器的迁移与更新）。 */

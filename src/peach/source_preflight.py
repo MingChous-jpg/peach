@@ -38,7 +38,8 @@ def default_sources() -> list[str]:
 
 
 def check_sources(secrets_root: Path, sources: list[str] | None = None, *,
-                  on_result: Callable[[dict], None] | None = None) -> dict:
+                  on_result: Callable[[dict], None] | None = None,
+                  targets: dict[str, set[str]] | None = None) -> dict:
     """最多四个来源同时检查。`on_result` 在调用方线程按完成先后收到每个来源：
     后台任务的进度登记依赖调用方线程上下文；返回的 `sources` 仍按选择顺序排。"""
     selected = list(dict.fromkeys(sources if sources is not None else default_sources()))
@@ -46,13 +47,14 @@ def check_sources(secrets_root: Path, sources: list[str] | None = None, *,
         raise UserValueError("errors.sourcePreflight.unknownSource")
 
     def check(source):
-        result = check_source(secrets_root, source, preflight=True)
-        targets = []
+        options = {'targets': targets[source]} if targets is not None else {}
+        result = check_source(secrets_root, source, preflight=True, **options)
+        checks = []
         for target in result["results"]:
             key = outcome(target)
-            targets.append({**target, "outcome": key, **coded("outcome_label", Said(OUTCOME_LABEL_CODES[key]))})
+            checks.append({**target, "outcome": key, **coded("outcome_label", Said(OUTCOME_LABEL_CODES[key]))})
         return {"source": source, **coded("label", SOURCES[source]["label"]),
-                "results": targets, "session_verified": False}
+                "results": checks, "session_verified": False}
 
     started = time.monotonic()
     finished: dict[str, dict] = {}

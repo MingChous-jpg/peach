@@ -594,6 +594,20 @@
       ]
     },
     {
+      "id": "boardui-notification-center",
+      "cadence": "weekly",
+      "name": "BoardUI Notification Center 注册表",
+      "url": "https://www.boardui.com/r/notification-center.json",
+      "snapshot": "docs/reference-snapshots/upstream/boardui-notification-center.json",
+      "checked_on": "2026-11-28",
+      "sha256": "bcf1125ceda15772f1a8e9e313e7e52391e286d0655e04bf73bdd4477cb94f9e",
+      "role": "通知中心采用上游分段筛选、未读状态与独立卡片。Peach 接入本机通知、导航和右侧重试。",
+      "consumers": [
+        "frontend/src/react/components/board-notification-center.tsx",
+        "frontend/src/react/boardui/ORIGIN.md"
+      ]
+    },
+    {
       "id": "boardui-modal",
       "cadence": "weekly",
       "name": "BoardUI Modal 组件源",

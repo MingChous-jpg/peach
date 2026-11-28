@@ -6,6 +6,10 @@
 
 `GET /api/result-updates` 是每个页面常驻的那一处轻量检查：返回结果版本 `result_versions`、入库通知 `ingest_notices`、有没有任务在排或在跑 `busy`，以及在排在跑的任务 `running_tasks`。`running_tasks` 每个 `task_key` 一项 `{task_key, run_id, status}`，按 `task_key` 排序；有一轮在跑时 `status` 为 `running`、`run_id` 是在跑的最新一轮，只在排队时为 `pending` 与最新排进来的那一轮，没有任务时是空数组。页面有任务时每 5 秒、闲着每 10 秒读一次，读失败按 4、8、16、30 秒退避；其余页面只读这份缓存决定要不要开始读自己的任务进度，闲着时不各自轮询。
 
+顶栏通知中心复用 `GET /api/background-issues` 的待处理事项和 `GET /api/result-updates` 的入库回执。打开下拉后才读取续播和近期结果。`GET /api/player/recent` 返回最近播放的候选、已保存的续播位置，以及馆藏卡片的封面、署名和标签。在线续播返回同一条关注帖子的来源和标签。接口需要登录，响应不缓存。`GET /api/notification-context` 的配置建议和诊断摘要只提供给当前实例的本机管理客户端。
+
+在「想要」和作品详情里，`GET /api/wants/magnets` 与 `GET /api/jav/resources` 接受 `retry_source`。来源必须来自上次的可重试列表，返回合并后的资源和失败状态。JAV 详情的 `part=preview` 只刷新预告，`part=metadata&refresh=1` 只刷新资料。`POST /api/scraping/check-all` 用 `retry_failed: true` 重检上轮未取到的网络与 HTTP 目标，保留其它结果。登录和冷却问题仍走各自的恢复入口。
+
 馆藏处理的 `POST /api/library-processing` 支持按 `job_id` 暂停、继续、取消及归档结束提示；`stopping` 仍占用当前范围，`cancelled` 不自动恢复。`scope=new` 在启动时解析成固定资产集合，不与 `asset_ids` 或失败重试混用。状态只返回新入库数量，不下发内部处理路径。
 
 `GET /api/library-processing/issues` 返回任务号、内容摘要 `revision`、总数、偏移和记录。导出后续页传入首份摘要；同任务追加、恢复或记录替换时拒绝混合读取。旧完整问题数组可分页读取，原始记录缺失或损坏作为失败返回。

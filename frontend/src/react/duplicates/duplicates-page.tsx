@@ -289,6 +289,7 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
         count: ids.length, groups: chosenGroups.length, keep: KEEP_LABELS[rule] ?? KEEP_LABELS.largest, size: fmtSize(victimBytes(chosenGroups, ids)) })
         + t('shell:bulkAction.canUndo'),
       confirmLabel: t('cleanup:duplicates.moveToTrash'),
+      danger: rule === 'all',
       holdToConfirm: true,
       onConfirm: () => { setPending(key); return dispose.mutateAsync(ids) },
     });
@@ -310,7 +311,7 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
       body: t('cleanup:duplicates.selectedTrashBody', {
         count: ids.length, remaining: group.files.length - ids.length, size: fmtSize(victimBytes([group], ids)),
       }) + t('shell:bulkAction.canUndo'),
-      confirmLabel: t('cleanup:duplicates.moveToTrash'), holdToConfirm: true,
+      confirmLabel: t('cleanup:duplicates.moveToTrash'), danger: ids.length === group.files.length, holdToConfirm: true,
       onConfirm: () => { setPending(key); return dispose.mutateAsync(ids) },
     });
   };
@@ -441,7 +442,7 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
                       ? <Button variant="secondary" size="small" {...busy(key('unkeep'))}
                           onClick={() => keepOne(group, key('unkeep'), false)}>{t('cleanup:duplicates.unkeep')}</Button>
                       : <>
-                          <Button variant="danger" size="small" {...busy(key('files'))}
+                          <Button variant="secondary" size="small" {...busy(key('files'))}
                             disabled={pending !== '' || !group.files.some((file) => pickedFiles.has(file.id))}
                             onClick={() => runFiles(group, key('files'))}>
                             {t('cleanup:duplicates.trashSelectedFiles', { count: group.files.filter((file) => pickedFiles.has(file.id)).length })}
@@ -458,7 +459,7 @@ export function DuplicatesPage({ openItem, toast, failure }: DuplicatesProps) {
                           ))}
                           <Button variant="secondary" size="small" {...busy(key('keep'))}
                             onClick={() => keepOne(group, key('keep'), true)}>{t('cleanup:duplicates.keepAll')}</Button>
-                          <Button variant="danger" size="small" {...busy(key('all'))}
+                          <Button variant="secondary" size="small" {...busy(key('all'))}
                             onClick={() => run({ groups: one, keep: 'all', key: key('all') })}>{t('cleanup:duplicates.trashGroup')}</Button>
                         </>}
                   </span>
