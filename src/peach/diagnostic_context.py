@@ -19,6 +19,7 @@ BROWSER_BOOL = ('mobile', 'secure_context', 'online', 'cookies_enabled', 'local_
                 'web_codecs', 'fullscreen', 'picture_in_picture')
 BROWSER_NUMBERS = ('viewport_width', 'viewport_height', 'pixel_ratio', 'touch_points', 'logical_processors', 'device_memory_gb', 'utc_offset_minutes')
 PLAYBACK_NUMBERS = ('code', 'network_state', 'ready_state', 'current_time', 'duration', 'volume', 'playback_rate', 'video_width', 'video_height', 'asset_id')
+PERFORMANCE_PHASES = frozenset({'page-load', 'page-data', 'playback-plan', 'playback-start', 'playback-buffer'})
 
 
 def _fields(value, *, texts=(), booleans=(), numbers=()):
@@ -93,6 +94,14 @@ def playback(value):
             numbers=('duration_ms', 'transfer_bytes', 'body_bytes', 'status')), 'route': row['route']}
             for row in requests[-8:] if isinstance(row, dict) and isinstance(row.get('route'), str) and route.fullmatch(row['route'])]
     return result
+
+
+def performance_timing(phase, value):
+    fields = _fields(value, numbers=('elapsed_ms', 'ttfb_ms', 'headers_ms', 'asset_id', 'ready_state'),
+                     booleans=('pending',))
+    if phase not in PERFORMANCE_PHASES or not 1000 <= fields.get('elapsed_ms', 0) <= 600_000:
+        return None
+    return {'phase': phase, **{key: item for key, item in fields.items() if item >= 0}}
 
 
 def host_kind(value):

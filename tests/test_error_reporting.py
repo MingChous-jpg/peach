@@ -652,6 +652,29 @@ class ErrorReportingTests(unittest.TestCase):
             self.assertEqual(client.post(path, json={'message': f'failure {index}'}).status_code, 200)
         self.assertEqual(client.post(path, json={'message': 'another failure'}).status_code, 429)
 
+    def test_slow_playback_records_only_timing_on_the_local_host(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        from types import SimpleNamespace
+        from peach import routes_configuration, remote_reporting
+
+        app = FastAPI()
+        app.include_router(routes_configuration.router)
+        app.state.settings = SimpleNamespace(mdns_name='peach', token='', access_path=self.root / 'access.json')
+        client = TestClient(app, base_url='http://127.0.0.1', client=('127.0.0.1', 1234))
+        path = '/api/diagnostics/client-error'
+        with mock.patch.object(remote_reporting, 'capture') as capture:
+            reply = client.post(path, json={'kind': 'performance', 'message': 'playback-start', 'page': '/private',
+                'timing': {'elapsed_ms': 5100, 'ttfb_ms': 3000, 'asset_id': 7, 'pending': True, 'url': 'private-url'}})
+            wrong = client.post(path, json={'kind': 'performance', 'message': 'unknown',
+                                           'timing': {'elapsed_ms': 5000}})
+        self.assertEqual((reply.status_code, wrong.status_code), (200, 400))
+        capture.assert_not_called()
+        row, = self.records()
+        self.assertEqual((row['stage'], row['phase'], row['elapsed_ms'], row['ttfb_ms'], row['pending']),
+                         ('browser-performance', 'playback-start', 5100, 3000, True))
+        self.assertNotIn('private', str(row))
+
     def test_uncaught_import_and_thread_failures_are_saved_without_a_console(self):
         result = self.probe("import sys, threading; from peach import error_reporting as e; "
                             "e.install(); sys.stderr=None; "

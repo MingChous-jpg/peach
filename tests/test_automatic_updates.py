@@ -150,6 +150,20 @@ class AutomaticUpdateTests(unittest.TestCase):
             start.assert_not_called()
         self.assertNotIn("error", self.updates.read(), "没有应用内安装的系统不能每轮记一次下载失败")
 
+    def test_ready_download_hides_the_earlier_automatic_start_error_for_that_version(self):
+        from peach import release_updates
+
+        self.updates.write({'mode': 'download', 'interval_hours': 24, 'error': 'start failed', 'checked_at': 3000,
+                            'listing_rule': release_updates.LISTING_RULE,
+                            'result': {'current_version': release_updates.snapshot()['current_version'],
+                                       'latest_version': '9.0.0', 'state': 'available'}})
+        ready = {'state': 'ready', 'version': '9.0.0', 'updated_at': 4000}
+        with patch('peach.standalone_update.public', return_value=ready) as report:
+            self.assertNotIn('error', self.updates.snapshot())
+            self.assertIn('error', self.updates.read())
+            report.return_value = {**ready, 'version': '8.0.0'}
+            self.assertIn('error', self.updates.snapshot())
+
     def test_unmanaged_and_corrupt_settings_fail_closed(self):
         other = AutomaticUpdates(self.root, available=False)
         with self.assertRaises(ValueError):

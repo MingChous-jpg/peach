@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.resetModules() });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.resetModules() });
 
 function reports(transport: { mock: { calls: unknown[][] } }): [string, { body: string }][] {
   return transport.mock.calls.filter(call => JSON.parse(String((call[1] as RequestInit).body)).kind !== 'context') as [string, { body: string }][];
@@ -85,7 +85,7 @@ it('浏览器异常有上限、去重，网络失败不会触发递归上报', a
   vi.stubGlobal('fetch', fetch);
   const { installErrorReporting } = await import('../src/error-reporting');
   installErrorReporting(); installErrorReporting();
-  expect(listeners.size).toBe(2);
+  expect(listeners).toHaveProperty('size', document.readyState === 'complete' ? 2 : 3);
   const error = new Error('render failed');
   const event = { error, message: error.message,
     filename: 'https://peach.example/dist/peach-app.js?token=private-token', lineno: 21, colno: 8 };
@@ -100,6 +100,40 @@ it('浏览器异常有上限、去重，网络失败不会触发递归上报', a
   expect(reports(fetch)).toHaveLength(10);
   await Promise.resolve();
   expect(reports(fetch)).toHaveLength(10);
+});
+
+it('记录起播和播放中的慢等待，跳转、快速播放和会话地址不进入报告', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  const fetch = vi.fn().mockResolvedValue({ ok: true });
+  vi.stubGlobal('fetch', fetch);
+  const { observePlaybackWait } = await import('../src/slow-load');
+  const video = document.createElement('video');
+  Object.defineProperty(video, 'paused', { value: false });
+  const abort = new AbortController();
+  const reset = observePlaybackWait(video, () => '/stream?id=7&session=private-token', abort.signal);
+  const emit = (name: string) => video.dispatchEvent(new Event(name));
+  emit('play');
+  await vi.advanceTimersByTimeAsync(1200);
+  emit('playing');
+  emit('waiting');
+  await vi.advanceTimersByTimeAsync(5000);
+  emit('playing');
+  emit('waiting');
+  emit('seeking');
+  await vi.advanceTimersByTimeAsync(5000);
+  reset();
+  emit('play');
+  await vi.advanceTimersByTimeAsync(100);
+  emit('playing');
+  abort.abort();
+  const raw = reports(fetch).map(([, init]) => init.body);
+  expect(raw.join()).not.toContain('private-token');
+  expect(raw.map(line => JSON.parse(line))).toEqual([
+    { kind: 'performance', message: 'playback-start', timing: { asset_id: 7, elapsed_ms: 1200, pending: false, ready_state: 0 } },
+    { kind: 'performance', message: 'playback-buffer', timing: { asset_id: 7, elapsed_ms: 5000, pending: true, ready_state: 0 } },
+    { kind: 'performance', message: 'playback-buffer', timing: { asset_id: 7, elapsed_ms: 5000, pending: false, ready_state: 0 } },
+  ]);
 });
 
 it('主动取消请求不生成错误记录，真实异常保留类型', async () => {

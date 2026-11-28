@@ -166,14 +166,14 @@ class TranscodeService:
         key, profile = matches[-1]
         return {'status': 'cached', 'size_bytes': key[1], 'modified_ns': key[2], **asdict(profile)}
 
-    def requires_conversion(self, source: Path, *, session: str = "", registry=None,
+    def requires_conversion(self, source: Path, *, session: str = "", registry=None, stat=None,
                             decode: frozenset[str] = frozenset()) -> bool:
         """按容器、内部编码和浏览器报的解码能力（`decode`）选择兼容路径，不生成整片缓存。"""
         if self.needs_transcode(source):
             return True
         if self.resolver.ffprobe() is None:
             return False
-        profile = self._profile_for(source, session, registry)
+        profile = self._profile_for(source, session, registry, stat)
         return profile is None or not self._browser_compatible(source, profile, decode)
 
     def remuxes(self, source: Path, *, session: str = "", registry=None,

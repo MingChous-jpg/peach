@@ -277,12 +277,14 @@ def sources(settings, config, *, now=None):
                    key=lambda check: check["checked_at"], default={})
         recent = 0 <= now - float(last.get("checked_at", 0)) <= 86400
         reason_key = last.get("reason", "") if recent else ""
-        failed = recent and not last.get("ok") and reason_key != "not_found"
+        last_check_at = timestamp(last.get("checked_at"))
+        failed = (recent and last_check_at and not last.get("ok") and reason_key != "not_found"
+                  and (not stamp or stamp <= last_check_at))
         status, reason = _source_health(cooling, failed, fresh, recent, connection.get("ok"), reason_key,
                                         has_success=bool(stamp), has_check=bool(last))
         result.append({"source": key, "label": SOURCES[key]["label"],
                        "status": status,
-                       "reason": _text(reason), "reason_code": reason, "last_check_at": timestamp(last.get("checked_at")),
+                       "reason": _text(reason), "reason_code": reason, "last_check_at": last_check_at,
                        "elapsed_s": last.get("elapsed_s"), "last_success_at": stamp,
                        "cooldown_until": datetime.fromtimestamp(until, timezone.utc).isoformat() if cooling else None})
     return result

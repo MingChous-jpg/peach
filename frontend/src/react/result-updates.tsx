@@ -24,7 +24,7 @@ const DISCOVERIES = ['feed-new', 'jav-discoveries', 'jav-releases', 'jav-detail'
    算在线播放，口味页读关注来源推账号，所以它们也跟着 `follow` 刷新。对照见
    `tests/test_ledger_revision.py` 的 `ResultVersionTablesTests`。 */
 const READINGS: Record<string, string[]> = {
-  catalog: [...CATALOG, ...FOLLOW, 'review', 'taste'],
+  catalog: [...CATALOG, ...FOLLOW, 'review', 'taste', 'library-processing'],
   follow: [...FOLLOW, 'stats', 'taste'],
   discoveries: DISCOVERIES,
   review: ['review'],
