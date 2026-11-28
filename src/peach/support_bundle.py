@@ -354,6 +354,8 @@ def bundle_to(destination, *, report: dict | None = None, config=None, browser: 
         except Exception:
             pass
     if report:
+        if 'runtime_diagnostics' in report:
+            facts['runtime_diagnostics'] = report['runtime_diagnostics']
         # 报告分享仅保留系统检查，库清单、媒体挂载明细和来源原文留在本机页面。
         facts["checks"] = {key: {field: value.get(field) for field in ("status", "reason", "action")}
                            for key, value in report.get("checks", {}).items()

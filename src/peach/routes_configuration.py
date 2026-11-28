@@ -71,8 +71,9 @@ def local_only(request: Request) -> None:
 def _diagnostics_report(request: Request):
     from . import diagnostics
     state = request.app.state
-    return diagnostics.report(state.settings, state.mount_reachability.summary(),
-                              known_corruption=state.database.corrupted)
+    report = diagnostics.report(state.settings, state.mount_reachability.summary(),
+                                known_corruption=state.database.corrupted)
+    return {**report, 'runtime_diagnostics': state.runtime_diagnostics.snapshot()}
 
 
 @router.get("/api/diagnostics")

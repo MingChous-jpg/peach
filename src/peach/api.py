@@ -333,13 +333,14 @@ def _restore_task_center(contract) -> None:
         LOGGER.info("task center requeued %s followup(s)", len(requeued))
 
 
-#: 开机在后台先算一遍的聚合：口味、复核、垃圾复核、关注的全部条目与筛选项各要几秒到
+#: 开机在后台先算一遍的聚合：复核、垃圾复核、关注的全部条目与筛选项各要几秒到
 #: 十几秒，都按账本版本号缓存（`WebContract.cached_until_changed`），算好一次就一直用到
 #: 账本或文件真的变了。排在前面的是每页都碰到的几份：形状名单、作品分组快照（目录、
 #: 索引、筛选项都建在它上面）、统计与搜索推荐池，重启后第一个打开页面的人不再等它们一起冷算。
+#: 口味分析读取观看历史，并在打开口味页时按输入版本载入或计算。
 WARM_AGGREGATES = (("/api/entity/shapes", {}), ("/api/items", {"limit": "60"}), ("/api/stats", {}),
                    ("/api/search/recommendations", {}),
-                   ("/api/taste", {"window": "all"}), ("/api/review", {}), ("/api/ads", {}),
+                   ("/api/review", {}), ("/api/ads", {}),
                    ("/api/follow", {}))
 #: 关停时最多等在算的那份预热这么久（秒）：比存储卷探测的期限长一点，正常都等得到它放下连接；
 #: 等不到就不再等，免得一份卡住的预热让服务停不下来。
@@ -880,9 +881,11 @@ def create_app(
             except Exception:
                 mdns.status = "unavailable"
                 logging.getLogger(__name__).exception("mDNS publication failed")
+        resource_sampling = asyncio.create_task(_app.state.runtime_diagnostics.run())
         try:
             yield
         finally:
+            resource_sampling.cancel()
             # 外部播放器的最后一段观看要赶在账本收尾前落下。
             await asyncio.to_thread(_app.state.playback_trackers.stop)
             await activation.stop()
@@ -933,6 +936,8 @@ def create_app(
     app.state.settings = settings
     app.state.database = database
     app.state.ledger_migration = LedgerMigration()
+    from .runtime_diagnostics import MediaDeliveryTimings, RuntimeDiagnostics
+    app.state.runtime_diagnostics = RuntimeDiagnostics()
     app.state.web_contract = contract
     app.state.library_sharing = sharing
     app.state.seed_sharing = seed_sharing
@@ -1055,6 +1060,7 @@ def create_app(
     app.add_middleware(LedgerMigrationGate)
     app.add_middleware(FirstSetupSourceMiddleware)
     app.add_middleware(ResponseHeadersMiddleware)
+    app.add_middleware(MediaDeliveryTimings, diagnostics=app.state.runtime_diagnostics)
 
     # JSON 契约、页面脚本与样式是仅有的几类大文本响应，压下去省的字节最多：
     # `/api/items`、主界面 bundle 与样式都通过内容类型选择压缩。

@@ -394,6 +394,14 @@ def _translation_filter(language, trash):
     ], [language]
 
 
+def catalog_root_predicate(contract):
+    config = settings_file.active()
+    # 独立账本（例如 serve --db）沿用自身范围，避免套用默认账本的媒体根目录。
+    if contract.db_path.absolute() != (config.directory('database') / 'ledger.db').absolute():
+        return "1", []
+    return media_libraries.catalog_predicate(config)
+
+
 def catalog_filter(contract: WebContract, args):
     """视频列表与侧栏使用同一组筛选条件。"""
     trash = args.get("state") == "trash"
@@ -412,6 +420,10 @@ def catalog_filter(contract: WebContract, args):
     par.extend(folder_params)
     if args.get("library"):
         clause, values = media_libraries.predicate(settings_file.active(), args["library"])
+        where.append(clause)
+        par.extend(values)
+    elif not trash:
+        clause, values = catalog_root_predicate(contract)
         where.append(clause)
         par.extend(values)
     if trash:
@@ -1757,6 +1769,10 @@ def _facet_scope(contract, connection, jav, state, filters, asset_id, scope_kind
     scope_params: list[object] = []
     if filters and filters.get("library") and asset_id is None:
         library_clause, library_params = media_libraries.predicate(settings_file.active(), filters["library"])
+        scope += "AND " + library_clause + " "
+        scope_params.extend(library_params)
+    elif asset_id is None and not (scope_kind or scope_name) and state != "trash":
+        library_clause, library_params = catalog_root_predicate(contract)
         scope += "AND " + library_clause + " "
         scope_params.extend(library_params)
     if asset_id is not None:
