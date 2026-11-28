@@ -1,6 +1,9 @@
 """读取最近一个有对应安装制品的公开版本，并按发布签名验证。"""
 from pathlib import Path
 import re
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from peach import release_signing, release_updates
 from peach.peach_proxy import http_client
