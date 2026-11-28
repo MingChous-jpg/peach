@@ -1055,6 +1055,23 @@ def restore_ledger(request: Request, body: dict[str, Any] = Body(default_factory
         raise HTTPException(409, error_detail(exc)) from exc
 
 
+@router.get("/api/configuration/background-work")
+def read_background_work(request: Request, _args=Depends(require_auth)):
+    from . import background_work
+    local_only(request)
+    return {"precompute": background_work.enabled(request.app.state.web_contract.follow_state_root)}
+
+
+@router.post("/api/configuration/background-work")
+def save_background_work(request: Request, body: dict[str, Any] = Body(default_factory=dict),
+                         _args=Depends(require_auth)):
+    from . import background_work
+    local_only(request)
+    same_origin(request)
+    value = background_work.save(request.app.state.web_contract.follow_state_root, body.get("precompute"))
+    return {"precompute": value}
+
+
 @router.get("/api/configuration/retention")
 def read_retention(request: Request, _args=Depends(require_auth)):
     """「保留期限」：写入前自动备份留几份、日志留多少天，存在本机状态目录。"""

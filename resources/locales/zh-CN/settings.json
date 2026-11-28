@@ -1347,6 +1347,12 @@
     "waitingCount_one": "{{count, number}} 项修复等你确认",
     "waitingCount_other": "{{count, number}} 项修复等你确认"
   },
+  "backgroundWork": {
+    "title": "后台计算",
+    "precompute": "启动后预先计算",
+    "precomputeHelp": "开启后，Peach 会在下次启动时准备口味、复核、垃圾复核和关注页面。这些页面首次打开通常更快，启动时的 CPU、内存占用和磁盘读写会增加。关闭可减轻启动负担，首次打开时可能要等一会。",
+    "loadFailed": "无法读取后台计算设置"
+  },
   "retention": {
     "loadFailed": "保留期限读取失败",
     "backups": "账本自动备份",

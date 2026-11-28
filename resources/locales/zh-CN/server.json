@@ -1804,6 +1804,9 @@
       "choiceRequired": "请选择媒体处理方式",
       "qualityRequired": "画质上限只收 {{choices}}"
     },
+    "backgroundWork": {
+      "invalidPrecompute": "后台计算设置必须为开启或关闭。"
+    },
     "retentionSettings": {
       "choiceInvalid": "{{key}} 只收 {{choices}}",
       "empty": "没有要保存的保留期限"

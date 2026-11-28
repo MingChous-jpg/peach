@@ -18,6 +18,8 @@ Entries are written for users to scan: one sentence each, saying where something
 
 ### Added / 新增
 
+- **Settings**: Choose whether to precompute Taste, Review, Junk Review and Following at startup (#912). / **配置**：可选择启动时是否在后台预先计算口味、复核、垃圾复核和关注页面（#912）。
+
 - **Settings**: Export recent server and child-process resource samples and media first-response timings in local diagnostics. / **配置**：本机诊断可导出近期服务进程与子进程的资源记录，以及媒体首段响应耗时。
 
 - **Settings**: Record slow page loads, playback planning, startup and buffering in local diagnostics. / **配置**：本机诊断记录页面加载、播放计划、起播和缓冲耗时。

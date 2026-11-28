@@ -14,6 +14,7 @@ import { PathLine } from '../components/path-line';
 import { SectionToc, type TocEntry } from '../components/section-toc';
 import { StartupSettingsSection } from './general-settings';
 import { LedgerBackupSettings } from './ledger-backup-settings';
+import { BackgroundWorkSettings } from './background-work-settings';
 import { ReleaseUpdates } from './release-updates';
 import { RetentionSettings } from './retention-settings';
 import { CommunitySharingSettings } from './community-sharing-settings';
@@ -53,6 +54,7 @@ export function MaintenanceSettings(
       </MaintenanceGroup>
       <MaintenanceGroup entry={runtime}>
         <StartupSettingsSection active={active} initial={data.startup} receipt={receipt} />
+        {data.storage ? <BackgroundWorkSettings receipt={receipt} /> : null}
         {data.storage ? <StorageSettings initial={data.storage} receipt={receipt} active={active} /> : null}
         <Facts facts={data.facts} receipt={receipt} />
         <TutorialSettings receipt={receipt} reopenTutorial={reopenTutorial} />

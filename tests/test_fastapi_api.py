@@ -432,6 +432,25 @@ class FastApiContractTests(unittest.IsolatedAsyncioTestCase):
         await self.client.aclose()
         self.tmp.cleanup()
 
+    async def test_background_precompute_is_local_explicit_and_saved(self):
+        from peach import background_work
+
+        endpoint = "/api/configuration/background-work"
+        self.assertEqual((await self.client.get(endpoint)).status_code, 401)
+        endpoint += "?t=secret"
+        initial = await self.client.get(endpoint)
+        self.assertEqual(initial.json(), {"precompute": False})
+        malformed = await self.client.post(endpoint, json={"precompute": "true"})
+        self.assertEqual(malformed.status_code, 400)
+        self.assertFalse((self.settings.follow_state_root / background_work.FILENAME).exists())
+        for enabled in (True, False):
+            saved = await self.client.post(endpoint, json={"precompute": enabled})
+            self.assertEqual(saved.json(), {"precompute": enabled})
+            self.assertIs(background_work.enabled(self.settings.follow_state_root), enabled)
+        transport = httpx.ASGITransport(app=self.app, client=("192.0.2.5", 12345))
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as remote:
+            self.assertEqual((await remote.get(endpoint)).status_code, 403)
+
     async def test_health_is_side_effect_free(self):
         response = await self.client.get("http://127.0.0.1/healthz")
         self.assertEqual(response.status_code, 200)

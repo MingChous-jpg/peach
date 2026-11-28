@@ -1367,6 +1367,12 @@
     "waitingCount_one": "{{count, number}} repair needs your confirmation",
     "waitingCount_other": "{{count, number}} repairs need your confirmation"
   },
+  "backgroundWork": {
+    "title": "Background computation",
+    "precompute": "Precompute after startup",
+    "precomputeHelp": "When enabled, Peach prepares Taste, Review, Junk Review, and Following at the next startup. This usually speeds up the first visit and increases CPU, memory, and disk usage at startup. Leave this off for a lighter startup and potentially longer first loads.",
+    "loadFailed": "Could not load background computation settings"
+  },
   "retention": {
     "loadFailed": "Couldn't load retention settings",
     "backups": "Automatic database backups",
